@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fantasy Sports Game</title>
+
+  <!-- Google Identity Services (OAuth) -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+  <!-- Google Analytics 4 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=%REACT_APP_GA_MEASUREMENT_ID%"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    if ('%REACT_APP_GA_MEASUREMENT_ID%' !== '' && !('%REACT_APP_GA_MEASUREMENT_ID%'.startsWith('%'))) {
+      gtag('config', '%REACT_APP_GA_MEASUREMENT_ID%');
+    }
+  </script>
+</head>
+<body>
+  <div id="root"></div>
+</body>
+</html>

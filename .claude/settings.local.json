@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install)",
+      "Bash(npm run dev:*)",
+      "Bash(npm install:*)",
+      "Bash(npm start)",
+      "Bash(set PORT=3001)",
+      "Bash(npx tsc:*)",
+      "Bash(npx react-scripts build:*)",
+      "Bash(npx tailwindcss:*)",
+      "Bash(taskkill /F /FI \"WINDOWTITLE eq *react-scripts*\")",
+      "Bash(taskkill:*)",
+      "Bash(timeout /t 15 /nobreak)",
+      "Bash(curl:*)",
+      "Bash(node -e:*)",
+      "Bash(set \"NODE_ENV=development\")",
+      "Bash(node check-wp.js:*)",
+      "Bash(dir:*)",
+      "Bash(tree:*)",
+      "Bash(del uisrcpagesTeamSelection.js uisrcpagesJoinMatch.js uisrcmockmatches.js uisrcmockplayers.js uisrcmockscoring.js uisrcmockstorage.js)",
+      "Bash(node:*)",
+      "Bash(wc:*)",
+      "Bash(find:*)",
+      "Bash(npx tsx:*)"
+    ]
+  }
+}
