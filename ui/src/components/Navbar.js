@@ -58,12 +58,12 @@ export default function Navbar() {
                 {user.name || user.email}
               </NavLink>
               <button onClick={signOut} className="text-xs text-gray-500 hover:text-gray-300 transition-colors">
-                Sign out
+                Logout
               </button>
             </>
           ) : (
             <button onClick={signIn} className="text-sm text-gray-400 hover:text-gray-200 hover:bg-gray-800 px-3 py-1.5 rounded-lg transition-all duration-200">
-              Sign in
+              Login
             </button>
           )}
         </div>
@@ -120,12 +120,12 @@ export default function Navbar() {
                   {user.name || user.email}
                 </NavLink>
                 <button onClick={() => { signOut(); setMenuOpen(false); }} className="text-xs text-gray-500 hover:text-gray-300">
-                  Sign out
+                  Logout
                 </button>
               </div>
             ) : (
               <button onClick={() => { signIn(); setMenuOpen(false); }} className="text-sm text-gray-400 hover:text-gray-200">
-                Sign in with Google
+                Login
               </button>
             )}
           </div>

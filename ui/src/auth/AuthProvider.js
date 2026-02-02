@@ -101,8 +101,33 @@ export function AuthProvider({ children }) {
       console.warn("Google Client ID not configured. Set REACT_APP_GOOGLE_CLIENT_ID in .env");
       return;
     }
-    if (window.google?.accounts?.id) {
-      window.google.accounts.id.prompt();
+    // Use the OAuth2 token client — opens a real popup that always works,
+    // unlike google.accounts.id.prompt() which has a cooldown after dismissal.
+    if (window.google?.accounts?.oauth2) {
+      const client = window.google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: "openid profile email",
+        callback: (tokenResponse) => {
+          if (tokenResponse.access_token) {
+            fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+              headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+            })
+              .then((r) => r.json())
+              .then((info) => {
+                const authUser = {
+                  userId: info.sub,
+                  name: info.name || "",
+                  email: info.email || "",
+                  avatar: info.picture || "",
+                };
+                setUser(authUser);
+                persistUser(authUser);
+                trackEvent("sign_in", { userId: authUser.userId });
+              });
+          }
+        },
+      });
+      client.requestAccessToken();
     }
   }, []);
 

@@ -4,7 +4,7 @@ import { useAuth } from "../auth/AuthProvider";
 import { resolveIdentity } from "../auth/identity";
 
 export default function Profile() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const identity = resolveIdentity(user);
 
   if (!user) {
@@ -33,7 +33,7 @@ export default function Profile() {
             {user.email && <p className="text-gray-500 text-sm">{user.email}</p>}
           </div>
         </div>
-        <button onClick={signOut} className="btn-secondary text-sm">Sign Out</button>
+        <p className="text-gray-500 text-sm">Use the Logout button in the navbar to sign out.</p>
       </div>
 
       <h2 className="text-xl font-bold mb-4 text-gray-200">Groups</h2>

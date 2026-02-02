@@ -30,7 +30,7 @@ export default function Home() {
   const [matches, setMatches] = useState([]);
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
-  const { user, signIn } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -60,9 +60,7 @@ export default function Home() {
           Predict match outcomes, compete with friends, and climb the leaderboard.
         </p>
         {!user ? (
-          <button onClick={signIn} className="btn-primary mt-6 text-lg px-8 py-3">
-            Login to Play
-          </button>
+          <p className="text-gray-500 mt-6">Log in from the navbar to start playing.</p>
         ) : todayMatches.length > 0 ? (
           <button onClick={() => navigate(`/match/${todayMatches[0].matchId}`)} className="btn-primary mt-6 text-lg px-8 py-3">
             Go to Today's Match
