@@ -6,6 +6,7 @@ import { ToastProvider } from "./components/Toast";
 import { AuthProvider } from "./auth/AuthProvider";
 import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
+import Schedule from "./pages/Schedule";
 import MatchBetting from "./pages/MatchBetting";
 import LongTermBets from "./pages/LongTermBets";
 import Teams from "./pages/Teams";
@@ -83,6 +84,7 @@ function App() {
             <main className="flex-1">
               <Routes>
                 <Route path="/" element={<Home />} />
+                <Route path="/schedule" element={<Schedule />} />
                 <Route path="/match/:matchId" element={<MatchBetting />} />
                 <Route path="/long-term-bets" element={<LongTermBets />} />
                 <Route path="/teams" element={<Teams />} />

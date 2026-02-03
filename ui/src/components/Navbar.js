@@ -4,6 +4,7 @@ import { useAuth } from "../auth/AuthProvider";
 
 const links = [
   { to: "/", label: "Home" },
+  { to: "/schedule", label: "Schedule" },
   { to: "/long-term-bets", label: "Predictions" },
   { to: "/teams", label: "Teams" },
   { to: "/players", label: "Players" },
