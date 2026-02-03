@@ -11,8 +11,11 @@
 
 import * as Ext from "./ExternalDataAdapter";
 import {
-  BETTING_QUESTIONS, LONG_TERM_BETS, GROUPS,
-  SAMPLE_PROFILE, GLOBAL_LEADERBOARD,
+  getBettingQuestions as getBettingQuestionsFromData,
+  buildLongTermBets,
+  GROUPS,
+  SAMPLE_PROFILE,
+  GLOBAL_LEADERBOARD,
 } from "./bettingData";
 
 const STORAGE_KEY = "betting_arena_state";
@@ -21,11 +24,15 @@ function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     return raw ? JSON.parse(raw) : {};
-  } catch { return {}; }
+  } catch {
+    return {};
+  }
 }
 
 function saveState(s) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch {}
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+  } catch {}
 }
 
 function st() {
@@ -53,7 +60,16 @@ export function getMatch(matchId) {
   if (!m) throw new Error("Match not found");
   const teamA = Ext.getTeam(m.teamA);
   const teamB = Ext.getTeam(m.teamB);
-  if (!teamA || !teamB) throw new Error("Match data integrity error: missing team");
+  // For TBC matches in knockout stages, teams may not be resolved yet
+  if (!teamA || !teamB) {
+    // Return match with placeholder teams for TBC matches
+    return {
+      ...m,
+      teamA: teamA || { teamId: m.teamA, name: m.teamA, shortName: m.teamA, sport: "cricket", logoUrl: null, color: "#888888" },
+      teamB: teamB || { teamId: m.teamB, name: m.teamB, shortName: m.teamB, sport: "cricket", logoUrl: null, color: "#888888" },
+      squads: [],
+    };
+  }
   const squads = Ext.getSquads(matchId);
   return {
     ...m,
@@ -74,18 +90,30 @@ export function getBettingQuestions(matchId) {
   const match = Ext.getMatch(matchId);
   if (!match) throw new Error("Match not found");
 
-  const questions = BETTING_QUESTIONS[matchId] || [];
+  const questions = getBettingQuestionsFromData(matchId);
 
   // Derive status from match status (invariant: questions follow match lifecycle)
   return questions.map((q) => {
     let status;
     switch (match.status) {
-      case "UPCOMING":   status = "OPEN";     break;
-      case "LIVE":       status = "LOCKED";   break;
-      case "COMPLETED":  status = "RESOLVED"; break;
-      case "ABANDONED":  status = "RESOLVED"; break;
-      case "NO_RESULT":  status = "RESOLVED"; break;
-      default:           status = "DRAFT";    break;
+      case "UPCOMING":
+        status = "OPEN";
+        break;
+      case "LIVE":
+        status = "LOCKED";
+        break;
+      case "COMPLETED":
+        status = "RESOLVED";
+        break;
+      case "ABANDONED":
+        status = "RESOLVED";
+        break;
+      case "NO_RESULT":
+        status = "RESOLVED";
+        break;
+      default:
+        status = "DRAFT";
+        break;
     }
     return { ...q, status };
   });
@@ -124,7 +152,7 @@ export function submitBets(matchId, userId, answers) {
   }
 
   // Validate all answers reference valid questions and options
-  const questions = BETTING_QUESTIONS[matchId] || [];
+  const questions = getBettingQuestionsFromData(matchId);
   const questionMap = new Map(questions.map((q) => [q.questionId, q]));
 
   for (const [questionId, selectedOptionId] of Object.entries(answers)) {
@@ -174,7 +202,8 @@ export function getUserBets(matchId, userId) {
 // ── Long-term Bets ───────────────────────────────────────────────────────────
 
 export function getLongTermBets(eventId) {
-  return LONG_TERM_BETS.filter((b) => !eventId || b.eventId === eventId);
+  const longTermBets = buildLongTermBets();
+  return longTermBets.filter((b) => !eventId || b.eventId === eventId);
 }
 
 /**
@@ -186,14 +215,13 @@ export function getLongTermBets(eventId) {
 export function submitLongTermBets(userId, answers) {
   if (!userId) throw new Error("AUTHENTICATION_REQUIRED");
 
-  const tournament = Ext.getTournament("ipl2025");
+  const tournaments = Ext.getTournaments();
   // Invariant #23: lock when tournament status → ACTIVE
-  // For now the tournament is ACTIVE, so new long-term bets should be locked
-  // In a real system this would check if tournament has started
-  // Allow submission during ACTIVE for mock purposes (first-time only)
+  // For now allow submission for preview purposes
 
   // Validate answers
-  const questionMap = new Map(LONG_TERM_BETS.map((q) => [q.questionId, q]));
+  const longTermBets = buildLongTermBets();
+  const questionMap = new Map(longTermBets.map((q) => [q.questionId, q]));
   for (const [questionId, selectedOptionId] of Object.entries(answers)) {
     const question = questionMap.get(questionId);
     if (!question) throw new Error(`INVALID_QUESTION: ${questionId}`);
@@ -285,6 +313,8 @@ export function getGroups(userId) {
 
 export function createGroup(name, userId, displayName) {
   if (!userId) throw new Error("AUTHENTICATION_REQUIRED");
+  const tournaments = Ext.getTournaments();
+  const eventId = tournaments.length > 0 ? tournaments[0].eventId : "t20wc_2026";
   const joinCode = name.slice(0, 3).toUpperCase() + "-" + Math.random().toString(36).slice(2, 6).toUpperCase();
   const now = new Date().toISOString();
   const group = {
@@ -292,7 +322,7 @@ export function createGroup(name, userId, displayName) {
     name,
     joinCode,
     createdBy: userId,
-    eventId: "ipl2025",
+    eventId,
     memberIds: [userId],
     members: [{ userId, displayName, score: 0 }],
     createdAt: now,
