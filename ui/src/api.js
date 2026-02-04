@@ -182,3 +182,10 @@ export function apiGetProfile(userId) {
   if (USE_LOCAL_ENGINE) return mock(() => engine.getProfile(userId));
   return realGet(`/profile/${userId}`);
 }
+
+// ── Admin: Question Management ─────────────────────────────────────────────
+
+export function apiSaveMatchQuestions(matchId, questions) {
+  if (USE_LOCAL_ENGINE) return mock(() => engine.saveMatchQuestions(matchId, questions));
+  return realPost(`/admin/match/${matchId}/questions`, { questions });
+}

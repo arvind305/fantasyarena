@@ -1,0 +1,402 @@
+[
+  {
+    "teamId": "india",
+    "players": [
+      "suryakumar_yadav",
+      "axar_patel",
+      "abhishek_sharma",
+      "sanju_samson",
+      "ishan_kishan",
+      "tilak_varma",
+      "hardik_pandya",
+      "shivam_dube",
+      "rinku_singh",
+      "washington_sundar",
+      "kuldeep_yadav",
+      "varun_chakravarthy",
+      "jasprit_bumrah",
+      "arshdeep_singh",
+      "harshit_rana"
+    ]
+  },
+  {
+    "teamId": "pakistan",
+    "players": [
+      "salman_ali_agha",
+      "babar_azam",
+      "fakhar_zaman",
+      "saim_ayub",
+      "sahibzada_farhan",
+      "usman_khan",
+      "shadab_khan",
+      "mohammad_nawaz",
+      "faheem_ashraf",
+      "khawaja_nafay",
+      "abrar_ahmed",
+      "shaheen_shah_afridi",
+      "naseem_shah",
+      "mohammad_salman_mirza",
+      "usman_tariq"
+    ]
+  },
+  {
+    "teamId": "usa",
+    "players": [
+      "monank_patel",
+      "andries_gous",
+      "shehan_jayasuriya",
+      "milind_kumar",
+      "shayan_jahangir",
+      "saiteja_mukkamala",
+      "sanjay_krishnamurthi",
+      "harmeet_singh",
+      "nosthush_kenjige",
+      "shadley_van_schalkwyk",
+      "saurabh_netravalkar",
+      "ali_khan",
+      "mohammad_mohsin",
+      "jessy_singh",
+      "shubham_ranjane"
+    ]
+  },
+  {
+    "teamId": "netherlands",
+    "players": [
+      "scott_edwards",
+      "colin_ackermann",
+      "noah_croes",
+      "bas_de_leede",
+      "aryan_dutt",
+      "fred_klaassen",
+      "kyle_klein",
+      "michael_levitt",
+      "zach_lion_cachet",
+      "max_o_dowd",
+      "logan_van_beek",
+      "timm_van_der_gugten",
+      "roelof_van_der_merwe",
+      "paul_van_meekeren",
+      "saqib_zulfiqar"
+    ]
+  },
+  {
+    "teamId": "namibia",
+    "players": [
+      "gerhard_erasmus",
+      "zane_green",
+      "bernard_scholtz",
+      "ruben_trumpelmann",
+      "jj_smit",
+      "jan_frylinck",
+      "louren_steenkamp",
+      "malan_kruger",
+      "jan_nicol_loftie_eaton",
+      "jack_brassell",
+      "ben_shikongo",
+      "jc_balt",
+      "dylan_leicher",
+      "wp_myburgh",
+      "max_heingo"
+    ]
+  },
+  {
+    "teamId": "australia",
+    "players": [
+      "mitchell_marsh",
+      "xavier_bartlett",
+      "cooper_connolly",
+      "tim_david",
+      "ben_dwarshuis",
+      "cameron_green",
+      "nathan_ellis",
+      "josh_hazlewood",
+      "travis_head",
+      "josh_inglis",
+      "matthew_kuhnemann",
+      "glenn_maxwell",
+      "matthew_renshaw",
+      "marcus_stoinis",
+      "adam_zampa"
+    ]
+  },
+  {
+    "teamId": "sri_lanka",
+    "players": [
+      "dasun_shanaka",
+      "pathum_nissanka",
+      "kusal_mendis",
+      "kusal_perera",
+      "charith_asalanka",
+      "wanindu_hasaranga",
+      "kamindu_mendis",
+      "dunith_wellalage",
+      "dhananjaya_de_silva",
+      "matheesha_pathirana",
+      "dilshan_madushanka",
+      "maheesh_theekshana",
+      "lahiru_kumara",
+      "sadeera_samarawickrama",
+      "avishka_fernando"
+    ]
+  },
+  {
+    "teamId": "ireland",
+    "players": [
+      "paul_stirling",
+      "mark_adair",
+      "ross_adair",
+      "ben_calitz",
+      "curtis_campher",
+      "gareth_delany",
+      "george_dockrell",
+      "matthew_humphreys",
+      "josh_little",
+      "barry_mccarthy",
+      "harry_tector",
+      "tim_tector",
+      "lorcan_tucker",
+      "ben_white",
+      "craig_young"
+    ]
+  },
+  {
+    "teamId": "zimbabwe",
+    "players": [
+      "sikandar_raza",
+      "brian_bennett",
+      "ryan_burl",
+      "graeme_cremer",
+      "bradley_evans",
+      "clive_madande",
+      "tinotenda_maposa",
+      "tadiwanashe_marumani",
+      "wellington_masakadza",
+      "tony_munyonga",
+      "tashinga_musekiwa",
+      "blessing_muzarabani",
+      "dion_myers",
+      "richard_ngarava",
+      "brendan_taylor"
+    ]
+  },
+  {
+    "teamId": "oman",
+    "players": [
+      "jatinder_singh",
+      "kashyap_prajapati",
+      "zeeshan_maqsood",
+      "aqib_ilyas",
+      "ayaan_khan",
+      "mohammad_nadeem",
+      "fayyaz_butt",
+      "kaleemullah",
+      "bilal_khan",
+      "shakeel_ahmad",
+      "hammad_mirza",
+      "wasim_ali",
+      "sufyan_mehmood",
+      "jay_odedra",
+      "aamir_kaleem"
+    ]
+  },
+  {
+    "teamId": "england",
+    "players": [
+      "harry_brook",
+      "rehan_ahmed",
+      "jofra_archer",
+      "tom_banton",
+      "jacob_bethell",
+      "jos_buttler",
+      "sam_curran",
+      "liam_dawson",
+      "ben_duckett",
+      "will_jacks",
+      "jamie_overton",
+      "adil_rashid",
+      "phil_salt",
+      "josh_tongue",
+      "luke_wood"
+    ]
+  },
+  {
+    "teamId": "west_indies",
+    "players": [
+      "shai_hope",
+      "shimron_hetmyer",
+      "johnson_charles",
+      "roston_chase",
+      "matthew_forde",
+      "jason_holder",
+      "akeal_hosein",
+      "shamar_joseph",
+      "brandon_king",
+      "gudakesh_motie",
+      "rovman_powell",
+      "sherfane_rutherford",
+      "quentin_sampson",
+      "jayden_seales",
+      "romario_shepherd"
+    ]
+  },
+  {
+    "teamId": "italy",
+    "players": [
+      "wayne_madsen",
+      "marcus_campopiano",
+      "gian_piero_meade",
+      "zain_ali",
+      "ali_hasan",
+      "crishan_j_kalugamage",
+      "harry_manenti",
+      "anthony_mosca",
+      "justin_mosca",
+      "syed_naqvi",
+      "benjamin_manenti",
+      "jaspreet_singh",
+      "jj_smuts",
+      "grant_stewart",
+      "thomas_draca"
+    ]
+  },
+  {
+    "teamId": "nepal",
+    "players": [
+      "rohit_paudel",
+      "aasif_sheikh",
+      "kushal_bhurtel",
+      "dipendra_singh_airee",
+      "sandeep_lamichhane",
+      "sundeep_jora",
+      "aarif_sheikh",
+      "basir_ahamad",
+      "sompal_kami",
+      "karan_kc",
+      "nandan_yadav",
+      "gulshan_jha",
+      "lalit_rajbanshi",
+      "sher_malla",
+      "lokesh_bam"
+    ]
+  },
+  {
+    "teamId": "scotland",
+    "players": [
+      "richie_berrington",
+      "tom_bruce",
+      "matthew_cross",
+      "bradley_currie",
+      "oliver_davidson",
+      "chris_greaves",
+      "zainullah_ihsan",
+      "michael_jones",
+      "michael_leask",
+      "finlay_mccreath",
+      "brandon_mcmullen",
+      "george_munsey",
+      "safyaan_sharif",
+      "mark_watt",
+      "bradley_wheal"
+    ]
+  },
+  {
+    "teamId": "south_africa",
+    "players": [
+      "aiden_markram",
+      "corbin_bosch",
+      "dewald_brevis",
+      "quinton_de_kock",
+      "tony_de_zorzi",
+      "donovan_ferreira",
+      "marco_jansen",
+      "george_linde",
+      "keshav_maharaj",
+      "kwena_maphaka",
+      "david_miller",
+      "lungi_ngidi",
+      "anrich_nortje",
+      "kagiso_rabada",
+      "jason_smith"
+    ]
+  },
+  {
+    "teamId": "new_zealand",
+    "players": [
+      "mitchell_santner",
+      "finn_allen",
+      "michael_bracewell",
+      "mark_chapman",
+      "devon_conway",
+      "jacob_duffy",
+      "lockie_ferguson",
+      "matt_henry",
+      "kyle_jamieson",
+      "daryl_mitchell",
+      "james_neesham",
+      "glenn_phillips",
+      "rachin_ravindra",
+      "tim_seifert",
+      "ish_sodhi"
+    ]
+  },
+  {
+    "teamId": "afghanistan",
+    "players": [
+      "rashid_khan",
+      "noor_ahmad",
+      "abdullah_ahmadzai",
+      "sediqullah_atal",
+      "fazalhaq_farooqi",
+      "rahmanullah_gurbaz",
+      "naveen_ul_haq",
+      "mohammad_ishaq_rahimi",
+      "shahidullah_kamal",
+      "mohammad_nabi",
+      "gulbadin_naib",
+      "azmatullah_omarzai",
+      "mujeeb_ur_rahman",
+      "darwish_rasooli",
+      "ibrahim_zadran"
+    ]
+  },
+  {
+    "teamId": "canada",
+    "players": [
+      "dilpreet_bajwa",
+      "navneet_dhaliwal",
+      "nicholas_kirton",
+      "shreyas_movva",
+      "ravinderpal_singh",
+      "harsh_thaker",
+      "saad_bin_zafar",
+      "dilon_heyliger",
+      "kaleem_sana",
+      "ali_shamshudeen",
+      "jaskarandeep_buttar",
+      "ajayveer_hundal",
+      "ansh_patel",
+      "shivam_sharma",
+      "yuvraj_samra"
+    ]
+  },
+  {
+    "teamId": "uae",
+    "players": [
+      "muhammad_waseem",
+      "alishan_sharafu",
+      "aryansh_sharma",
+      "vriitya_aravind",
+      "dhruv_parashar",
+      "haider_ali",
+      "rameez_shahzad",
+      "junaid_siddique",
+      "muhammad_jawadullah",
+      "muhammad_farooq",
+      "zahoor_khan",
+      "mayank_dagar",
+      "basil_hameed",
+      "karthik_meiyappan",
+      "asif_khan"
+    ]
+  }
+]

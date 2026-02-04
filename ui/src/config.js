@@ -71,3 +71,8 @@ export const POLL_INTERVAL_MS = IS_SHADOW_MODE
  * API base URL for live mode.
  */
 export const API_BASE_URL = process.env.REACT_APP_API_URL || "";
+
+/**
+ * Admin email for access control.
+ */
+export const ADMIN_EMAIL = process.env.REACT_APP_ADMIN_EMAIL || "";

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
+import { ADMIN_EMAIL } from "../config";
 
 const links = [
   { to: "/", label: "Home" },
@@ -21,6 +22,7 @@ const moreLinks = [
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { user, signIn, signOut } = useAuth();
+  const isAdmin = user && ADMIN_EMAIL && user.email === ADMIN_EMAIL;
 
   const linkClass = ({ isActive }) =>
     `px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
@@ -50,6 +52,11 @@ export default function Navbar() {
 
         {/* Desktop auth */}
         <div className="hidden lg:flex items-center gap-2 ml-3 pl-3 border-l border-gray-800 shrink-0">
+          {isAdmin && (
+            <NavLink to="/schedule" className="text-xs text-amber-500 hover:text-amber-400 px-2 py-1 rounded bg-amber-900/20">
+              Admin
+            </NavLink>
+          )}
           {user ? (
             <>
               {user.avatar && (
@@ -111,6 +118,17 @@ export default function Navbar() {
               </NavLink>
             ))}
           </div>
+
+          {/* Mobile admin link */}
+          {isAdmin && (
+            <NavLink
+              to="/schedule"
+              onClick={() => setMenuOpen(false)}
+              className="block px-6 py-3 text-sm font-medium border-b border-gray-800/50 text-amber-500"
+            >
+              Admin
+            </NavLink>
+          )}
 
           {/* Mobile auth */}
           <div className="px-6 py-3 border-b border-gray-800/50">

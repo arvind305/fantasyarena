@@ -24,7 +24,9 @@ import { trackAppOpen } from "./analytics";
 import { ENGINE_MODE, IS_SHADOW_MODE, USE_LOCAL_ENGINE } from "./config";
 import { startPolling } from "./shadow/poll";
 import { initializeAdapter } from "./mock/ExternalDataAdapter";
+import { initializeQuestionStore } from "./mock/QuestionStore";
 import Spinner from "./components/Spinner";
+import AdminMatchBuilder from "./pages/AdminMatchBuilder";
 
 trackAppOpen();
 startPolling();
@@ -41,7 +43,7 @@ function App() {
 
   useEffect(() => {
     if (USE_LOCAL_ENGINE) {
-      initializeAdapter()
+      Promise.all([initializeAdapter(), initializeQuestionStore()])
         .then(() => setReady(true))
         .catch((err) => {
           console.error("[app] Failed to load static data:", err);
@@ -98,6 +100,7 @@ function App() {
                 <Route path="/rules" element={<Rules />} />
                 <Route path="/faq" element={<FAQ />} />
                 <Route path="/about" element={<About />} />
+                <Route path="/admin/match/:matchId" element={<AdminMatchBuilder />} />
               </Routes>
             </main>
             <footer className="border-t border-gray-800 py-6 text-center text-xs text-gray-600">
