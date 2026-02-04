@@ -39,6 +39,9 @@ export default function MatchBetting() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
+  // Track numeric inputs separately for validation
+  const [numericInputs, setNumericInputs] = useState({});
+
   useEffect(() => {
     Promise.all([
       apiGetMatch(matchId),
@@ -51,23 +54,97 @@ export default function MatchBetting() {
         if (bets) {
           setExisting(bets);
           setAnswers(bets.answers || {});
+          // Restore numeric inputs from answers
+          const numericQ = q.filter((qu) => qu.type === "NUMERIC_INPUT");
+          const restored = {};
+          for (const qu of numericQ) {
+            if (bets.answers?.[qu.questionId]) {
+              restored[qu.questionId] = bets.answers[qu.questionId];
+            }
+          }
+          setNumericInputs(restored);
         }
       })
       .catch((err) => toast.error(err.message))
       .finally(() => setLoading(false));
   }, [matchId]);
 
+  // Split questions by section
+  const standardQuestions = questions.filter((q) => q.section === "STANDARD");
+  const sideQuestions = questions.filter((q) => q.section === "SIDE");
+  // Legacy questions (no section) for backwards compatibility
+  const legacyQuestions = questions.filter((q) => !q.section);
+
+  // Check if we have required sections
+  const hasStandard = standardQuestions.length > 0 || legacyQuestions.length > 0;
+  const hasSide = sideQuestions.length > 0;
+
   // Lock and editability are derived from SERVER-PROVIDED status.
-  // The UI does NOT compute lock timing — it reads question.status and bet.isLocked.
-  // Invariant: questions with status !== "OPEN" are read-only.
   const allQuestionsOpen = questions.length > 0 && questions.every((q) => q.status === "OPEN");
   const isLocked = !allQuestionsOpen || existing?.isLocked;
   const isEditable = allQuestionsOpen && !existing?.isLocked;
 
+  // Validation: check all required questions answered
+  function validateSubmission() {
+    const errors = [];
+
+    // Standard questions (winner, runs, player picks are required)
+    const requiredStandard = standardQuestions.filter((q) =>
+      ["WINNER", "TOTAL_RUNS", "PLAYER_PICK"].includes(q.kind)
+    );
+    for (const q of requiredStandard) {
+      if (q.type === "NUMERIC_INPUT") {
+        const val = numericInputs[q.questionId];
+        if (!val || val.trim() === "") {
+          errors.push(`Please answer: ${q.text}`);
+        } else if (!/^\d+$/.test(val.trim())) {
+          errors.push(`Invalid number for: ${q.text}`);
+        }
+      } else if (!answers[q.questionId]) {
+        errors.push(`Please answer: ${q.text}`);
+      }
+    }
+
+    // Runner question (required only if exists and runnersEnabled)
+    const runnerQ = standardQuestions.find((q) => q.kind === "RUNNER_PICK");
+    // Runner is optional - user can skip if they don't want to pick runners
+
+    // Side bets (all required)
+    for (const q of sideQuestions) {
+      if (!answers[q.questionId]) {
+        errors.push(`Please answer side bet: ${q.text}`);
+      }
+    }
+
+    // Legacy questions (all required)
+    for (const q of legacyQuestions) {
+      if (!answers[q.questionId]) {
+        errors.push(`Please answer: ${q.text}`);
+      }
+    }
+
+    return errors;
+  }
+
+  function handleNumericChange(questionId, value) {
+    // Only allow digits (no commas, no decimals)
+    const cleaned = value.replace(/[^\d]/g, "");
+    setNumericInputs((prev) => ({ ...prev, [questionId]: cleaned }));
+    // Also store in answers for submission
+    if (cleaned) {
+      setAnswers((prev) => ({ ...prev, [questionId]: cleaned }));
+    }
+  }
+
   async function handleSubmit() {
     if (!user) return toast.error("Sign in to submit your predictions");
-    const unanswered = questions.filter((q) => !answers[q.questionId]);
-    if (unanswered.length > 0) return toast.error(`Please answer all ${unanswered.length} remaining questions`);
+
+    // Validate all required fields
+    const errors = validateSubmission();
+    if (errors.length > 0) {
+      return toast.error(errors[0]); // Show first error
+    }
+
     setSubmitting(true);
     try {
       const result = await apiSubmitBets(matchId, identity.userId, answers);
@@ -99,6 +176,9 @@ export default function MatchBetting() {
     );
   }
 
+  // Check if we can submit (must have standard pack and at least 1 side bet)
+  const canSubmit = hasStandard && (hasSide || legacyQuestions.length > 0);
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
       {/* Match Header */}
@@ -129,7 +209,7 @@ export default function MatchBetting() {
           </div>
         </div>
 
-        {/* Status badges — read from server-provided match.status */}
+        {/* Status badges */}
         <div className="flex items-center gap-3">
           {match.status === "LIVE" && (
             <span className="px-2.5 py-1 rounded-full text-xs border bg-emerald-900/50 text-emerald-400 border-emerald-800">
@@ -163,67 +243,92 @@ export default function MatchBetting() {
         </div>
       )}
 
-      {/* Questions — rendered from server-provided data, no client-side filtering */}
-      <h2 className="text-xl font-bold mb-4 text-gray-200">Predictions</h2>
-      <div className="space-y-4">
-        {questions.map((q, i) => {
-          const qDisabled = q.status !== "OPEN" || !user;
-          return (
-            <div key={q.questionId} className="card animate-slide-up" style={{ animationDelay: `${i * 40}ms` }}>
-              <div className="flex items-start justify-between mb-3">
-                <h3 className="font-semibold text-gray-100 text-sm">
-                  <span className="text-brand-400 mr-2">Q{i + 1}.</span>
-                  {q.text}
-                </h3>
-                {q.status === "LOCKED" && (
-                  <span className="text-xs text-amber-500 whitespace-nowrap ml-3">Locked</span>
-                )}
-              </div>
+      {/* No questions at all */}
+      {questions.length === 0 && (
+        <div className="card text-center py-12 bg-gray-900/50 border-gray-700">
+          <p className="text-gray-400 text-lg mb-2">Betting questions not yet created for this match</p>
+          <p className="text-gray-600 text-sm">Check back later when an admin has set up the questions.</p>
+        </div>
+      )}
 
-              {q.optionType === "YES_NO" || q.optionType === "MULTIPLE_CHOICE" || q.optionType === "TEAM_PICK" ? (
-                <div className="flex flex-wrap gap-2">
-                  {q.options.map((opt) => (
-                    <label
-                      key={opt.optionId}
-                      className={`px-4 py-2 rounded-lg text-sm cursor-pointer border transition-all ${
-                        answers[q.questionId] === opt.optionId
-                          ? "bg-brand-600/30 border-brand-600 text-brand-200"
-                          : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600"
-                      } ${qDisabled ? "pointer-events-none opacity-70" : ""}`}
-                    >
-                      <input
-                        type="radio"
-                        name={q.questionId}
-                        value={opt.optionId}
-                        checked={answers[q.questionId] === opt.optionId}
-                        onChange={() => setAnswers((prev) => ({ ...prev, [q.questionId]: opt.optionId }))}
-                        disabled={qDisabled}
-                        className="sr-only"
-                      />
-                      {opt.label}
-                    </label>
-                  ))}
-                </div>
-              ) : (
-                <select
-                  value={answers[q.questionId] || ""}
-                  onChange={(e) => setAnswers((prev) => ({ ...prev, [q.questionId]: e.target.value }))}
-                  disabled={qDisabled}
-                  className="input text-sm"
-                >
-                  <option value="">Select...</option>
-                  {q.options.map((opt) => (
-                    <option key={opt.optionId} value={opt.optionId}>{opt.label}</option>
-                  ))}
-                </select>
-              )}
-            </div>
-          );
-        })}
-      </div>
+      {/* Standard pack not published */}
+      {questions.length > 0 && !hasStandard && (
+        <div className="card mb-6 text-center py-8 bg-amber-950/30 border-amber-800/40">
+          <p className="text-amber-400 font-semibold">Standard pack not published yet</p>
+          <p className="text-gray-500 text-sm mt-1">Submission is blocked until standard bets are available.</p>
+        </div>
+      )}
+
+      {/* Side bets not published (if using new schema) */}
+      {questions.length > 0 && hasStandard && !hasSide && legacyQuestions.length === 0 && (
+        <div className="card mb-6 text-center py-8 bg-purple-950/30 border-purple-800/40">
+          <p className="text-purple-400 font-semibold">Side bets not published yet</p>
+          <p className="text-gray-500 text-sm mt-1">At least 1 side bet is required. Submission is blocked.</p>
+        </div>
+      )}
+
+      {/* Section A: Standard Bets */}
+      {(standardQuestions.length > 0 || legacyQuestions.length > 0) && (
+        <div className="mb-8">
+          <h2 className="text-xl font-bold mb-4 text-gray-200">
+            <span className="text-brand-400">A.</span> Standard Bets
+          </h2>
+          <div className="space-y-4">
+            {standardQuestions.map((q, i) => (
+              <QuestionCard
+                key={q.questionId}
+                question={q}
+                index={i}
+                answers={answers}
+                setAnswers={setAnswers}
+                numericInputs={numericInputs}
+                handleNumericChange={handleNumericChange}
+                disabled={q.status !== "OPEN" || !user}
+              />
+            ))}
+            {/* Legacy questions in standard section */}
+            {legacyQuestions.map((q, i) => (
+              <QuestionCard
+                key={q.questionId}
+                question={q}
+                index={standardQuestions.length + i}
+                answers={answers}
+                setAnswers={setAnswers}
+                numericInputs={numericInputs}
+                handleNumericChange={handleNumericChange}
+                disabled={q.status !== "OPEN" || !user}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Section B: Side Bets */}
+      {sideQuestions.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-xl font-bold mb-4 text-gray-200">
+            <span className="text-purple-400">B.</span> Side Bets
+          </h2>
+          <div className="space-y-4">
+            {sideQuestions.map((q, i) => (
+              <QuestionCard
+                key={q.questionId}
+                question={q}
+                index={i}
+                answers={answers}
+                setAnswers={setAnswers}
+                numericInputs={numericInputs}
+                handleNumericChange={handleNumericChange}
+                disabled={q.status !== "OPEN" || !user}
+                isSideBet
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Submit */}
-      {user && isEditable && (
+      {user && isEditable && canSubmit && (
         <div className="mt-8 text-center">
           <button
             onClick={handleSubmit}
@@ -236,11 +341,148 @@ export default function MatchBetting() {
         </div>
       )}
 
+      {/* Cannot submit message */}
+      {user && isEditable && !canSubmit && questions.length > 0 && (
+        <div className="mt-8 card text-center bg-gray-900/50 border-gray-700">
+          <p className="text-gray-400">Cannot submit yet</p>
+          <p className="text-gray-600 text-sm mt-1">
+            Waiting for all question sections to be published.
+          </p>
+        </div>
+      )}
+
       {isLocked && existing && (
         <div className="mt-8 card text-center bg-emerald-950/20 border-emerald-800/30">
           <p className="text-emerald-400 font-semibold">Your predictions are locked!</p>
           <p className="text-gray-500 text-sm mt-1">Results will be revealed after the match.</p>
         </div>
+      )}
+    </div>
+  );
+}
+
+function QuestionCard({
+  question,
+  index,
+  answers,
+  setAnswers,
+  numericInputs,
+  handleNumericChange,
+  disabled,
+  isSideBet,
+}) {
+  const q = question;
+  const accentColor = isSideBet ? "purple" : "brand";
+
+  // Points display
+  const pointsText = q.points > 0 ? `+${q.points}` : q.points;
+  const pointsColorClass = q.points >= 0 ? "text-emerald-400" : "text-red-400";
+
+  return (
+    <div
+      className="card animate-slide-up"
+      style={{ animationDelay: `${index * 40}ms` }}
+    >
+      <div className="flex items-start justify-between mb-3">
+        <h3 className="font-semibold text-gray-100 text-sm flex-1">
+          <span className={`text-${accentColor}-400 mr-2`}>Q{index + 1}.</span>
+          {q.text}
+        </h3>
+        <div className="flex items-center gap-2 ml-3">
+          {q.slot && (
+            <span className="text-xs text-gray-500 whitespace-nowrap">
+              {q.slot.multiplier}x
+            </span>
+          )}
+          <span className={`text-xs ${pointsColorClass} whitespace-nowrap`}>
+            {pointsText} pts
+          </span>
+          {q.status === "LOCKED" && (
+            <span className="text-xs text-amber-500 whitespace-nowrap">Locked</span>
+          )}
+        </div>
+      </div>
+
+      {/* Numeric Input (for TOTAL_RUNS) */}
+      {q.type === "NUMERIC_INPUT" && (
+        <div>
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={numericInputs[q.questionId] || ""}
+            onChange={(e) => handleNumericChange(q.questionId, e.target.value)}
+            disabled={disabled}
+            placeholder="Enter a number (e.g., 350)"
+            className={`w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-lg text-gray-200
+              ${disabled ? "opacity-70 cursor-not-allowed" : "focus:border-brand-600 focus:outline-none"}`}
+          />
+          <p className="text-xs text-gray-600 mt-1">
+            Enter digits only (no commas or decimals)
+          </p>
+        </div>
+      )}
+
+      {/* Runner Pick placeholder */}
+      {q.type === "RUNNER_PICK" && (
+        <div className="text-center py-4 bg-gray-800/50 rounded-lg">
+          <p className="text-gray-400 text-sm">
+            Runner selection: Up to {q.runnerConfig?.maxRunners || 2} runners ({q.runnerConfig?.percent || 10}% pool)
+          </p>
+          <p className="text-gray-600 text-xs mt-1">
+            Runner options will be loaded from your group membership.
+          </p>
+        </div>
+      )}
+
+      {/* Radio/Checkbox options (YES_NO, TEAM_PICK, MULTI_CHOICE) */}
+      {(q.type === "YES_NO" || q.type === "MULTI_CHOICE" || q.type === "TEAM_PICK") && (
+        <div className="flex flex-wrap gap-2">
+          {q.options.map((opt) => (
+            <label
+              key={opt.optionId}
+              className={`px-4 py-2 rounded-lg text-sm cursor-pointer border transition-all ${
+                answers[q.questionId] === opt.optionId
+                  ? isSideBet
+                    ? "bg-purple-600/30 border-purple-600 text-purple-200"
+                    : "bg-brand-600/30 border-brand-600 text-brand-200"
+                  : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600"
+              } ${disabled ? "pointer-events-none opacity-70" : ""}`}
+            >
+              <input
+                type="radio"
+                name={q.questionId}
+                value={opt.optionId}
+                checked={answers[q.questionId] === opt.optionId}
+                onChange={() => setAnswers((prev) => ({ ...prev, [q.questionId]: opt.optionId }))}
+                disabled={disabled}
+                className="sr-only"
+              />
+              {opt.label}
+              {opt.weight && opt.weight > 1 && q.kind === "WINNER" && (
+                <span className="ml-1 text-xs text-amber-400">({opt.weight}x)</span>
+              )}
+            </label>
+          ))}
+        </div>
+      )}
+
+      {/* Player Pick dropdown */}
+      {q.type === "PLAYER_PICK" && (
+        <select
+          value={answers[q.questionId] || ""}
+          onChange={(e) => setAnswers((prev) => ({ ...prev, [q.questionId]: e.target.value }))}
+          disabled={disabled}
+          className={`w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200
+            ${disabled ? "opacity-70 cursor-not-allowed" : ""}`}
+        >
+          <option value="">Select a player...</option>
+          {q.options.map((opt) => (
+            <option key={opt.optionId} value={opt.optionId}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
       )}
     </div>
   );

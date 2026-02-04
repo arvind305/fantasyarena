@@ -5,13 +5,13 @@
  * DOMAIN_MODEL_AND_DATA_CONTRACTS.md. The UI must NEVER duplicate this logic.
  *
  * External data (teams, players, matches, squads) comes from ExternalDataAdapter.
- * System-generated data (questions, options) comes from bettingData.js.
+ * Questions come from QuestionStore (admin-defined).
  * User-generated data (bets, groups) is stored in localStorage.
  */
 
 import * as Ext from "./ExternalDataAdapter";
+import * as QuestionStore from "./QuestionStore";
 import {
-  getBettingQuestions as getBettingQuestionsFromData,
   buildLongTermBets,
   GROUPS,
   SAMPLE_PROFILE,
@@ -82,15 +82,14 @@ export function getMatch(matchId) {
 // ── Betting Questions ────────────────────────────────────────────────────────
 
 /**
- * Returns betting questions for a match with current status.
- * Options are always included inline with structured optionId/referenceType.
- * The UI renders these as-is — no filtering, no validation.
+ * Returns admin-defined betting questions for a match.
+ * Questions are loaded from QuestionStore. Returns empty array if none defined.
  */
 export function getBettingQuestions(matchId) {
   const match = Ext.getMatch(matchId);
   if (!match) throw new Error("Match not found");
 
-  const questions = getBettingQuestionsFromData(matchId);
+  const questions = QuestionStore.getQuestions(matchId);
 
   // Derive status from match status (invariant: questions follow match lifecycle)
   return questions.map((q) => {
@@ -125,7 +124,6 @@ export function getBettingQuestions(matchId) {
  *  - Match must be UPCOMING (invariant #21)
  *  - At most one bet per user per match (invariant #16)
  *  - All answer optionIds must reference valid options in valid questions (invariant #22)
- *  - Player-pick options must reference players in match squads (invariant #17 via question build)
  */
 export function submitBets(matchId, userId, answers) {
   // Invariant #20: authentication required
@@ -152,17 +150,30 @@ export function submitBets(matchId, userId, answers) {
   }
 
   // Validate all answers reference valid questions and options
-  const questions = getBettingQuestionsFromData(matchId);
+  const questions = QuestionStore.getQuestions(matchId);
   const questionMap = new Map(questions.map((q) => [q.questionId, q]));
 
-  for (const [questionId, selectedOptionId] of Object.entries(answers)) {
+  for (const [questionId, selectedValue] of Object.entries(answers)) {
     const question = questionMap.get(questionId);
     if (!question) {
       throw new Error(`INVALID_QUESTION: ${questionId}`);
     }
-    const validOptionIds = question.options.map((o) => o.optionId);
-    if (!validOptionIds.includes(selectedOptionId)) {
-      throw new Error(`INVALID_OPTION: ${selectedOptionId} for question ${questionId}`);
+
+    // Handle different question types
+    if (question.type === "NUMERIC_INPUT") {
+      // For numeric input, validate it's a valid number string
+      if (!/^\d+$/.test(String(selectedValue).trim())) {
+        throw new Error(`INVALID_NUMERIC_VALUE: ${selectedValue} for question ${questionId}`);
+      }
+    } else if (question.type === "RUNNER_PICK") {
+      // Runner picks are optional and can be empty or an array
+      // Skip validation for now as runners are loaded from group membership
+    } else {
+      // For option-based questions, validate the optionId
+      const validOptionIds = question.options.map((o) => o.optionId);
+      if (!validOptionIds.includes(selectedValue)) {
+        throw new Error(`INVALID_OPTION: ${selectedValue} for question ${questionId}`);
+      }
     }
   }
 
@@ -361,4 +372,10 @@ export function getProfile(userId) {
     ...SAMPLE_PROFILE,
     userId: userId || SAMPLE_PROFILE.userId,
   };
+}
+
+// ── Admin: Question Management ───────────────────────────────────────────────
+
+export function saveMatchQuestions(matchId, questions) {
+  return QuestionStore.saveQuestions(matchId, questions);
 }
