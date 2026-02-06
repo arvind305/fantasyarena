@@ -53,7 +53,7 @@ export default function Navbar() {
         {/* Desktop auth */}
         <div className="hidden lg:flex items-center gap-2 ml-3 pl-3 border-l border-gray-800 shrink-0">
           {isAdmin && (
-            <NavLink to="/schedule" className="text-xs text-amber-500 hover:text-amber-400 px-2 py-1 rounded bg-amber-900/20">
+            <NavLink to="/admin/dashboard" className="text-xs text-amber-500 hover:text-amber-400 px-2 py-1 rounded bg-amber-900/20">
               Admin
             </NavLink>
           )}
@@ -122,11 +122,11 @@ export default function Navbar() {
           {/* Mobile admin link */}
           {isAdmin && (
             <NavLink
-              to="/schedule"
+              to="/admin/dashboard"
               onClick={() => setMenuOpen(false)}
               className="block px-6 py-3 text-sm font-medium border-b border-gray-800/50 text-amber-500"
             >
-              Admin
+              Admin Dashboard
             </NavLink>
           )}
 

@@ -27,6 +27,7 @@ import { initializeAdapter } from "./mock/ExternalDataAdapter";
 import { initializeQuestionStore } from "./mock/QuestionStore";
 import Spinner from "./components/Spinner";
 import AdminMatchBuilder from "./pages/AdminMatchBuilder";
+import AdminDashboard from "./pages/AdminDashboard";
 
 trackAppOpen();
 startPolling();
@@ -101,6 +102,7 @@ function App() {
                 <Route path="/faq" element={<FAQ />} />
                 <Route path="/about" element={<About />} />
                 <Route path="/admin/match/:matchId" element={<AdminMatchBuilder />} />
+                <Route path="/admin/dashboard" element={<AdminDashboard />} />
               </Routes>
             </main>
             <footer className="border-t border-gray-800 py-6 text-center text-xs text-gray-600">

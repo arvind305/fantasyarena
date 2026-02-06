@@ -17,6 +17,7 @@ const AuthContext = createContext(null);
 
 const STORAGE_KEY = "fantasy_arena_auth";
 const CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || "";
+const DEV_MODE = process.env.NODE_ENV === "development" && !CLIENT_ID;
 
 /**
  * Decode a JWT payload without a library (GIS returns a credential JWT).
@@ -97,6 +98,22 @@ export function AuthProvider({ children }) {
   }, [handleCredentialResponse]);
 
   const signIn = useCallback(() => {
+    // Dev mode: skip OAuth and use a fake admin user
+    if (DEV_MODE) {
+      const devEmail = process.env.REACT_APP_ADMIN_EMAIL || "admin@dev.local";
+      const devUser = {
+        userId: "dev_user_001",
+        name: "Dev Admin",
+        email: devEmail,
+        avatar: "",
+      };
+      console.log("[Auth] DEV MODE: Logging in as", devEmail);
+      setUser(devUser);
+      persistUser(devUser);
+      trackEvent("sign_in", { userId: devUser.userId, dev: true });
+      return;
+    }
+
     if (!CLIENT_ID) {
       console.warn("Google Client ID not configured. Set REACT_APP_GOOGLE_CLIENT_ID in .env");
       return;
