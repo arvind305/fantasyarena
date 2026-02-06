@@ -310,7 +310,7 @@ function generateEarlyMatchPack(match, squads, now) {
     },
     {
       optionId: `opt_${matchId}_winner_superover`,
-      label: `Super Over (${superOverMultiplier}x)`,
+      label: "Super Over",
       referenceType: "NONE",
       referenceId: null,
       weight: superOverMultiplier,

@@ -28,7 +28,7 @@
           },
           {
             "optionId": "opt_wc_m1_winner_superover",
-            "label": "Super Over (5x)",
+            "label": "Super Over",
             "referenceType": "NONE",
             "referenceId": null,
             "weight": 5
@@ -79,7 +79,7 @@
           },
           {
             "optionId": "opt_wc_m2_winner_superover",
-            "label": "Super Over (5x)",
+            "label": "Super Over",
             "referenceType": "NONE",
             "referenceId": null,
             "weight": 5
@@ -130,7 +130,7 @@
           },
           {
             "optionId": "opt_wc_m3_winner_superover",
-            "label": "Super Over (5x)",
+            "label": "Super Over",
             "referenceType": "NONE",
             "referenceId": null,
             "weight": 5
