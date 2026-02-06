@@ -11,7 +11,10 @@ import {
   loadSideBetLibrary,
   getSideBetLibrary,
   selectTemplates,
+  preloadGeneratorData,
   DEFAULT_CONFIG,
+  isEarlyMatch,
+  EARLY_MATCH_CONFIG,
 } from "../mock/MatchTemplateGenerator";
 import { saveMatchConfig, getMatchConfig } from "../mock/QuestionStore";
 
@@ -155,7 +158,10 @@ export default function AdminMatchBuilder() {
 
     setGenerating(true);
     try {
-      // Build squads object from match
+      // Preload squads and players data for PLAYER_PICK options
+      await preloadGeneratorData();
+
+      // Build squads object from match (fallback to squads.json happens in generator)
       const squads = {};
       if (match.squads) {
         for (const s of match.squads) {
@@ -193,8 +199,12 @@ export default function AdminMatchBuilder() {
 
     setGenerating(true);
     try {
+      // For early matches (first 3), enforce max 1 side bet
+      const earlyMatch = isEarlyMatch(matchId);
+      const maxSideBets = earlyMatch ? EARLY_MATCH_CONFIG.maxSideBets : config.sideBetCount;
+
       // Select templates
-      const templatesToUse =
+      let templatesToUse =
         selectedTemplateIds.length > 0
           ? selectTemplates(library, selectedTemplateIds, selectedTemplateIds.length)
           : selectTemplates(library, null, config.sideBetCount);
@@ -202,6 +212,12 @@ export default function AdminMatchBuilder() {
       if (templatesToUse.length === 0) {
         toast.error("No side bet templates selected or available");
         return;
+      }
+
+      // For early matches, warn and limit to 1
+      if (earlyMatch && templatesToUse.length > maxSideBets) {
+        toast.error(`Early match: only ${maxSideBets} side bet allowed. Using first selected.`);
+        templatesToUse = templatesToUse.slice(0, maxSideBets);
       }
 
       const sideBets = applySideBets(
@@ -220,7 +236,11 @@ export default function AdminMatchBuilder() {
       ];
 
       setQuestions(newQuestions);
-      toast.success(`Added ${sideBets.length} side bet questions`);
+      if (earlyMatch) {
+        toast.success(`Added 1 side bet (simplified sheet for early match)`);
+      } else {
+        toast.success(`Added ${sideBets.length} side bet questions`);
+      }
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -284,6 +304,22 @@ export default function AdminMatchBuilder() {
 
       {/* Admin Title */}
       <h1 className="text-xl font-bold text-gray-200 mb-6">Match Config + Generate</h1>
+
+      {/* Early Match Banner */}
+      {isEarlyMatch(matchId) && (
+        <div className="mb-6 p-4 bg-amber-900/30 border border-amber-700 rounded-lg">
+          <p className="text-amber-400 font-semibold">Simplified 4-Question Sheet</p>
+          <p className="text-amber-300/80 text-sm mt-1">
+            This is one of the first 3 matches. Betting sheet is limited to:
+          </p>
+          <ul className="text-amber-300/70 text-xs mt-2 ml-4 list-disc">
+            <li>Winner (+{EARLY_MATCH_CONFIG.winnerPoints} pts, Super Over +{EARLY_MATCH_CONFIG.superOverPoints} pts)</li>
+            <li>Total Runs (+{EARLY_MATCH_CONFIG.totalRunsPoints} pts, distance-based grid)</li>
+            <li>Player Pick (+{EARLY_MATCH_CONFIG.playerPickPoints} pts)</li>
+            <li>1 Side Bet only (+{EARLY_MATCH_CONFIG.sideBetPoints} pts)</li>
+          </ul>
+        </div>
+      )}
 
       {/* Section A: Match Config Panel */}
       <div className="card mb-6">

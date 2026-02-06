@@ -8,7 +8,10 @@ import {
   generateStandardPack,
   applySideBets,
   loadSideBetLibrary,
+  preloadGeneratorData,
   DEFAULT_CONFIG,
+  isEarlyMatch,
+  EARLY_MATCH_CONFIG,
 } from "../mock/MatchTemplateGenerator";
 import {
   getQuestions,
@@ -144,6 +147,9 @@ export default function AdminDashboard() {
     setActionInProgress((prev) => ({ ...prev, [matchId]: "generating-standard" }));
 
     try {
+      // Preload squads and players data for PLAYER_PICK options
+      await preloadGeneratorData();
+
       // Build match object in expected format
       const matchObj = {
         matchId,
@@ -152,7 +158,6 @@ export default function AdminDashboard() {
         teamB: { teamId: match.teams[1].toLowerCase(), shortName: match.teams[1] },
         scheduledTime: `${match.date}T${match.time_gmt}:00Z`,
         venue: match.venue,
-        squads: [], // Empty - player options will be minimal
       };
 
       const standardPack = generateStandardPack(matchObj, {}, DEFAULT_CONFIG);
@@ -191,6 +196,10 @@ export default function AdminDashboard() {
         return;
       }
 
+      // For early matches (first 3), enforce max 1 side bet
+      const earlyMatch = isEarlyMatch(matchId);
+      const maxSideBets = earlyMatch ? EARLY_MATCH_CONFIG.maxSideBets : sideBetCount;
+
       // Create shuffled indices using seeded random
       const seed = parseInt(matchId, 10) || 1;
       const indices = templates.map((_, i) => i);
@@ -199,11 +208,16 @@ export default function AdminDashboard() {
         [indices[i], indices[j]] = [indices[j], indices[i]];
       }
 
-      const selectedTemplates = indices.slice(0, sideBetCount).map((i) => templates[i]);
-      const sideBets = applySideBets(matchId, matchObj, selectedTemplates, sideBetCount, {});
+      const selectedTemplates = indices.slice(0, maxSideBets).map((i) => templates[i]);
+      const sideBets = applySideBets(matchId, matchObj, selectedTemplates, maxSideBets, {});
 
       saveSideBetQuestions(matchId, sideBets);
-      toast.success(`Added ${sideBets.length} side bets for Match ${matchId}`);
+
+      if (earlyMatch) {
+        toast.success(`Added 1 side bet for early match ${matchId} (simplified sheet)`);
+      } else {
+        toast.success(`Added ${sideBets.length} side bets for Match ${matchId}`);
+      }
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -385,6 +399,7 @@ export default function AdminDashboard() {
               const status = matchStatuses[matchId] || {};
               const action = actionInProgress[matchId];
               const isPast = getScheduledTime(match) <= new Date();
+              const earlyMatch = isEarlyMatch(matchId);
 
               return (
                 <tr
@@ -400,6 +415,11 @@ export default function AdminDashboard() {
                         {match.teams[0]} vs {match.teams[1]}
                       </span>
                       <span className="text-xs text-gray-600">#{rawMatchId}</span>
+                      {earlyMatch && (
+                        <span className="px-1.5 py-0.5 text-xs bg-amber-900/50 text-amber-400 border border-amber-700 rounded">
+                          4Q
+                        </span>
+                      )}
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
                       {formatDate(match.date, match.time_gmt)}
@@ -466,10 +486,16 @@ export default function AdminDashboard() {
                       <button
                         onClick={() => handleAutoPickSideBets(match)}
                         disabled={action}
-                        className="px-2 py-1 text-xs bg-purple-600 hover:bg-purple-700 text-white rounded transition-colors disabled:opacity-50"
+                        className={`px-2 py-1 text-xs text-white rounded transition-colors disabled:opacity-50 ${
+                          earlyMatch
+                            ? "bg-amber-600 hover:bg-amber-700"
+                            : "bg-purple-600 hover:bg-purple-700"
+                        }`}
                       >
                         {action === "picking-sidebets" ? (
                           <Spinner size="sm" className="inline" />
+                        ) : earlyMatch ? (
+                          "Pick 1 Side"
                         ) : (
                           `Pick ${sideBetCount} Side`
                         )}
@@ -512,7 +538,8 @@ export default function AdminDashboard() {
       <div className="mt-4 text-xs text-gray-600">
         <span className="text-green-400">{"\u2705"}</span> = Created/Published |{" "}
         <span className="text-red-400">{"\u274C"}</span> = Not created |{" "}
-        <span className="text-amber-400">Differs</span> = Draft != Published
+        <span className="text-amber-400">Differs</span> = Draft != Published |{" "}
+        <span className="px-1 py-0.5 bg-amber-900/50 text-amber-400 border border-amber-700 rounded text-xs">4Q</span> = Simplified 4-question sheet (first 3 matches)
       </div>
     </div>
   );

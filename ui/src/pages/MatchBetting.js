@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { apiGetMatch, apiGetBettingQuestions, apiSubmitBets, apiGetUserBets } from "../api";
+import { apiGetMatch, apiGetBettingQuestions, apiSubmitBets, apiGetUserBets, apiGetPlayers } from "../api";
 import { useAuth } from "../auth/AuthProvider";
 import { resolveIdentity } from "../auth/identity";
 import { useToast } from "../components/Toast";
 import Spinner from "../components/Spinner";
+import { isEarlyMatch } from "../mock/MatchTemplateGenerator";
 
 function formatDate(iso) {
   return new Date(iso).toLocaleString(undefined, {
@@ -34,6 +35,7 @@ export default function MatchBetting() {
 
   const [match, setMatch] = useState(null);
   const [questions, setQuestions] = useState([]);
+  const [players, setPlayers] = useState([]);
   const [answers, setAnswers] = useState({});
   const [existing, setExisting] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -46,11 +48,13 @@ export default function MatchBetting() {
     Promise.all([
       apiGetMatch(matchId),
       apiGetBettingQuestions(matchId),
+      apiGetPlayers(),
       user ? apiGetUserBets(matchId, identity.userId) : Promise.resolve(null),
     ])
-      .then(([m, q, bets]) => {
+      .then(([m, q, p, bets]) => {
         setMatch(m);
         setQuestions(q);
+        setPlayers(p || []);
         if (bets) {
           setExisting(bets);
           setAnswers(bets.answers || {});
@@ -69,15 +73,22 @@ export default function MatchBetting() {
       .finally(() => setLoading(false));
   }, [matchId]);
 
+  // For early matches (first 3), only show WINNER and TOTAL_RUNS
+  const earlyMatch = isEarlyMatch(matchId);
+  const filteredQuestions = earlyMatch
+    ? questions.filter((q) => q.kind === "WINNER" || q.kind === "TOTAL_RUNS")
+    : questions;
+
   // Split questions by section
-  const standardQuestions = questions.filter((q) => q.section === "STANDARD");
-  const sideQuestions = questions.filter((q) => q.section === "SIDE");
+  const standardQuestions = filteredQuestions.filter((q) => q.section === "STANDARD");
+  const sideQuestions = earlyMatch ? [] : filteredQuestions.filter((q) => q.section === "SIDE");
   // Legacy questions (no section) for backwards compatibility
-  const legacyQuestions = questions.filter((q) => !q.section);
+  const legacyQuestions = earlyMatch ? [] : filteredQuestions.filter((q) => !q.section);
 
   // Check if we have required sections
   const hasStandard = standardQuestions.length > 0 || legacyQuestions.length > 0;
-  const hasSide = sideQuestions.length > 0;
+  // For early matches, no side bets required
+  const hasSide = earlyMatch ? true : sideQuestions.length > 0;
 
   // Lock and editability are derived from SERVER-PROVIDED status.
   const allQuestionsOpen = questions.length > 0 && questions.every((q) => q.status === "OPEN");
@@ -88,9 +99,14 @@ export default function MatchBetting() {
   function validateSubmission() {
     const errors = [];
 
-    // Standard questions (winner, runs, player picks are required)
+    // For early matches, only WINNER and TOTAL_RUNS are required
+    // For other matches, WINNER, TOTAL_RUNS, and PLAYER_PICK are required
+    const requiredKinds = earlyMatch
+      ? ["WINNER", "TOTAL_RUNS"]
+      : ["WINNER", "TOTAL_RUNS", "PLAYER_PICK"];
+
     const requiredStandard = standardQuestions.filter((q) =>
-      ["WINNER", "TOTAL_RUNS", "PLAYER_PICK"].includes(q.kind)
+      requiredKinds.includes(q.kind)
     );
     for (const q of requiredStandard) {
       if (q.type === "NUMERIC_INPUT") {
@@ -106,17 +122,16 @@ export default function MatchBetting() {
     }
 
     // Runner question (required only if exists and runnersEnabled)
-    const runnerQ = standardQuestions.find((q) => q.kind === "RUNNER_PICK");
     // Runner is optional - user can skip if they don't want to pick runners
 
-    // Side bets (all required)
+    // Side bets (all required, but skipped for early matches)
     for (const q of sideQuestions) {
       if (!answers[q.questionId]) {
         errors.push(`Please answer side bet: ${q.text}`);
       }
     }
 
-    // Legacy questions (all required)
+    // Legacy questions (all required, but skipped for early matches)
     for (const q of legacyQuestions) {
       if (!answers[q.questionId]) {
         errors.push(`Please answer: ${q.text}`);
@@ -279,6 +294,7 @@ export default function MatchBetting() {
                 key={q.questionId}
                 question={q}
                 index={i}
+                players={players}
                 answers={answers}
                 setAnswers={setAnswers}
                 numericInputs={numericInputs}
@@ -292,6 +308,7 @@ export default function MatchBetting() {
                 key={q.questionId}
                 question={q}
                 index={standardQuestions.length + i}
+                players={players}
                 answers={answers}
                 setAnswers={setAnswers}
                 numericInputs={numericInputs}
@@ -315,6 +332,7 @@ export default function MatchBetting() {
                 key={q.questionId}
                 question={q}
                 index={i}
+                players={players}
                 answers={answers}
                 setAnswers={setAnswers}
                 numericInputs={numericInputs}
@@ -364,6 +382,7 @@ export default function MatchBetting() {
 function QuestionCard({
   question,
   index,
+  players,
   answers,
   setAnswers,
   numericInputs,
@@ -374,9 +393,25 @@ function QuestionCard({
   const q = question;
   const accentColor = isSideBet ? "purple" : "brand";
 
-  // Points display
-  const pointsText = q.points > 0 ? `+${q.points}` : q.points;
-  const pointsColorClass = q.points >= 0 ? "text-emerald-400" : "text-red-400";
+  // Build a lookup map for player names
+  const playerNameMap = new Map(players.map((p) => [p.playerId, p.name]));
+
+  // For PLAYER_PICK, use q.options as source of truth but enhance labels with player names
+  const playerOptions = q.type === "PLAYER_PICK"
+    ? (q.options || []).map((opt) => ({
+        optionId: opt.optionId,
+        label: playerNameMap.get(opt.referenceId) || opt.label || opt.referenceId || opt.optionId,
+      }))
+    : q.options || [];
+
+  // Points display - handle side bets with +/- display
+  const hasPenalty = q.pointsWrong !== undefined && q.pointsWrong < 0;
+  const pointsText = hasPenalty
+    ? `+${q.points}/${q.pointsWrong}`
+    : (q.points > 0 ? `+${q.points}` : String(q.points));
+  const pointsColorClass = hasPenalty
+    ? "text-amber-400"
+    : (q.points >= 0 ? "text-emerald-400" : "text-red-400");
 
   return (
     <div
@@ -477,7 +512,7 @@ function QuestionCard({
             ${disabled ? "opacity-70 cursor-not-allowed" : ""}`}
         >
           <option value="">Select a player...</option>
-          {q.options.map((opt) => (
+          {playerOptions.map((opt) => (
             <option key={opt.optionId} value={opt.optionId}>
               {opt.label}
             </option>
