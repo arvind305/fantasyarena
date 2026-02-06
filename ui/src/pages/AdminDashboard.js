@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { useToast } from "../components/Toast";
-import { ADMIN_EMAIL } from "../config";
+import { getAdminEmail } from "../config";
 import Spinner from "../components/Spinner";
 import {
   generateStandardPack,
@@ -47,7 +47,10 @@ export default function AdminDashboard() {
   const { user } = useAuth();
   const toast = useToast();
 
-  console.log("[AdminDashboard] Render - user:", user?.email, "isAdmin:", user && ADMIN_EMAIL && user.email === ADMIN_EMAIL);
+  const adminEmail = getAdminEmail();
+  const isAdmin = user && adminEmail && user.email?.trim().toLowerCase() === adminEmail;
+
+  console.log("[AdminDashboard] Render - user:", user?.email, "adminEmail:", adminEmail, "isAdmin:", isAdmin);
 
   const [loading, setLoading] = useState(true);
   const [matches, setMatches] = useState([]);
@@ -57,8 +60,6 @@ export default function AdminDashboard() {
   const [filter, setFilter] = useState("all"); // all | upcoming | past
   const [actionInProgress, setActionInProgress] = useState({}); // matchId -> action
   const [publishError, setPublishError] = useState(null);
-
-  const isAdmin = user && ADMIN_EMAIL && user.email === ADMIN_EMAIL;
 
   // Load all data on mount
   useEffect(() => {

@@ -74,5 +74,9 @@ export const API_BASE_URL = process.env.REACT_APP_API_URL || "";
 
 /**
  * Admin email for access control.
+ * Runtime-configurable via /data/admin.json (loaded in index.js before render).
+ * Falls back to REACT_APP_ADMIN_EMAIL env var if not set.
  */
-export const ADMIN_EMAIL = process.env.REACT_APP_ADMIN_EMAIL || "";
+export function getAdminEmail() {
+  return (window.__FA_ADMIN_EMAIL__ || process.env.REACT_APP_ADMIN_EMAIL || "").trim().toLowerCase();
+}

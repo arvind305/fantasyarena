@@ -38,6 +38,25 @@ if (IS_SHADOW_MODE) {
   console.log(`[app] Engine mode: ${ENGINE_MODE}`);
 }
 
+// Load admin config before rendering
+async function loadAdminConfig() {
+  try {
+    const res = await fetch("/data/admin.json");
+    if (res.ok) {
+      const data = await res.json();
+      if (data.adminEmail) {
+        window.__FA_ADMIN_EMAIL__ = data.adminEmail;
+        console.log("[app] Admin email loaded from admin.json");
+      }
+    }
+  } catch (err) {
+    console.warn("[app] Failed to load admin.json, using env fallback:", err.message);
+  }
+  if (!window.__FA_ADMIN_EMAIL__) {
+    window.__FA_ADMIN_EMAIL__ = "";
+  }
+}
+
 function App() {
   const [ready, setReady] = useState(!USE_LOCAL_ENGINE);
   const [error, setError] = useState(null);
@@ -115,5 +134,8 @@ function App() {
   );
 }
 
-const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(<App />);
+// Wait for admin config before rendering
+loadAdminConfig().then(() => {
+  const root = ReactDOM.createRoot(document.getElementById("root"));
+  root.render(<App />);
+});

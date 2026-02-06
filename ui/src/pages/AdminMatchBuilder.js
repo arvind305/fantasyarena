@@ -3,7 +3,7 @@ import { useParams, Link, Navigate } from "react-router-dom";
 import { apiGetMatch, apiSaveMatchQuestions, apiGetBettingQuestions } from "../api";
 import { useAuth } from "../auth/AuthProvider";
 import { useToast } from "../components/Toast";
-import { ADMIN_EMAIL } from "../config";
+import { getAdminEmail } from "../config";
 import Spinner from "../components/Spinner";
 import {
   generateStandardPack,
@@ -46,7 +46,8 @@ export default function AdminMatchBuilder() {
   const [sideBetOverrides, setSideBetOverrides] = useState({});
   const [showLibraryPicker, setShowLibraryPicker] = useState(false);
 
-  const isAdmin = user && ADMIN_EMAIL && user.email === ADMIN_EMAIL;
+  const adminEmail = getAdminEmail();
+  const isAdmin = user && adminEmail && user.email?.trim().toLowerCase() === adminEmail;
 
   useEffect(() => {
     Promise.all([

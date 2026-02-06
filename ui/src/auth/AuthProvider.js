@@ -100,7 +100,7 @@ export function AuthProvider({ children }) {
   const signIn = useCallback(() => {
     // Dev mode: skip OAuth and use a fake admin user
     if (DEV_MODE) {
-      const devEmail = process.env.REACT_APP_ADMIN_EMAIL || "admin@dev.local";
+      const devEmail = window.__FA_ADMIN_EMAIL__ || process.env.REACT_APP_ADMIN_EMAIL || "admin@dev.local";
       const devUser = {
         userId: "dev_user_001",
         name: "Dev Admin",

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
-import { ADMIN_EMAIL } from "../config";
+import { getAdminEmail } from "../config";
 
 const links = [
   { to: "/", label: "Home" },
@@ -22,7 +22,8 @@ const moreLinks = [
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { user, signIn, signOut } = useAuth();
-  const isAdmin = user && ADMIN_EMAIL && user.email === ADMIN_EMAIL;
+  const adminEmail = getAdminEmail();
+  const isAdmin = user && adminEmail && user.email?.trim().toLowerCase() === adminEmail;
 
   const linkClass = ({ isActive }) =>
     `px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
