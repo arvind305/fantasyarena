@@ -357,6 +357,185 @@
         ],
         "createdAt": "2026-02-06T08:14:21.429Z"
       }
+    ],
+    "wc_m3": [
+      {
+        "questionId": "q_fe7mwmm3",
+        "matchId": "wc_m3",
+        "eventId": "t20wc_2026",
+        "section": "STANDARD",
+        "kind": "WINNER",
+        "type": "TEAM_PICK",
+        "text": "Who will win the match?",
+        "points": 10,
+        "weight": 5,
+        "options": [
+          {
+            "optionId": "opt_voy2y427",
+            "label": "IND",
+            "referenceType": "TEAM",
+            "referenceId": "ind",
+            "weight": 1
+          },
+          {
+            "optionId": "opt_z1iimmpw",
+            "label": "USA",
+            "referenceType": "TEAM",
+            "referenceId": "usa",
+            "weight": 1
+          },
+          {
+            "optionId": "opt_dj08896f",
+            "label": "Super Over",
+            "referenceType": "NONE",
+            "referenceId": null,
+            "weight": 5
+          }
+        ],
+        "createdAt": "2026-02-06T09:13:44.224Z"
+      },
+      {
+        "questionId": "q_6xpu4el6",
+        "matchId": "wc_m3",
+        "eventId": "t20wc_2026",
+        "section": "STANDARD",
+        "kind": "TOTAL_RUNS",
+        "type": "NUMERIC_INPUT",
+        "text": "Predict the total runs scored in the match (both innings combined)",
+        "points": 10,
+        "options": [],
+        "createdAt": "2026-02-06T09:13:44.224Z"
+      },
+      {
+        "questionId": "q_n0w8e7ne",
+        "matchId": "wc_m3",
+        "eventId": "t20wc_2026",
+        "section": "STANDARD",
+        "kind": "PLAYER_PICK",
+        "type": "PLAYER_PICK",
+        "text": "Pick your player of the match",
+        "points": 10,
+        "slot": {
+          "index": 0,
+          "multiplier": 1
+        },
+        "options": [],
+        "createdAt": "2026-02-06T09:13:44.224Z"
+      },
+      {
+        "questionId": "q_gk69fi9d",
+        "matchId": "wc_m3",
+        "eventId": "t20wc_2026",
+        "section": "SIDE",
+        "kind": "SIDE_BET",
+        "type": "YES_NO",
+        "text": "Will the total extras in the match exceed 10?",
+        "points": 5,
+        "templateId": "sb_extras_10_plus",
+        "tags": [
+          "extras",
+          "bowling"
+        ],
+        "options": [
+          {
+            "optionId": "opt_qiojo63c",
+            "label": "Yes",
+            "referenceType": "NONE",
+            "referenceId": null
+          },
+          {
+            "optionId": "opt_dwpl3mi7",
+            "label": "No",
+            "referenceType": "NONE",
+            "referenceId": null
+          }
+        ],
+        "createdAt": "2026-02-06T09:13:45.069Z"
+      },
+      {
+        "questionId": "q_ruz0bd9l",
+        "matchId": "wc_m3",
+        "eventId": "t20wc_2026",
+        "section": "SIDE",
+        "kind": "SIDE_BET",
+        "type": "MULTI_CHOICE",
+        "text": "What will be the combined powerplay score (both innings)?",
+        "points": 15,
+        "templateId": "sb_powerplay_score",
+        "tags": [
+          "powerplay",
+          "runs"
+        ],
+        "options": [
+          {
+            "optionId": "opt_58psgzyk",
+            "label": "Under 80",
+            "referenceType": "NONE",
+            "referenceId": null
+          },
+          {
+            "optionId": "opt_s1u4y93m",
+            "label": "80-100",
+            "referenceType": "NONE",
+            "referenceId": null
+          },
+          {
+            "optionId": "opt_utpvdga7",
+            "label": "101-120",
+            "referenceType": "NONE",
+            "referenceId": null
+          },
+          {
+            "optionId": "opt_a3swmcw4",
+            "label": "Over 120",
+            "referenceType": "NONE",
+            "referenceId": null
+          }
+        ],
+        "createdAt": "2026-02-06T09:13:45.069Z"
+      },
+      {
+        "questionId": "q_hobb4yow",
+        "matchId": "wc_m3",
+        "eventId": "t20wc_2026",
+        "section": "SIDE",
+        "kind": "SIDE_BET",
+        "type": "MULTI_CHOICE",
+        "text": "What will be the margin of victory?",
+        "points": 15,
+        "templateId": "sb_win_margin",
+        "tags": [
+          "result",
+          "margin"
+        ],
+        "options": [
+          {
+            "optionId": "opt_11v420mw",
+            "label": "Close (0-10 runs or 1-2 wickets)",
+            "referenceType": "NONE",
+            "referenceId": null
+          },
+          {
+            "optionId": "opt_dgd4dwte",
+            "label": "Comfortable (11-30 runs or 3-5 wickets)",
+            "referenceType": "NONE",
+            "referenceId": null
+          },
+          {
+            "optionId": "opt_7qulodtt",
+            "label": "Dominant (31+ runs or 6+ wickets)",
+            "referenceType": "NONE",
+            "referenceId": null
+          },
+          {
+            "optionId": "opt_6g4urgu9",
+            "label": "Super Over",
+            "referenceType": "NONE",
+            "referenceId": null
+          }
+        ],
+        "createdAt": "2026-02-06T09:13:45.069Z"
+      }
     ]
   }
 }
