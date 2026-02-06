@@ -52,7 +52,7 @@ async function loadQuestions() {
 
   _loadPromise = (async () => {
     try {
-      const res = await fetch("/data/questions.json");
+      const res = await fetch(`/data/questions.json?v=${Date.now()}`);
       if (!res.ok) {
         console.warn("[QuestionStore] Failed to load questions.json, using empty store");
         _questionsCache = { questionsByMatch: {}, configsByMatch: {} };

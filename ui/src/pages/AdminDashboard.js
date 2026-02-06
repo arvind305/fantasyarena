@@ -69,7 +69,7 @@ export default function AdminDashboard() {
         if (!r.ok) throw new Error(`Failed to load tournament: ${r.status}`);
         return r.json();
       }),
-      fetch("/data/questions.json").then((r) => r.json()).catch(() => ({ questionsByMatch: {} })),
+      fetch(`/data/questions.json?v=${Date.now()}`).then((r) => r.json()).catch(() => ({ questionsByMatch: {} })),
       loadSideBetLibrary(),
     ])
       .then(([tournament, published, library]) => {
