@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from "react";
-import { apiGetLeaderboard, apiGetGroups } from "../api";
+import React, { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { apiGetLeaderboard, apiGetMatches } from "../api";
 import { useAuth } from "../auth/AuthProvider";
 import { resolveIdentity } from "../auth/identity";
 import { useToast } from "../components/Toast";
-import Spinner, { SkeletonCard } from "../components/Spinner";
+import { SkeletonCard } from "../components/Spinner";
+import Tabs, { useTabsWithUrl, useUrlSync } from "../components/Tabs";
+import { formatMatchDate, formatMatchTime, isToday } from "../utils/date";
 
 const RANK_STYLE = {
   1: { badge: "bg-gradient-to-br from-yellow-400 to-amber-600 text-gray-900", ring: "ring-2 ring-yellow-500/40", label: "\u{1F947}" },
@@ -11,46 +14,83 @@ const RANK_STYLE = {
   3: { badge: "bg-gradient-to-br from-amber-600 to-amber-800 text-amber-100", ring: "ring-2 ring-amber-600/30", label: "\u{1F949}" },
 };
 
-const TABS = [
-  { id: "global", label: "Global" },
-  { id: "group", label: "Group" },
+const MAIN_TABS = [
+  { key: "overall", label: "Overall" },
+  { key: "today", label: "Today" },
+  { key: "match", label: "By Match" },
 ];
+
+const VALID_TABS = MAIN_TABS.map((t) => t.key);
 
 export default function Leaderboard() {
   const { user } = useAuth();
   const identity = resolveIdentity(user);
   const toast = useToast();
+  const navigate = useNavigate();
 
-  const [tab, setTab] = useState("global");
+  // URL-synced tab state
+  useUrlSync();
+  const [activeTab, setActiveTab] = useTabsWithUrl("tab", VALID_TABS, "overall");
+
+  // Data states
   const [data, setData] = useState([]);
-  const [groups, setGroups] = useState([]);
-  const [selectedGroup, setSelectedGroup] = useState("");
+  const [matches, setMatches] = useState([]);
+  const [selectedMatch, setSelectedMatch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // Load groups for group tab
+  // Load matches for "By Match" and "Today" tabs
   useEffect(() => {
-    if (user) {
-      apiGetGroups(identity.userId).then(setGroups).catch(() => {});
-    }
-  }, [user]);
+    apiGetMatches()
+      .then((m) => {
+        const sorted = [...m].sort((a, b) =>
+          new Date(a.scheduledTime) - new Date(b.scheduledTime)
+        );
+        setMatches(sorted);
+      })
+      .catch(() => {});
+  }, []);
 
-  // Load leaderboard data
+  // Load leaderboard data for Overall tab
   useEffect(() => {
+    if (activeTab !== "overall") return;
+
     setLoading(true);
-    const scope = tab === "group" ? "group" : tab;
-    const scopeId = tab === "group" ? selectedGroup : undefined;
-
-    if (tab === "group" && !selectedGroup) {
-      setData([]);
-      setLoading(false);
-      return;
-    }
-
-    apiGetLeaderboard(scope, scopeId)
+    apiGetLeaderboard("global")
       .then(setData)
-      .catch((err) => { toast.error(err.message); setData([]); })
+      .catch((err) => {
+        toast.error(err.message);
+        setData([]);
+      })
       .finally(() => setLoading(false));
-  }, [tab, selectedGroup]);
+  }, [activeTab]);
+
+  // Reset loading for other tabs
+  useEffect(() => {
+    if (activeTab !== "overall") {
+      setLoading(false);
+    }
+  }, [activeTab]);
+
+  // Filter data based on search query
+  const filteredData = useMemo(() => {
+    if (!searchQuery.trim()) return data;
+    const query = searchQuery.toLowerCase();
+    return data.filter((e) =>
+      e.displayName?.toLowerCase().includes(query)
+    );
+  }, [data, searchQuery]);
+
+  // Get today's matches
+  const todayMatches = useMemo(() => {
+    return matches.filter((m) => isToday(m.scheduledTime));
+  }, [matches]);
+
+  // Get selected match details
+  const selectedMatchDetails = useMemo(() => {
+    if (!selectedMatch) return null;
+    return matches.find((m) => m.matchId === selectedMatch);
+  }, [matches, selectedMatch]);
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
@@ -60,116 +100,331 @@ export default function Leaderboard() {
             Leaderboard
           </span>
         </h1>
-        <p className="text-gray-500">See who's leading the prediction game.</p>
+        <p className="text-gray-500">Overall tournament standings. Updated as matches are scored.</p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 mb-6 bg-gray-900 rounded-xl p-1 border border-gray-800">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              tab === t.id
-                ? "bg-brand-600/20 text-brand-300"
-                : "text-gray-400 hover:text-gray-200"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      {/* Main Tabs */}
+      <Tabs tabs={MAIN_TABS} activeKey={activeTab} onChange={setActiveTab} className="mb-6" />
 
-      {/* Group selector */}
-      {tab === "group" && (
-        <div className="mb-6">
-          <select
-            value={selectedGroup}
-            onChange={(e) => setSelectedGroup(e.target.value)}
-            className="input text-sm"
-          >
-            <option value="">Select a group...</option>
-            {groups.map((g) => <option key={g.groupId} value={g.groupId}>{g.name}</option>)}
-          </select>
-        </div>
-      )}
-
-      {/* Loading */}
-      {loading && (
-        <div className="space-y-3">
-          {[1, 2, 3, 4].map((i) => <SkeletonCard key={i} />)}
-        </div>
-      )}
-
-      {/* Empty */}
-      {!loading && data.length === 0 && (
-        <div className="card text-center py-12">
-          <p className="text-gray-400 text-lg mb-2">No data yet</p>
-          <p className="text-gray-600 text-sm">
-            {tab === "group" && !selectedGroup
-              ? "Select a group to view its leaderboard."
-              : "Start making predictions to see scores here."}
-          </p>
-        </div>
-      )}
-
-      {/* Top 3 Podium */}
-      {!loading && data.length >= 3 && (
-        <div className="grid grid-cols-3 gap-3 mb-8">
-          {[data[1], data[0], data[2]].map((e, i) => {
-            const rank = [2, 1, 3][i];
-            const style = RANK_STYLE[rank];
-            const isFirst = rank === 1;
-            return (
-              <div key={e.userId} className={`card text-center animate-slide-up ${style.ring} ${isFirst ? "sm:-mt-4" : ""}`} style={{ animationDelay: `${i * 120}ms` }}>
-                <div className="text-3xl mb-2">{style.label}</div>
-                <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold mb-2 ${style.badge}`}>#{rank}</div>
-                <h3 className={`font-bold truncate ${isFirst ? "text-lg text-yellow-300" : "text-sm text-gray-200"}`}>{e.displayName}</h3>
-                <p className={`font-extrabold mt-1 ${isFirst ? "text-3xl text-yellow-400" : "text-xl text-gray-300"}`}>{e.totalScore ?? e.score}</p>
-                <p className="text-[10px] text-gray-500 mt-0.5">points</p>
+      {/* Overall Tab */}
+      {activeTab === "overall" && (
+        <div className="animate-fade-in">
+          {/* Search Input */}
+          {!loading && data.length > 0 && (
+            <div className="mb-6">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search by player name..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="input w-full pl-10 text-sm"
+                />
+                <svg
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
               </div>
-            );
-          })}
-        </div>
-      )}
+            </div>
+          )}
 
-      {/* Full Table */}
-      {!loading && data.length > 0 && (
-        <div className="card p-0 overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wider">
-                <th className="text-left px-5 py-3">Rank</th>
-                <th className="text-left px-5 py-3">Player</th>
-                <th className="text-right px-5 py-3">Score</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((e, i) => {
-                const rank = e.rank ?? i + 1;
+          {loading && (
+            <div className="space-y-3">
+              {[1, 2, 3, 4].map((i) => <SkeletonCard key={i} />)}
+            </div>
+          )}
+
+          {!loading && data.length === 0 && (
+            <div className="card text-center py-12">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-800/50 flex items-center justify-center">
+                <svg className="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <p className="text-gray-400 text-lg mb-2">No leaderboard data yet.</p>
+              <p className="text-gray-600 text-sm">Start making predictions to see scores here.</p>
+            </div>
+          )}
+
+          {!loading && filteredData.length === 0 && data.length > 0 && (
+            <div className="card text-center py-8">
+              <p className="text-gray-400">No players match "{searchQuery}"</p>
+              <button
+                onClick={() => setSearchQuery("")}
+                className="text-blue-400 hover:text-blue-300 text-sm mt-2"
+              >
+                Clear search
+              </button>
+            </div>
+          )}
+
+          {/* Top 3 Podium */}
+          {!loading && filteredData.length >= 3 && !searchQuery && (
+            <div className="grid grid-cols-3 gap-3 mb-8">
+              {[filteredData[1], filteredData[0], filteredData[2]].map((e, i) => {
+                const rank = [2, 1, 3][i];
                 const style = RANK_STYLE[rank];
+                const isFirst = rank === 1;
+                const isCurrentUser = e.userId === identity.userId;
                 return (
-                  <tr key={e.userId} className={`border-b border-gray-800/50 last:border-0 animate-slide-up ${rank <= 3 ? "bg-gray-800/30" : "hover:bg-gray-800/20"}`} style={{ animationDelay: `${Math.min(i * 60, 600)}ms` }}>
-                    <td className="px-5 py-3.5">
-                      {style ? (
-                        <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${style.badge}`}>{rank}</span>
-                      ) : (
-                        <span className="text-gray-500 font-medium text-sm pl-1.5">{rank}</span>
+                  <div
+                    key={e.userId}
+                    className={`card text-center animate-slide-up ${style.ring} ${isFirst ? "sm:-mt-4" : ""} ${isCurrentUser ? "border-blue-500/50" : ""}`}
+                    style={{ animationDelay: `${i * 120}ms` }}
+                  >
+                    <div className="text-3xl mb-2">{style.label}</div>
+                    <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold mb-2 ${style.badge}`}>#{rank}</div>
+                    <div className="flex items-center justify-center gap-1.5">
+                      <h3 className={`font-bold truncate ${isFirst ? "text-lg text-yellow-300" : "text-sm text-gray-200"}`}>{e.displayName}</h3>
+                      {isCurrentUser && (
+                        <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-blue-600 text-white rounded">You</span>
                       )}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <span className={`font-semibold ${rank <= 3 ? "text-gray-100" : "text-gray-300"}`}>{e.displayName}</span>
-                    </td>
-                    <td className="px-5 py-3.5 text-right">
-                      <span className={`font-bold text-lg ${rank === 1 ? "text-yellow-400" : rank === 2 ? "text-gray-300" : rank === 3 ? "text-amber-500" : "text-gray-400"}`}>{e.totalScore ?? e.score}</span>
-                    </td>
-                  </tr>
+                    </div>
+                    <p className={`font-extrabold mt-1 ${isFirst ? "text-3xl text-yellow-400" : "text-xl text-gray-300"}`}>{e.totalScore ?? e.score}</p>
+                    <p className="text-[10px] text-gray-500 mt-0.5">points</p>
+                  </div>
                 );
               })}
-            </tbody>
-          </table>
+            </div>
+          )}
+
+          {/* Full Table */}
+          {!loading && filteredData.length > 0 && (
+            <LeaderboardTable data={filteredData} currentUserId={identity.userId} />
+          )}
         </div>
       )}
+
+      {/* Today Tab */}
+      {activeTab === "today" && (
+        <div className="animate-fade-in">
+          <div className="mb-6">
+            <h2 className="text-xl font-bold text-gray-100 mb-1">Today</h2>
+            <p className="text-gray-500 text-sm">Today's match leaderboards arrive in Phase 2. For now, jump into today's matches.</p>
+          </div>
+
+          {todayMatches.length === 0 ? (
+            <div className="card text-center py-12">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-800/50 flex items-center justify-center">
+                <svg className="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <p className="text-gray-400 text-lg mb-2">No matches today.</p>
+              <p className="text-gray-600 text-sm">Check Upcoming in Play.</p>
+              <button
+                onClick={() => navigate("/play")}
+                className="btn-secondary text-sm mt-4"
+              >
+                Go to Play
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {todayMatches.map((match) => (
+                <button
+                  key={match.matchId}
+                  onClick={() => navigate(`/match/${match.matchId}`)}
+                  className="card w-full text-left hover:border-brand-600 hover:shadow-lg hover:shadow-brand-900/20 transition-all duration-300 group"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-semibold text-gray-100">{match.teamA}</span>
+                        <span className="text-gray-500 text-sm">vs</span>
+                        <span className="font-semibold text-gray-100">{match.teamB}</span>
+                      </div>
+                      <div className="flex items-center gap-3 text-sm text-gray-500">
+                        <span>{formatMatchTime(match.scheduledTime)}</span>
+                        {match.venue && (
+                          <>
+                            <span className="text-gray-700">|</span>
+                            <span className="truncate">{match.venue}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {match.status === "LIVE" && (
+                        <span className="px-2 py-0.5 text-xs font-semibold bg-red-600 text-white rounded animate-pulse">LIVE</span>
+                      )}
+                      <svg
+                        className="w-5 h-5 text-gray-600 group-hover:text-gray-400 transition-colors"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* By Match Tab */}
+      {activeTab === "match" && (
+        <div className="animate-fade-in">
+          <div className="card mb-6">
+            <label className="block text-sm font-medium text-gray-300 mb-2">Select a Match</label>
+            <select
+              value={selectedMatch}
+              onChange={(e) => setSelectedMatch(e.target.value)}
+              className="input text-sm w-full"
+              disabled={matches.length === 0}
+            >
+              <option value="">
+                {matches.length === 0 ? "No matches in schedule" : "Choose a match..."}
+              </option>
+              {matches.map((m) => (
+                <option key={m.matchId} value={m.matchId}>
+                  {m.teamA} vs {m.teamB} — {formatMatchDate(m.scheduledTime)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {selectedMatchDetails ? (
+            <div className="space-y-4">
+              {/* Match Summary Card */}
+              <div className="card">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-bold text-lg text-gray-100">{selectedMatchDetails.teamA}</span>
+                      <span className="text-gray-500">vs</span>
+                      <span className="font-bold text-lg text-gray-100">{selectedMatchDetails.teamB}</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
+                      <span>{formatMatchDate(selectedMatchDetails.scheduledTime)} at {formatMatchTime(selectedMatchDetails.scheduledTime)}</span>
+                      {selectedMatchDetails.venue && (
+                        <>
+                          <span className="text-gray-700">|</span>
+                          <span>{selectedMatchDetails.venue}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <span className={`px-2 py-1 text-xs font-semibold rounded ${
+                      selectedMatchDetails.status === "LIVE" ? "bg-red-600 text-white" :
+                      selectedMatchDetails.status === "COMPLETED" ? "bg-green-600/20 text-green-400" :
+                      selectedMatchDetails.status === "UPCOMING" ? "bg-blue-600/20 text-blue-400" :
+                      "bg-gray-600/20 text-gray-400"
+                    }`}>
+                      {selectedMatchDetails.status}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => navigate(`/match/${selectedMatchDetails.matchId}`)}
+                  className="btn-primary w-full text-sm"
+                >
+                  Open Match Bets
+                </button>
+              </div>
+
+              {/* Phase 2 Notice */}
+              <p className="text-gray-600 text-sm text-center">
+                Match leaderboards will appear in Phase 2.
+              </p>
+            </div>
+          ) : (
+            <div className="card text-center py-8 bg-gray-900/30">
+              <p className="text-gray-500 text-sm">
+                Select a match above to view details and place bets.
+              </p>
+              <p className="text-gray-600 text-xs mt-1">
+                Match leaderboards will appear here in Phase 2.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LeaderboardTable({ data, currentUserId }) {
+  return (
+    <div className="card p-0 overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="sticky top-0 z-10 bg-gray-900">
+            <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wider">
+              <th className="text-left px-5 py-3">Rank</th>
+              <th className="text-left px-5 py-3">Player</th>
+              <th className="text-right px-5 py-3">Points</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((e, i) => {
+              const rank = e.rank ?? i + 1;
+              const style = RANK_STYLE[rank];
+              const isCurrentUser = e.userId === currentUserId;
+              return (
+                <tr
+                  key={e.userId}
+                  className={`border-b border-gray-800/50 last:border-0 animate-slide-up ${
+                    isCurrentUser
+                      ? "bg-blue-900/20 hover:bg-blue-900/30"
+                      : rank <= 3
+                      ? "bg-gray-800/30"
+                      : "hover:bg-gray-800/20"
+                  }`}
+                  style={{ animationDelay: `${Math.min(i * 60, 600)}ms` }}
+                >
+                  <td className="px-5 py-3.5">
+                    {style ? (
+                      <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${style.badge}`}>{rank}</span>
+                    ) : (
+                      <span className="text-gray-500 font-medium text-sm pl-1.5">{rank}</span>
+                    )}
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <div className="flex items-center gap-2">
+                      <span className={`font-semibold ${isCurrentUser ? "text-blue-300" : rank <= 3 ? "text-gray-100" : "text-gray-300"}`}>
+                        {e.displayName}
+                      </span>
+                      {isCurrentUser && (
+                        <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-blue-600 text-white rounded">You</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-5 py-3.5 text-right">
+                    <span className={`font-bold text-lg ${rank === 1 ? "text-yellow-400" : rank === 2 ? "text-gray-300" : rank === 3 ? "text-amber-500" : "text-gray-400"}`}>
+                      {e.totalScore ?? e.score}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

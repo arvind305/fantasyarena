@@ -3,17 +3,20 @@ import { NavLink } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { getAdminEmail } from "../config";
 
+// Streamlined 5-item navigation
 const links = [
-  { to: "/", label: "Home" },
-  { to: "/schedule", label: "Schedule" },
-  { to: "/long-term-bets", label: "Predictions" },
-  { to: "/teams", label: "Teams" },
-  { to: "/players", label: "Players" },
+  { to: "/play", label: "Play" },
   { to: "/leaderboard", label: "Leaderboard" },
-  { to: "/groups", label: "Groups" },
+  { to: "/stats", label: "Stats" },
+  { to: "/teams", label: "Teams" },
+  { to: "/profile", label: "Profile" },
 ];
 
+// Secondary links accessible from within pages or mobile menu
 const moreLinks = [
+  { to: "/schedule", label: "Schedule" },
+  { to: "/players", label: "Players" },
+  { to: "/groups", label: "Groups" },
   { to: "/rules", label: "Rules" },
   { to: "/faq", label: "FAQ" },
   { to: "/about", label: "About" },
@@ -42,10 +45,10 @@ export default function Navbar() {
           </span>
         </NavLink>
 
-        {/* Desktop nav */}
-        <div className="hidden lg:flex items-center gap-0.5 overflow-x-auto">
+        {/* Desktop nav - 5 items */}
+        <div className="hidden lg:flex items-center gap-0.5">
           {links.map((l) => (
-            <NavLink key={l.to} to={l.to} end={l.to === "/"} className={linkClass}>
+            <NavLink key={l.to} to={l.to} className={linkClass}>
               {l.label}
             </NavLink>
           ))}
@@ -63,9 +66,9 @@ export default function Navbar() {
               {user.avatar && (
                 <img src={user.avatar} alt="" className="w-7 h-7 rounded-full ring-2 ring-brand-600/40" referrerPolicy="no-referrer" />
               )}
-              <NavLink to="/profile" className="text-sm text-gray-300 max-w-[100px] truncate hover:text-brand-300">
+              <span className="text-sm text-gray-300 max-w-[100px] truncate">
                 {user.name || user.email}
-              </NavLink>
+              </span>
               <button onClick={signOut} className="text-xs text-gray-500 hover:text-gray-300 transition-colors">
                 Logout
               </button>
@@ -90,9 +93,10 @@ export default function Navbar() {
       {/* Mobile menu */}
       {menuOpen && (
         <div className="lg:hidden border-t border-gray-800 animate-slide-down max-h-[80vh] overflow-y-auto">
+          {/* Primary navigation */}
           {links.map((l) => (
             <NavLink
-              key={l.to} to={l.to} end={l.to === "/"}
+              key={l.to} to={l.to}
               onClick={() => setMenuOpen(false)}
               className={({ isActive }) =>
                 `block px-6 py-3 text-sm font-medium border-b border-gray-800/50 ${
@@ -104,7 +108,9 @@ export default function Navbar() {
             </NavLink>
           ))}
 
+          {/* Divider and More links */}
           <div className="border-t border-gray-700/50 mt-1 pt-1">
+            <div className="px-6 py-2 text-xs text-gray-600 uppercase tracking-wide">More</div>
             {moreLinks.map((l) => (
               <NavLink
                 key={l.to} to={l.to}

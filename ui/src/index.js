@@ -6,6 +6,7 @@ import { ToastProvider } from "./components/Toast";
 import { AuthProvider } from "./auth/AuthProvider";
 import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
+import Play from "./pages/Play";
 import Schedule from "./pages/Schedule";
 import MatchBetting from "./pages/MatchBetting";
 import LongTermBets from "./pages/LongTermBets";
@@ -17,6 +18,7 @@ import Leaderboard from "./pages/Leaderboard";
 import Groups from "./pages/Groups";
 import GroupDetail from "./pages/GroupDetail";
 import Profile from "./pages/Profile";
+import Stats from "./pages/Stats";
 import Rules from "./pages/Rules";
 import FAQ from "./pages/FAQ";
 import About from "./pages/About";
@@ -106,6 +108,7 @@ function App() {
             <main className="flex-1">
               <Routes>
                 <Route path="/" element={<Home />} />
+                <Route path="/play" element={<Play />} />
                 <Route path="/schedule" element={<Schedule />} />
                 <Route path="/match/:matchId" element={<MatchBetting />} />
                 <Route path="/long-term-bets" element={<LongTermBets />} />
@@ -117,6 +120,7 @@ function App() {
                 <Route path="/groups" element={<Groups />} />
                 <Route path="/groups/:groupId" element={<GroupDetail />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/stats" element={<Stats />} />
                 <Route path="/rules" element={<Rules />} />
                 <Route path="/faq" element={<FAQ />} />
                 <Route path="/about" element={<About />} />
