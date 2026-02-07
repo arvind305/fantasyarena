@@ -49,8 +49,11 @@ export const ENGINE_MODE = (() => {
  *   - Group creation/joining still allowed (no scoring impact)
  *   - All read operations work normally
  *   - Scores are never persisted
+ *
+ * NOTE: Shadow mode disabled to allow betting for all users.
+ * To re-enable shadow mode, change this back to: ENGINE_MODE === "shadow"
  */
-export const IS_SHADOW_MODE = ENGINE_MODE === "shadow";
+export const IS_SHADOW_MODE = false;
 
 /**
  * Whether the UI should use the in-browser mock engine for data.
