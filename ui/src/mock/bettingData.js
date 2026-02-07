@@ -130,51 +130,8 @@ export function buildLongTermBets() {
 export const LONG_TERM_BETS = [];
 
 // ─── Groups (user-generated) ─────────────────────────────────────────────────
-
-export const GROUPS = [
-  {
-    groupId: "g1",
-    name: "Office Cricket Club",
-    joinCode: "OCC-2026",
-    createdBy: "user1",
-    eventId: "t20wc_2026",
-    memberIds: ["user1", "user2", "user3", "user4"],
-    members: [
-      { userId: "user1", displayName: "Rahul M.", score: 0 },
-      { userId: "user2", displayName: "Priya S.", score: 0 },
-      { userId: "user3", displayName: "Amit K.", score: 0 },
-      { userId: "user4", displayName: "Sneha R.", score: 0 },
-    ],
-    createdAt: "2026-01-15T10:00:00Z",
-  },
-  {
-    groupId: "g2",
-    name: "College Friends",
-    joinCode: "CLG-WC26",
-    createdBy: "user2",
-    eventId: "t20wc_2026",
-    memberIds: ["user2", "user5", "user1"],
-    members: [
-      { userId: "user2", displayName: "Priya S.", score: 0 },
-      { userId: "user5", displayName: "Vikram T.", score: 0 },
-      { userId: "user1", displayName: "Rahul M.", score: 0 },
-    ],
-    createdAt: "2026-01-16T14:00:00Z",
-  },
-  {
-    groupId: "g3",
-    name: "Family League",
-    joinCode: "FAM-26",
-    createdBy: "user3",
-    eventId: "t20wc_2026",
-    memberIds: ["user3", "user6"],
-    members: [
-      { userId: "user3", displayName: "Amit K.", score: 0 },
-      { userId: "user6", displayName: "Kavita K.", score: 0 },
-    ],
-    createdAt: "2026-01-17T09:00:00Z",
-  },
-];
+// Start with empty array - groups are created by real users
+export const GROUPS = [];
 
 // ─── User Profile (sample — user-generated) ─────────────────────────────────
 
@@ -187,16 +144,5 @@ export const SAMPLE_PROFILE = {
 };
 
 // ─── Global Leaderboard (derived view — server-computed) ─────────────────────
-
-export const GLOBAL_LEADERBOARD = [
-  { rank: 1, userId: "user7", displayName: "Arjun D.", totalScore: 0, matchesPlayed: 0 },
-  { rank: 2, userId: "user2", displayName: "Priya S.", totalScore: 0, matchesPlayed: 0 },
-  { rank: 3, userId: "user1", displayName: "Rahul M.", totalScore: 0, matchesPlayed: 0 },
-  { rank: 4, userId: "user5", displayName: "Vikram T.", totalScore: 0, matchesPlayed: 0 },
-  { rank: 5, userId: "user8", displayName: "Neha G.", totalScore: 0, matchesPlayed: 0 },
-  { rank: 6, userId: "user3", displayName: "Amit K.", totalScore: 0, matchesPlayed: 0 },
-  { rank: 7, userId: "user9", displayName: "Rohan P.", totalScore: 0, matchesPlayed: 0 },
-  { rank: 8, userId: "user4", displayName: "Sneha R.", totalScore: 0, matchesPlayed: 0 },
-  { rank: 9, userId: "user6", displayName: "Kavita K.", totalScore: 0, matchesPlayed: 0 },
-  { rank: 10, userId: "user10", displayName: "Deepak V.", totalScore: 0, matchesPlayed: 0 },
-];
+// Start with empty array - populated by real user bets
+export const GLOBAL_LEADERBOARD = [];

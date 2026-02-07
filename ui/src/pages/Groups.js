@@ -50,9 +50,14 @@ export default function Groups() {
     finally { setCreating(false); }
   }
 
-  async function handleCopyCode(e, code) {
+  async function handleCopyCode(e, groupObj) {
     e.preventDefault(); // Prevent Link navigation
     e.stopPropagation();
+    const code = groupObj?.joinCode || groupObj?.code || "";
+    if (!code) {
+      toast.error("Code not available");
+      return;
+    }
     try {
       await navigator.clipboard.writeText(code);
       toast.success("Code copied!");
@@ -100,9 +105,9 @@ export default function Groups() {
           </div>
           <p className="text-sm text-gray-400 mb-3">Share this code with friends to invite them:</p>
           <div className="flex items-center gap-3 mb-3">
-            <span className="font-mono text-2xl font-bold text-brand-300 tracking-widest select-all">{newlyCreated.joinCode}</span>
+            <span className="font-mono text-2xl font-bold text-brand-300 tracking-widest select-all">{newlyCreated.joinCode || newlyCreated.code}</span>
             <button
-              onClick={(e) => handleCopyCode(e, newlyCreated.joinCode)}
+              onClick={(e) => handleCopyCode(e, newlyCreated)}
               className="px-4 py-2 rounded bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium transition-colors"
             >
               Copy Code
@@ -151,9 +156,9 @@ export default function Groups() {
             <Link key={g.groupId} to={`/groups/${g.groupId}`} className="card hover:border-brand-700 transition-all group animate-slide-up" style={{ animationDelay: `${i * 60}ms` }}>
               <h3 className="font-semibold text-gray-100 group-hover:text-brand-300 transition-colors">{g.name}</h3>
               <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
-                <span className="font-mono bg-gray-800 px-2 py-0.5 rounded">{g.joinCode}</span>
+                <span className="font-mono bg-gray-800 px-2 py-0.5 rounded">{g.joinCode || g.code}</span>
                 <button
-                  onClick={(e) => handleCopyCode(e, g.joinCode)}
+                  onClick={(e) => handleCopyCode(e, g)}
                   className="text-brand-400 hover:text-brand-300 hover:underline"
                   title="Copy code"
                 >

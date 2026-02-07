@@ -27,18 +27,19 @@ export default function GroupDetail() {
   if (loading) return <div className="max-w-3xl mx-auto px-4 py-10 text-center"><Spinner size="lg" /></div>;
   if (!group) return <div className="max-w-3xl mx-auto px-4 py-10 card text-center"><p className="text-gray-400">Group not found</p></div>;
 
-  const inviteMessage = `Join my group "${group.name}" on Fantasy Arena! Use code: ${group.joinCode}`;
-  const inviteUrl = `${window.location.origin}/groups?join=${group.joinCode}`;
+  const code = group.joinCode || group.code || "";
+  const inviteMessage = `Join my group "${group.name}" on Fantasy Arena!\n\nGroup Code: ${code}\n\nOpen the app and enter this code to join:`;
+  const inviteUrl = `${window.location.origin}/groups?join=${code}`;
   const fullInvite = `${inviteMessage}\n${inviteUrl}`;
 
   async function handleCopyCode() {
     try {
-      await navigator.clipboard.writeText(group.joinCode);
+      await navigator.clipboard.writeText(code);
       setCopied(true);
       toast.success("Code copied!");
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.info(`Group code: ${group.joinCode}`);
+      toast.info(`Group code: ${code}`);
     }
   }
 
@@ -72,7 +73,7 @@ export default function GroupDetail() {
       <div className="card mb-8 animate-fade-in bg-gradient-to-br from-brand-900/30 to-purple-900/20 border-brand-800">
         <p className="text-xs text-gray-400 mb-2 uppercase tracking-wider">Invite Friends</p>
         <div className="flex items-center gap-3 mb-3">
-          <span className="font-mono text-xl font-bold text-brand-300 tracking-widest select-all">{group.joinCode}</span>
+          <span className="font-mono text-xl font-bold text-brand-300 tracking-widest select-all">{code}</span>
           <button
             onClick={handleCopyCode}
             className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${copied ? "bg-green-600 text-white" : "bg-gray-700 hover:bg-gray-600 text-gray-200"}`}
