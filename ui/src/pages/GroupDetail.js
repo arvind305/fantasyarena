@@ -15,6 +15,7 @@ export default function GroupDetail() {
   const toast = useToast();
   const [group, setGroup] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     apiGetGroupDetail(groupId)
@@ -26,24 +27,68 @@ export default function GroupDetail() {
   if (loading) return <div className="max-w-3xl mx-auto px-4 py-10 text-center"><Spinner size="lg" /></div>;
   if (!group) return <div className="max-w-3xl mx-auto px-4 py-10 card text-center"><p className="text-gray-400">Group not found</p></div>;
 
+  const inviteMessage = `Join my group "${group.name}" on Fantasy Arena! Use code: ${group.joinCode}`;
+  const inviteUrl = `${window.location.origin}/groups?join=${group.joinCode}`;
+  const fullInvite = `${inviteMessage}\n${inviteUrl}`;
+
   async function handleCopyCode() {
     try {
-      await navigator.clipboard.writeText(group.code);
-      toast.success("Group code copied!");
+      await navigator.clipboard.writeText(group.joinCode);
+      setCopied(true);
+      toast.success("Code copied!");
+      setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.info(`Group code: ${group.code}`);
+      toast.info(`Group code: ${group.joinCode}`);
+    }
+  }
+
+  async function handleShare() {
+    // Try native share first (mobile)
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `Join ${group.name}`, text: inviteMessage, url: inviteUrl });
+        return;
+      } catch (err) {
+        if (err.name === "AbortError") return; // User cancelled
+      }
+    }
+    // Fallback to clipboard
+    try {
+      await navigator.clipboard.writeText(fullInvite);
+      toast.success("Invite link copied!");
+    } catch {
+      toast.info(fullInvite);
     }
   }
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
-      <div className="card mb-8 animate-fade-in">
+      <div className="card mb-4 animate-fade-in">
         <h1 className="text-2xl font-extrabold text-gray-100 mb-1">{group.name}</h1>
-        <div className="flex items-center gap-3 text-sm text-gray-500">
-          <span className="font-mono">{group.code}</span>
-          <button onClick={handleCopyCode} className="text-brand-400 hover:text-brand-300 text-xs">Copy code</button>
-          <span className="ml-auto">{group.members.length} members</span>
+        <p className="text-sm text-gray-500">{group.members.length} members</p>
+      </div>
+
+      {/* Invite Section */}
+      <div className="card mb-8 animate-fade-in bg-gradient-to-br from-brand-900/30 to-purple-900/20 border-brand-800">
+        <p className="text-xs text-gray-400 mb-2 uppercase tracking-wider">Invite Friends</p>
+        <div className="flex items-center gap-3 mb-3">
+          <span className="font-mono text-xl font-bold text-brand-300 tracking-widest select-all">{group.joinCode}</span>
+          <button
+            onClick={handleCopyCode}
+            className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${copied ? "bg-green-600 text-white" : "bg-gray-700 hover:bg-gray-600 text-gray-200"}`}
+          >
+            {copied ? "Copied!" : "Copy Code"}
+          </button>
         </div>
+        <button
+          onClick={handleShare}
+          className="w-full btn-primary text-sm flex items-center justify-center gap-2"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+          </svg>
+          Share Invite Link
+        </button>
       </div>
 
       <h2 className="text-xl font-bold mb-4 text-gray-200">Leaderboard</h2>

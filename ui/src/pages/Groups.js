@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { apiGetGroups, apiCreateGroup, apiJoinGroup } from "../api";
 import { useAuth } from "../auth/AuthProvider";
 import { resolveIdentity } from "../auth/identity";
@@ -10,6 +10,7 @@ export default function Groups() {
   const { user } = useAuth();
   const identity = resolveIdentity(user);
   const toast = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -17,6 +18,17 @@ export default function Groups() {
   const [joinCode, setJoinCode] = useState("");
   const [creating, setCreating] = useState(false);
   const [joining, setJoining] = useState(false);
+  const [newlyCreated, setNewlyCreated] = useState(null); // Track newly created group for highlighting
+
+  // Handle ?join=CODE URL parameter
+  useEffect(() => {
+    const codeFromUrl = searchParams.get("join");
+    if (codeFromUrl) {
+      setJoinCode(codeFromUrl);
+      // Clear the URL parameter
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     apiGetGroups(user ? identity.userId : null)
@@ -32,9 +44,21 @@ export default function Groups() {
       const group = await apiCreateGroup(newName.trim(), identity.userId, identity.displayName);
       setGroups((prev) => [...prev, group]);
       setNewName("");
-      toast.success(`Group "${group.name}" created! Code: ${group.joinCode}`);
+      setNewlyCreated(group); // Show the newly created group with code
+      toast.success(`Group created! Share the code with friends.`);
     } catch (err) { toast.error(err.message); }
     finally { setCreating(false); }
+  }
+
+  async function handleCopyCode(e, code) {
+    e.preventDefault(); // Prevent Link navigation
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(code);
+      toast.success("Code copied!");
+    } catch {
+      toast.info(`Code: ${code}`);
+    }
   }
 
   async function handleJoin() {
@@ -63,6 +87,32 @@ export default function Groups() {
         </h1>
         <p className="text-gray-500">Compete with friends in private groups.</p>
       </div>
+
+      {/* Newly Created Group - Show prominently */}
+      {newlyCreated && (
+        <div className="card mb-6 animate-fade-in bg-gradient-to-br from-green-900/30 to-brand-900/20 border-green-700">
+          <div className="flex items-start justify-between mb-3">
+            <div>
+              <p className="text-xs text-green-400 uppercase tracking-wider mb-1">Group Created!</p>
+              <h3 className="text-lg font-bold text-gray-100">{newlyCreated.name}</h3>
+            </div>
+            <button onClick={() => setNewlyCreated(null)} className="text-gray-500 hover:text-gray-300 text-xl leading-none">&times;</button>
+          </div>
+          <p className="text-sm text-gray-400 mb-3">Share this code with friends to invite them:</p>
+          <div className="flex items-center gap-3 mb-3">
+            <span className="font-mono text-2xl font-bold text-brand-300 tracking-widest select-all">{newlyCreated.joinCode}</span>
+            <button
+              onClick={(e) => handleCopyCode(e, newlyCreated.joinCode)}
+              className="px-4 py-2 rounded bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium transition-colors"
+            >
+              Copy Code
+            </button>
+          </div>
+          <Link to={`/groups/${newlyCreated.groupId}`} className="text-brand-400 hover:text-brand-300 text-sm">
+            Go to group &rarr;
+          </Link>
+        </div>
+      )}
 
       {/* Create + Join */}
       <div className="grid sm:grid-cols-2 gap-4 mb-10">
@@ -100,9 +150,16 @@ export default function Groups() {
           {groups.map((g, i) => (
             <Link key={g.groupId} to={`/groups/${g.groupId}`} className="card hover:border-brand-700 transition-all group animate-slide-up" style={{ animationDelay: `${i * 60}ms` }}>
               <h3 className="font-semibold text-gray-100 group-hover:text-brand-300 transition-colors">{g.name}</h3>
-              <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
-                <span className="font-mono">{g.joinCode}</span>
-                <span>{g.members.length} members</span>
+              <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
+                <span className="font-mono bg-gray-800 px-2 py-0.5 rounded">{g.joinCode}</span>
+                <button
+                  onClick={(e) => handleCopyCode(e, g.joinCode)}
+                  className="text-brand-400 hover:text-brand-300 hover:underline"
+                  title="Copy code"
+                >
+                  Copy
+                </button>
+                <span className="ml-auto">{g.members.length} members</span>
               </div>
             </Link>
           ))}
