@@ -91,7 +91,11 @@ export function getBettingQuestions(matchId) {
 
   const questions = QuestionStore.getQuestions(matchId);
 
+  // Check if this match has extended betting window
+  const isExtendedBetting = EXTENDED_BETTING_MATCHES.includes(matchId);
+
   // Derive status from match status (invariant: questions follow match lifecycle)
+  // EXCEPTION: Extended betting matches show OPEN even when LIVE
   return questions.map((q) => {
     let status;
     switch (match.status) {
@@ -99,7 +103,8 @@ export function getBettingQuestions(matchId) {
         status = "OPEN";
         break;
       case "LIVE":
-        status = "LOCKED";
+        // Extended betting matches remain OPEN during LIVE
+        status = isExtendedBetting ? "OPEN" : "LOCKED";
         break;
       case "COMPLETED":
         status = "RESOLVED";
@@ -118,10 +123,14 @@ export function getBettingQuestions(matchId) {
   });
 }
 
+// TEMPORARY OVERRIDE: Match IDs with extended betting window (betting allowed even after match starts)
+// Once a bet is placed on these matches, it is immediately locked (no edits allowed)
+const EXTENDED_BETTING_MATCHES = ["wc_m1"]; // PAK vs NED
+
 /**
  * Submit bets for a match. Enforces ALL invariants:
  *  - User must be authenticated (userId required)
- *  - Match must be UPCOMING (invariant #21)
+ *  - Match must be UPCOMING (invariant #21) - unless in EXTENDED_BETTING_MATCHES
  *  - At most one bet per user per match (invariant #16)
  *  - All answer optionIds must reference valid options in valid questions (invariant #22)
  */
@@ -135,7 +144,9 @@ export function submitBets(matchId, userId, answers) {
   if (!match) throw new Error("MATCH_NOT_FOUND");
 
   // Invariant #21: can only submit for UPCOMING matches
-  if (match.status !== "UPCOMING") {
+  // EXCEPTION: Extended betting matches allow betting even when LIVE
+  const isExtendedBetting = EXTENDED_BETTING_MATCHES.includes(matchId);
+  if (match.status !== "UPCOMING" && !isExtendedBetting) {
     throw new Error("BETTING_CLOSED");
   }
 
@@ -145,6 +156,7 @@ export function submitBets(matchId, userId, answers) {
 
   // Invariant #16: at most one bet per user per match
   // Allow overwrite ONLY if not yet locked (edit before lock)
+  // For extended betting matches, bets are locked immediately - no edits allowed
   if (s.bets[userId][matchId] && s.bets[userId][matchId].isLocked) {
     throw new Error("BET_ALREADY_LOCKED");
   }
@@ -178,18 +190,20 @@ export function submitBets(matchId, userId, answers) {
   }
 
   const now = new Date().toISOString();
+  // For extended betting matches, lock immediately (no edits allowed once submitted)
+  const shouldLockImmediately = EXTENDED_BETTING_MATCHES.includes(matchId);
   s.bets[userId][matchId] = {
     betId: `bet_${userId}_${matchId}`,
     userId,
     matchId,
     answers,
-    isLocked: false,
+    isLocked: shouldLockImmediately,
     submittedAt: now,
-    lockedAt: null,
+    lockedAt: shouldLockImmediately ? now : null,
     score: null,
   };
   saveState(s);
-  return { success: true, submittedAt: now };
+  return { success: true, submittedAt: now, isLocked: shouldLockImmediately };
 }
 
 export function getUserBets(matchId, userId) {
