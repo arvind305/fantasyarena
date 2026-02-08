@@ -50,7 +50,7 @@ async function updateBettingWindow() {
   // 1. Close ALL matches first
   const { error: closeErr } = await supabase
     .from('match_questions')
-    .update({ status: 'closed' })
+    .update({ status: 'CLOSED' })
     .neq('status', '');
 
   if (closeErr) {
@@ -63,7 +63,7 @@ async function updateBettingWindow() {
   if (openMatchIds.length > 0) {
     const { error: openErr } = await supabase
       .from('match_questions')
-      .update({ status: 'active' })
+      .update({ status: 'OPEN' })
       .in('match_id', openMatchIds);
 
     if (openErr) {

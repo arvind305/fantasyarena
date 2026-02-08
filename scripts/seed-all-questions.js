@@ -46,7 +46,7 @@ function generateQuestionsForMatch(match) {
       { optionId: `opt_${matchId}_winner_superover`, label: 'Super Over' }
     ],
     sort_order: 1,
-    status: 'active',
+    status: 'OPEN',
     disabled: false
   });
 
@@ -62,7 +62,7 @@ function generateQuestionsForMatch(match) {
     points_wrong: 0,
     options: [],
     sort_order: 2,
-    status: 'active',
+    status: 'OPEN',
     disabled: false
   });
 
