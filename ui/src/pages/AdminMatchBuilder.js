@@ -72,6 +72,49 @@ const CHAOS_PRESETS = {
     enableNegativeScoring: true,
     allOrNothing: true,
   },
+  // Tournament escalation presets
+  earlyTournament: {
+    name: "Early Tournament",
+    description: "Conservative points for warm-up matches",
+    winnerPointsX: 50,
+    totalRunsPointsX: 50,
+    playerPickSlots: 1,
+    multiplierPreset: [1],
+    sideBetPointsDefault: 50,
+    enableNegativeScoring: false,
+  },
+  midTournament: {
+    name: "Mid Tournament",
+    description: "Medium stakes for group stage",
+    winnerPointsX: 200,
+    totalRunsPointsX: 200,
+    playerPickSlots: 3,
+    multiplierPreset: [1, 1.5, 2],
+    sideBetPointsDefault: 200,
+    enableNegativeScoring: false,
+  },
+  knockoutStage: {
+    name: "Knockout Stage",
+    description: "High stakes for knockout matches",
+    winnerPointsX: 1000,
+    totalRunsPointsX: 1000,
+    playerPickSlots: 5,
+    multiplierPreset: [1, 2, 3, 4, 5],
+    sideBetPointsDefault: 1000,
+    enableNegativeScoring: true,
+    sideBetPointsWrong: -500,
+  },
+  finalsMadness: {
+    name: "Finals Madness",
+    description: "INSANE points for finals - risk it all!",
+    winnerPointsX: 10000,
+    totalRunsPointsX: 10000,
+    playerPickSlots: 5,
+    multiplierPreset: [2, 4, 6, 8, 10],
+    sideBetPointsDefault: 10000,
+    sideBetPointsWrong: -10000,
+    enableNegativeScoring: true,
+  },
 };
 
 export default function AdminMatchBuilder() {
@@ -309,6 +352,17 @@ export default function AdminMatchBuilder() {
       prev.map((q) =>
         q.questionId === questionId
           ? { ...q, points: points ?? q.points, pointsWrong: pointsWrong ?? q.pointsWrong }
+          : q
+      )
+    );
+  }
+
+  // Update question chaos multiplier
+  function handleUpdateChaosMultiplier(questionId, chaosMultiplier) {
+    setQuestions((prev) =>
+      prev.map((q) =>
+        q.questionId === questionId
+          ? { ...q, chaosMultiplier: chaosMultiplier }
           : q
       )
     );
@@ -652,7 +706,7 @@ export default function AdminMatchBuilder() {
 
         {/* Side Bet Config */}
         <div className="mt-4 pt-4 border-t border-gray-700">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs text-gray-500 mb-1">Side Bet Count</label>
               <input
@@ -673,8 +727,32 @@ export default function AdminMatchBuilder() {
                 onChange={(e) => updateConfig("sideBetPointsDefault", parseInt(e.target.value, 10) || 10)}
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200"
               />
-              <p className="text-xs text-gray-600 mt-1">Can be overridden per bet (including negative)</p>
+              <p className="text-xs text-gray-600 mt-1">Can be overridden per bet</p>
             </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Side Bet Wrong Points</label>
+              <input
+                type="number"
+                value={config.sideBetPointsWrong || 0}
+                onChange={(e) => updateConfig("sideBetPointsWrong", parseInt(e.target.value, 10) || 0)}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200"
+                placeholder="0 or negative"
+              />
+              <p className="text-xs text-gray-600 mt-1">Penalty for wrong (use negative)</p>
+            </div>
+          </div>
+          {/* Negative Scoring Toggle */}
+          <div className="mt-3">
+            <label className="flex items-center gap-3 text-sm text-gray-300">
+              <input
+                type="checkbox"
+                checked={config.enableNegativeScoring || false}
+                onChange={(e) => updateConfig("enableNegativeScoring", e.target.checked)}
+                className="rounded border-gray-600 w-5 h-5"
+              />
+              Enable Negative Scoring
+              <span className="text-xs text-gray-500">(applies wrong points penalty)</span>
+            </label>
           </div>
         </div>
 
@@ -950,6 +1028,7 @@ export default function AdminMatchBuilder() {
                       onDelete={() => handleDeleteQuestion(q.questionId)}
                       onToggle={() => handleToggleQuestion(q.questionId)}
                       onUpdatePoints={(pts, ptsWrong) => handleUpdateQuestionPoints(q.questionId, pts, ptsWrong)}
+                      onUpdateChaosMultiplier={(mult) => handleUpdateChaosMultiplier(q.questionId, mult)}
                       onMoveUp={() => handleMoveQuestion(q.questionId, "up")}
                       onMoveDown={() => handleMoveQuestion(q.questionId, "down")}
                       isFirst={i === 0}
@@ -973,6 +1052,7 @@ export default function AdminMatchBuilder() {
                       onDelete={() => handleDeleteQuestion(q.questionId)}
                       onToggle={() => handleToggleQuestion(q.questionId)}
                       onUpdatePoints={(pts, ptsWrong) => handleUpdateQuestionPoints(q.questionId, pts, ptsWrong)}
+                      onUpdateChaosMultiplier={(mult) => handleUpdateChaosMultiplier(q.questionId, mult)}
                       onMoveUp={() => handleMoveQuestion(q.questionId, "up")}
                       onMoveDown={() => handleMoveQuestion(q.questionId, "down")}
                       isFirst={i === 0}
@@ -996,6 +1076,7 @@ export default function AdminMatchBuilder() {
                       onDelete={() => handleDeleteQuestion(q.questionId)}
                       onToggle={() => handleToggleQuestion(q.questionId)}
                       onUpdatePoints={(pts, ptsWrong) => handleUpdateQuestionPoints(q.questionId, pts, ptsWrong)}
+                      onUpdateChaosMultiplier={(mult) => handleUpdateChaosMultiplier(q.questionId, mult)}
                       onMoveUp={() => handleMoveQuestion(q.questionId, "up")}
                       onMoveDown={() => handleMoveQuestion(q.questionId, "down")}
                       isFirst={i === 0}
@@ -1033,12 +1114,28 @@ export default function AdminMatchBuilder() {
   );
 }
 
+// Chaos multiplier options
+const CHAOS_MULTIPLIER_OPTIONS = [1, 2, 3, 5, 10, 100];
+
+// Risk level calculation based on points and multiplier
+function getRiskLevel(points, pointsWrong, chaosMultiplier) {
+  const effectivePoints = points * (chaosMultiplier || 1);
+  const effectiveLoss = Math.abs(pointsWrong || 0) * (chaosMultiplier || 1);
+  const totalRisk = effectivePoints + effectiveLoss;
+
+  if (totalRisk >= 1000 || chaosMultiplier >= 10) return { level: "EXTREME", color: "red", label: "EXTREME RISK" };
+  if (totalRisk >= 500 || chaosMultiplier >= 5) return { level: "HIGH", color: "orange", label: "High Risk" };
+  if (totalRisk >= 100 || chaosMultiplier >= 2) return { level: "MEDIUM", color: "yellow", label: "Medium Risk" };
+  return { level: "LOW", color: "green", label: "Low Risk" };
+}
+
 function QuestionPreviewCard({
   question,
   index,
   onDelete,
   onToggle,
   onUpdatePoints,
+  onUpdateChaosMultiplier,
   onMoveUp,
   onMoveDown,
   isFirst,
@@ -1049,15 +1146,30 @@ function QuestionPreviewCard({
   const [editPoints, setEditPoints] = useState(q.points);
   const [editPointsWrong, setEditPointsWrong] = useState(q.pointsWrong || 0);
 
+  const chaosMultiplier = q.chaosMultiplier || 1;
+  const hasChaos = chaosMultiplier > 1;
+  const effectivePoints = q.points * chaosMultiplier;
+  const effectivePointsWrong = (q.pointsWrong || 0) * chaosMultiplier;
+  const risk = getRiskLevel(q.points, q.pointsWrong, chaosMultiplier);
+
   const handleSavePoints = () => {
     onUpdatePoints(editPoints, editPointsWrong);
     setIsEditing(false);
   };
 
+  // Border color based on chaos level
+  const borderClass = hasChaos
+    ? chaosMultiplier >= 10
+      ? "border-red-500/70 bg-gradient-to-r from-red-950/30 to-orange-950/20"
+      : chaosMultiplier >= 5
+      ? "border-orange-500/50 bg-gradient-to-r from-orange-950/20 to-yellow-950/10"
+      : "border-yellow-500/40 bg-yellow-950/10"
+    : "border-gray-700";
+
   return (
     <div
-      className={`p-3 bg-gray-800/50 rounded-lg border transition-all ${
-        q.disabled ? "border-gray-700 opacity-50" : "border-gray-700"
+      className={`p-3 rounded-lg border transition-all ${borderClass} ${
+        q.disabled ? "opacity-50" : ""
       }`}
     >
       <div className="flex items-start justify-between gap-3">
@@ -1080,30 +1192,47 @@ function QuestionPreviewCard({
         </div>
 
         <div className="flex-1">
-          <div className="text-sm text-gray-200">
-            <span className="text-gray-500 mr-2">{index + 1}.</span>
-            {q.text}
+          {/* Question text with badges */}
+          <div className="text-sm text-gray-200 flex flex-wrap items-center gap-2">
+            <span className="text-gray-500 mr-1">{index + 1}.</span>
+            <span>{q.text}</span>
+
+            {/* Chaos multiplier badge */}
+            {hasChaos && (
+              <span
+                className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-bold ${
+                  chaosMultiplier >= 10
+                    ? "bg-red-500/30 text-red-300 animate-pulse"
+                    : chaosMultiplier >= 5
+                    ? "bg-orange-500/30 text-orange-300"
+                    : "bg-yellow-500/30 text-yellow-300"
+                }`}
+              >
+                🔥 {chaosMultiplier}x
+              </span>
+            )}
+
             {q.isCustom && (
-              <span className="ml-2 text-xs px-1.5 py-0.5 bg-emerald-900/50 text-emerald-400 rounded">
+              <span className="text-xs px-1.5 py-0.5 bg-emerald-900/50 text-emerald-400 rounded">
                 Custom
               </span>
             )}
             {q.disabled && (
-              <span className="ml-2 text-xs px-1.5 py-0.5 bg-red-900/50 text-red-400 rounded">
+              <span className="text-xs px-1.5 py-0.5 bg-red-900/50 text-red-400 rounded">
                 Disabled
               </span>
             )}
           </div>
 
           {isEditing ? (
-            <div className="flex items-center gap-3 mt-2">
+            <div className="flex flex-wrap items-center gap-3 mt-2">
               <div className="flex items-center gap-1">
                 <label className="text-xs text-gray-500">Pts:</label>
                 <input
                   type="number"
                   value={editPoints}
                   onChange={(e) => setEditPoints(parseInt(e.target.value, 10) || 0)}
-                  className="w-16 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-gray-200"
+                  className="w-20 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-gray-200"
                 />
               </div>
               <div className="flex items-center gap-1">
@@ -1112,7 +1241,7 @@ function QuestionPreviewCard({
                   type="number"
                   value={editPointsWrong}
                   onChange={(e) => setEditPointsWrong(parseInt(e.target.value, 10) || 0)}
-                  className="w-16 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-gray-200"
+                  className="w-20 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-gray-200"
                 />
               </div>
               <button
@@ -1129,18 +1258,83 @@ function QuestionPreviewCard({
               </button>
             </div>
           ) : (
-            <div className="flex flex-wrap items-center gap-2 mt-1 text-xs">
+            <div className="flex flex-wrap items-center gap-2 mt-2 text-xs">
+              {/* Points display - enhanced */}
+              <div className="flex items-center gap-1">
+                <span
+                  className="px-2 py-0.5 rounded bg-emerald-900/40 text-emerald-400 font-semibold cursor-pointer hover:bg-emerald-900/60"
+                  onClick={() => setIsEditing(true)}
+                  title="Click to edit"
+                >
+                  +{q.points} pts
+                  {hasChaos && <span className="text-emerald-300 ml-1">(={effectivePoints})</span>}
+                </span>
+                {q.pointsWrong !== 0 && q.pointsWrong !== undefined && (
+                  <span
+                    className="px-2 py-0.5 rounded bg-red-900/40 text-red-400 font-semibold cursor-pointer hover:bg-red-900/60"
+                    onClick={() => setIsEditing(true)}
+                    title="Click to edit"
+                  >
+                    {q.pointsWrong} pts
+                    {hasChaos && <span className="text-red-300 ml-1">(={effectivePointsWrong})</span>}
+                  </span>
+                )}
+                <span
+                  className="text-gray-600 cursor-pointer hover:text-brand-400"
+                  onClick={() => setIsEditing(true)}
+                >
+                  ✎
+                </span>
+              </div>
+
+              <span className="text-gray-600">|</span>
+
+              {/* Chaos multiplier dropdown */}
+              <div className="flex items-center gap-1">
+                <span className="text-gray-500">Chaos:</span>
+                <select
+                  value={chaosMultiplier}
+                  onChange={(e) => onUpdateChaosMultiplier(parseInt(e.target.value, 10))}
+                  className={`bg-gray-800 border rounded px-1.5 py-0.5 text-xs ${
+                    hasChaos
+                      ? chaosMultiplier >= 10
+                        ? "border-red-500 text-red-300"
+                        : chaosMultiplier >= 5
+                        ? "border-orange-500 text-orange-300"
+                        : "border-yellow-500 text-yellow-300"
+                      : "border-gray-600 text-gray-400"
+                  }`}
+                >
+                  {CHAOS_MULTIPLIER_OPTIONS.map((m) => (
+                    <option key={m} value={m}>
+                      {m}x {m >= 10 ? "🔥🔥" : m >= 5 ? "🔥" : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <span className="text-gray-600">|</span>
+
+              {/* Risk level indicator */}
+              <span
+                className={`px-2 py-0.5 rounded text-xs font-medium ${
+                  risk.level === "EXTREME"
+                    ? "bg-red-900/50 text-red-300"
+                    : risk.level === "HIGH"
+                    ? "bg-orange-900/50 text-orange-300"
+                    : risk.level === "MEDIUM"
+                    ? "bg-yellow-900/50 text-yellow-300"
+                    : "bg-gray-700 text-gray-400"
+                }`}
+              >
+                {risk.label}
+              </span>
+
+              <span className="text-gray-600">|</span>
               <span className="text-gray-500">Kind: {q.kind}</span>
               <span className="text-gray-600">|</span>
               <span className="text-gray-500">Type: {q.type}</span>
-              <span className="text-gray-600">|</span>
-              <span
-                className="text-gray-500 cursor-pointer hover:text-brand-400"
-                onClick={() => setIsEditing(true)}
-              >
-                Points: {q.points}
-                {q.pointsWrong ? ` / ${q.pointsWrong}` : ""} ✎
-              </span>
+
               {q.slot && (
                 <>
                   <span className="text-gray-600">|</span>

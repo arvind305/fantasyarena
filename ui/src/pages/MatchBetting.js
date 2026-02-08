@@ -184,6 +184,30 @@ export default function MatchBetting() {
   // Check if we can submit (must have standard pack and at least 1 side bet)
   const canSubmit = hasStandard && (hasSide || legacyQuestions.length > 0);
 
+  // Calculate bet summary stats
+  const allQuestions = [...standardQuestions, ...sideQuestions, ...legacyQuestions];
+  const answeredCount = allQuestions.filter((q) => answers[q.questionId]).length;
+  const totalQuestions = allQuestions.length;
+
+  const totalPotentialWin = allQuestions.reduce((sum, q) => {
+    const multiplier = q.chaosMultiplier || q.slot?.multiplier || 1;
+    return sum + (q.points || 0) * multiplier;
+  }, 0);
+
+  const totalPotentialLoss = allQuestions.reduce((sum, q) => {
+    const multiplier = q.chaosMultiplier || q.slot?.multiplier || 1;
+    const lossPoints = q.pointsWrong !== undefined ? q.pointsWrong : 0;
+    return sum + lossPoints * multiplier;
+  }, 0);
+
+  // Determine risk profile based on potential loss
+  const getRiskProfile = () => {
+    if (totalPotentialLoss >= -5) return { label: "Conservative", color: "emerald", icon: "shield" };
+    if (totalPotentialLoss >= -15) return { label: "Moderate", color: "amber", icon: "scale" };
+    return { label: "Aggressive", color: "red", icon: "fire" };
+  };
+  const riskProfile = getRiskProfile();
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
       {/* Match Header */}
@@ -275,9 +299,20 @@ export default function MatchBetting() {
       {/* Section A: Standard Bets */}
       {(standardQuestions.length > 0 || legacyQuestions.length > 0) && (
         <div className="mb-8">
-          <h2 className="text-xl font-bold mb-4 text-gray-200">
-            <span className="text-brand-400">A.</span> Standard Bets
-          </h2>
+          <div className="flex items-center gap-3 mb-4 pb-3 border-b border-gray-700">
+            <div className="w-10 h-10 rounded-lg bg-brand-600/20 flex items-center justify-center">
+              <svg className="w-5 h-5 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-gray-100">Core Bets</h2>
+              <p className="text-xs text-gray-500">Required predictions for this match</p>
+            </div>
+            <span className="ml-auto px-2.5 py-1 rounded-full text-xs bg-brand-900/50 text-brand-300 border border-brand-800">
+              {standardQuestions.length + legacyQuestions.length} questions
+            </span>
+          </div>
           <div className="space-y-4">
             {standardQuestions.map((q, i) => (
               <QuestionCard
@@ -313,9 +348,20 @@ export default function MatchBetting() {
       {/* Section B: Side Bets */}
       {sideQuestions.length > 0 && (
         <div className="mb-8">
-          <h2 className="text-xl font-bold mb-4 text-gray-200">
-            <span className="text-purple-400">B.</span> Side Bets
-          </h2>
+          <div className="flex items-center gap-3 mb-4 pb-3 border-b border-purple-800/50">
+            <div className="w-10 h-10 rounded-lg bg-purple-600/20 flex items-center justify-center">
+              <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-gray-100">Side Bets</h2>
+              <p className="text-xs text-gray-500">High risk, high reward predictions</p>
+            </div>
+            <span className="ml-auto px-2.5 py-1 rounded-full text-xs bg-purple-900/50 text-purple-300 border border-purple-800">
+              {sideQuestions.length} questions
+            </span>
+          </div>
           <div className="space-y-4">
             {sideQuestions.map((q, i) => (
               <QuestionCard
@@ -335,13 +381,87 @@ export default function MatchBetting() {
         </div>
       )}
 
+      {/* Bet Summary Card */}
+      {allQuestions.length > 0 && user && (
+        <div className="card mb-6 bg-gray-900/70 border-gray-700">
+          <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-700">
+            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+            <h3 className="font-semibold text-gray-200">Bet Summary</h3>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {/* Progress */}
+            <div className="text-center p-3 rounded-lg bg-gray-800/50">
+              <div className="text-2xl font-bold text-gray-200">
+                {answeredCount}<span className="text-gray-500 text-lg">/{totalQuestions}</span>
+              </div>
+              <div className="text-xs text-gray-500 mt-1">Questions Answered</div>
+              <div className="mt-2 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-brand-500 transition-all duration-300"
+                  style={{ width: `${(answeredCount / totalQuestions) * 100}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Potential Win */}
+            <div className="text-center p-3 rounded-lg bg-emerald-950/30 border border-emerald-900/30">
+              <div className="text-2xl font-bold text-emerald-400">+{totalPotentialWin}</div>
+              <div className="text-xs text-emerald-600 mt-1">Max Points</div>
+              <div className="text-xs text-gray-600 mt-1">if all correct</div>
+            </div>
+
+            {/* Potential Loss */}
+            <div className="text-center p-3 rounded-lg bg-red-950/30 border border-red-900/30">
+              <div className="text-2xl font-bold text-red-400">{totalPotentialLoss}</div>
+              <div className="text-xs text-red-600 mt-1">Risk Points</div>
+              <div className="text-xs text-gray-600 mt-1">if all wrong</div>
+            </div>
+
+            {/* Risk Profile */}
+            <div className={`text-center p-3 rounded-lg ${
+              riskProfile.color === "emerald" ? "bg-emerald-950/20 border border-emerald-900/30" :
+              riskProfile.color === "amber" ? "bg-amber-950/20 border border-amber-900/30" :
+              "bg-red-950/20 border border-red-900/30"
+            }`}>
+              <div className="flex justify-center mb-1">
+                {riskProfile.icon === "shield" && (
+                  <svg className="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                )}
+                {riskProfile.icon === "scale" && (
+                  <svg className="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+                  </svg>
+                )}
+                {riskProfile.icon === "fire" && (
+                  <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" />
+                  </svg>
+                )}
+              </div>
+              <div className={`text-sm font-bold ${
+                riskProfile.color === "emerald" ? "text-emerald-400" :
+                riskProfile.color === "amber" ? "text-amber-400" :
+                "text-red-400"
+              }`}>{riskProfile.label}</div>
+              <div className="text-xs text-gray-600 mt-1">Risk Profile</div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Submit */}
       {user && isEditable && canSubmit && (
         <div className="mt-8 text-center">
           <button
             onClick={handleSubmit}
             disabled={submitting}
-            className="btn-primary text-lg px-10 py-4"
+            className="btn-primary text-lg px-10 py-4 min-w-[200px]"
           >
             {submitting ? <Spinner size="sm" className="text-white inline mr-2" /> : null}
             {existing ? "Update Predictions" : "Submit Predictions"}
@@ -396,37 +516,83 @@ function QuestionCard({
 
   // Points display - handle side bets with +/- display
   const hasPenalty = q.pointsWrong !== undefined && q.pointsWrong < 0;
-  const pointsText = hasPenalty
-    ? `+${q.points}/${q.pointsWrong}`
-    : (q.points > 0 ? `+${q.points}` : String(q.points));
-  const pointsColorClass = hasPenalty
-    ? "text-amber-400"
-    : (q.points >= 0 ? "text-emerald-400" : "text-red-400");
+  const hasMultiplier = (q.slot?.multiplier && q.slot.multiplier > 1) || q.chaosMultiplier;
+  const effectiveMultiplier = q.chaosMultiplier || q.slot?.multiplier || 1;
+  const isHighRisk = hasPenalty && q.pointsWrong <= -5;
+
+  // Determine card border/background based on risk
+  const cardClasses = [
+    "card animate-slide-up relative overflow-hidden",
+    isHighRisk ? "border-red-800/50 bg-red-950/10" : "",
+    hasMultiplier && effectiveMultiplier >= 2 ? "border-amber-700/40" : "",
+  ].filter(Boolean).join(" ");
 
   return (
     <div
-      className="card animate-slide-up"
+      className={cardClasses}
       style={{ animationDelay: `${index * 40}ms` }}
+      title={isHighRisk ? "High risk question - significant point penalty if wrong" : hasMultiplier && effectiveMultiplier >= 2 ? "Boosted multiplier active" : ""}
     >
-      <div className="flex items-start justify-between mb-3">
-        <h3 className="font-semibold text-gray-100 text-sm flex-1">
+      {/* Multiplier accent stripe */}
+      {hasMultiplier && effectiveMultiplier >= 2 && (
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500" />
+      )}
+
+      {/* Question header */}
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-3">
+        <h3 className="font-semibold text-gray-100 text-sm flex-1 leading-relaxed">
           <span className={`text-${accentColor}-400 mr-2`}>Q{index + 1}.</span>
           {q.text}
         </h3>
-        <div className="flex items-center gap-2 ml-3">
-          {q.slot && (
-            <span className="text-xs text-gray-500 whitespace-nowrap">
-              {q.slot.multiplier}x
+
+        {/* Points and multiplier display */}
+        <div className="flex flex-wrap items-center gap-2 sm:ml-3">
+          {/* Multiplier badge */}
+          {hasMultiplier && effectiveMultiplier > 1 && (
+            <span
+              className="px-2 py-0.5 rounded text-xs font-bold whitespace-nowrap bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-sm"
+              title={`${effectiveMultiplier}x multiplier applied to points`}
+            >
+              {effectiveMultiplier}x
             </span>
           )}
-          <span className={`text-xs ${pointsColorClass} whitespace-nowrap`}>
-            {pointsText} pts
-          </span>
+
+          {/* Points display */}
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-gray-800/80 border border-gray-700">
+            {hasPenalty ? (
+              <>
+                <span className="text-xs font-semibold text-emerald-400" title="Points if correct">
+                  Win +{q.points}
+                </span>
+                <span className="text-gray-600">/</span>
+                <span className="text-xs font-semibold text-red-400" title="Points if wrong">
+                  Lose {q.pointsWrong}
+                </span>
+              </>
+            ) : (
+              <span className={`text-xs font-semibold ${q.points >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                {q.points > 0 ? `+${q.points}` : q.points} pts
+              </span>
+            )}
+          </div>
+
           {q.status === "LOCKED" && (
-            <span className="text-xs text-amber-500 whitespace-nowrap">Locked</span>
+            <span className="px-2 py-0.5 rounded text-xs bg-amber-900/50 text-amber-400 border border-amber-800">
+              Locked
+            </span>
           )}
         </div>
       </div>
+
+      {/* Risk indicator for high-risk questions */}
+      {isHighRisk && (
+        <div className="flex items-center gap-1.5 mb-3 text-xs text-red-400/80">
+          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+          </svg>
+          <span>High risk - significant penalty if wrong</span>
+        </div>
+      )}
 
       {/* Numeric Input (for TOTAL_RUNS) */}
       {q.type === "NUMERIC_INPUT" && (
@@ -462,16 +628,16 @@ function QuestionCard({
 
       {/* Radio/Checkbox options (YES_NO, TEAM_PICK, MULTI_CHOICE) */}
       {(q.type === "YES_NO" || q.type === "MULTI_CHOICE" || q.type === "TEAM_PICK") && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 sm:gap-3">
           {q.options.map((opt) => (
             <label
               key={opt.optionId}
-              className={`px-4 py-2 rounded-lg text-sm cursor-pointer border transition-all ${
+              className={`px-5 py-3 sm:px-4 sm:py-2 rounded-lg text-sm sm:text-sm cursor-pointer border-2 transition-all min-w-[80px] text-center select-none active:scale-95 ${
                 answers[q.questionId] === opt.optionId
                   ? isSideBet
-                    ? "bg-purple-600/30 border-purple-600 text-purple-200"
-                    : "bg-brand-600/30 border-brand-600 text-brand-200"
-                  : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600"
+                    ? "bg-purple-600/30 border-purple-500 text-purple-200 shadow-lg shadow-purple-900/30"
+                    : "bg-brand-600/30 border-brand-500 text-brand-200 shadow-lg shadow-brand-900/30"
+                  : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500 hover:bg-gray-750"
               } ${disabled ? "pointer-events-none opacity-70" : ""}`}
             >
               <input
@@ -485,7 +651,7 @@ function QuestionCard({
               />
               {opt.label}
               {opt.weight && opt.weight > 1 && q.kind === "WINNER" && (
-                <span className="ml-1 text-xs text-amber-400">({opt.weight}x)</span>
+                <span className="ml-1 text-xs text-amber-400 font-semibold">({opt.weight}x)</span>
               )}
             </label>
           ))}

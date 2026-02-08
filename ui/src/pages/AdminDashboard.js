@@ -19,6 +19,8 @@ import {
   saveSideBetQuestions,
   getStoreSnapshot,
 } from "../mock/QuestionStore";
+// API imports available but using direct Supabase queries for admin status data
+import { supabase, isSupabaseConfigured } from "../lib/supabase";
 
 // Simple seeded random for deterministic side bet selection
 function seededRandom(seed) {
@@ -39,6 +41,18 @@ function formatDate(date, time) {
 
 function getScheduledTime(match) {
   return new Date(`${match.date}T${match.time_gmt}:00Z`);
+}
+
+// Get tomorrow's date in YYYY-MM-DD format
+function getTomorrowDate() {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return tomorrow.toISOString().split('T')[0];
+}
+
+// Get today's date in YYYY-MM-DD format
+function getTodayDate() {
+  return new Date().toISOString().split('T')[0];
 }
 
 // Convert raw match_id to engine matchId format
@@ -63,6 +77,11 @@ export default function AdminDashboard() {
   const [filter, setFilter] = useState("all"); // all | upcoming | past
   const [actionInProgress, setActionInProgress] = useState({}); // matchId -> action
   const [publishError, setPublishError] = useState(null);
+  const [matchResults, setMatchResults] = useState({}); // matchId -> results
+  const [betsScored, setBetsScored] = useState({}); // matchId -> boolean (has scored bets)
+  const [supabaseQuestions, setSupabaseQuestions] = useState({}); // matchId -> questions from Supabase
+  const [preparingTomorrow, setPreparingTomorrow] = useState(false);
+  const [tomorrowMatches, setTomorrowMatches] = useState([]);
 
   // Load all data on mount
   useEffect(() => {
@@ -83,6 +102,9 @@ export default function AdminDashboard() {
         setMatches(tournament?.matches || []);
         setPublishedQuestions(published?.questionsByMatch || {});
         setSideBetLibrary(library);
+
+        // Load match results and Supabase questions for status indicators
+        loadMatchStatusData(tournament?.matches || []);
       })
       .catch((err) => {
         console.error("[AdminDashboard] Load error:", err);
@@ -90,6 +112,56 @@ export default function AdminDashboard() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  // Load match results and Supabase questions for enhanced status indicators
+  async function loadMatchStatusData(matchList) {
+    if (!supabase || !isSupabaseConfigured()) return;
+
+    try {
+      // Load all match results
+      const { data: results } = await supabase
+        .from('match_results')
+        .select('match_id, winner, completed_at');
+
+      if (results) {
+        const resultsMap = {};
+        results.forEach(r => {
+          resultsMap[r.match_id] = r;
+        });
+        setMatchResults(resultsMap);
+      }
+
+      // Load all questions from Supabase to check publish status
+      const { data: questions } = await supabase
+        .from('match_questions')
+        .select('match_id, question_id');
+
+      if (questions) {
+        const questionsMap = {};
+        questions.forEach(q => {
+          if (!questionsMap[q.match_id]) questionsMap[q.match_id] = [];
+          questionsMap[q.match_id].push(q);
+        });
+        setSupabaseQuestions(questionsMap);
+      }
+
+      // Check which matches have scored bets
+      const { data: scoredBets } = await supabase
+        .from('bets')
+        .select('match_id, score')
+        .not('score', 'is', null);
+
+      if (scoredBets) {
+        const scoredMap = {};
+        scoredBets.forEach(b => {
+          scoredMap[b.match_id] = true;
+        });
+        setBetsScored(scoredMap);
+      }
+    } catch (err) {
+      console.warn('[AdminDashboard] Error loading status data:', err);
+    }
+  }
 
   // Get draft store snapshot for status computation
   const draftStore = useMemo(() => getStoreSnapshot(), [actionInProgress]);
@@ -101,11 +173,17 @@ export default function AdminDashboard() {
       const matchId = toEngineMatchId(match.match_id);
       const draftQuestions = draftStore.questionsByMatch[matchId] || [];
       const publishedQs = publishedQuestions[matchId] || [];
+      const supabaseQs = supabaseQuestions[matchId] || [];
 
       const draftStandard = draftQuestions.filter((q) => q.section === "STANDARD");
       const draftSide = draftQuestions.filter((q) => q.section === "SIDE");
       const publishedStandard = publishedQs.filter((q) => q.section === "STANDARD");
       const publishedSide = publishedQs.filter((q) => q.section === "SIDE");
+
+      // Enhanced status levels
+      const hasResults = !!matchResults[matchId];
+      const hasScores = !!betsScored[matchId];
+      const publishedToSupabase = supabaseQs.length > 0;
 
       statuses[matchId] = {
         standardCreated: draftStandard.length > 0,
@@ -119,10 +197,35 @@ export default function AdminDashboard() {
           publishedQs.length > 0 &&
           (draftStandard.length !== publishedStandard.length ||
             draftSide.length !== publishedSide.length),
+        // New status fields
+        publishedToSupabase,
+        supabaseQuestionCount: supabaseQs.length,
+        hasResults,
+        hasScores,
+        // Overall status level: 'none' | 'draft' | 'published' | 'results' | 'scored'
+        statusLevel: hasScores ? 'scored' :
+                     hasResults ? 'results' :
+                     publishedToSupabase ? 'published' :
+                     (draftStandard.length > 0 || draftSide.length > 0) ? 'draft' : 'none'
       };
     }
     return statuses;
-  }, [matches, draftStore, publishedQuestions]);
+  }, [matches, draftStore, publishedQuestions, supabaseQuestions, matchResults, betsScored]);
+
+  // Compute summary statistics
+  const summaryStats = useMemo(() => {
+    const statusValues = Object.values(matchStatuses);
+    const now = new Date();
+    return {
+      totalMatches: matches.length,
+      matchesCompleted: statusValues.filter(s => s.hasResults).length,
+      matchesWithQuestions: statusValues.filter(s => s.publishedToSupabase).length,
+      matchesWithResults: statusValues.filter(s => s.hasResults).length,
+      matchesScored: statusValues.filter(s => s.hasScores).length,
+      matchesNeedingAttention: statusValues.filter(s => s.statusLevel === 'none' || s.statusLevel === 'draft').length,
+      upcomingMatches: matches.filter(m => getScheduledTime(m) > now).length,
+    };
+  }, [matches, matchStatuses]);
 
   // Filter and sort matches
   const filteredMatches = useMemo(() => {
@@ -229,6 +332,85 @@ export default function AdminDashboard() {
     }
   }
 
+  // Prepare tomorrow's matches - find matches and check their question status
+  async function handlePrepareTomorrow() {
+    setPreparingTomorrow(true);
+    try {
+      const tomorrow = getTomorrowDate();
+      const tomorrowMatchList = matches.filter(m => m.date === tomorrow);
+      setTomorrowMatches(tomorrowMatchList);
+
+      if (tomorrowMatchList.length === 0) {
+        toast.info("No matches scheduled for tomorrow");
+      } else {
+        toast.success(`Found ${tomorrowMatchList.length} match(es) for tomorrow`);
+      }
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setPreparingTomorrow(false);
+    }
+  }
+
+  // Auto-generate questions for all tomorrow's matches
+  async function handleAutoGenerateForTomorrow() {
+    setPreparingTomorrow(true);
+    try {
+      await preloadGeneratorData();
+
+      for (const match of tomorrowMatches) {
+        const matchId = toEngineMatchId(match.match_id);
+        const status = matchStatuses[matchId] || {};
+
+        // Generate standard pack if not already created
+        if (!status.standardCreated) {
+          const matchObj = {
+            matchId,
+            eventId: "t20wc_2026",
+            teamA: { teamId: match.teams[0].toLowerCase(), shortName: match.teams[0] },
+            teamB: { teamId: match.teams[1].toLowerCase(), shortName: match.teams[1] },
+            scheduledTime: `${match.date}T${match.time_gmt}:00Z`,
+            venue: match.venue,
+          };
+          const standardPack = generateStandardPack(matchObj, {}, DEFAULT_CONFIG);
+          saveStandardQuestions(matchId, standardPack);
+        }
+
+        // Generate side bets if not already created
+        if (!status.sideCreated) {
+          const matchObj = {
+            matchId,
+            eventId: "t20wc_2026",
+            teamA: { teamId: match.teams[0].toLowerCase(), shortName: match.teams[0] },
+            teamB: { teamId: match.teams[1].toLowerCase(), shortName: match.teams[1] },
+          };
+
+          const templates = sideBetLibrary.templates || [];
+          if (templates.length > 0) {
+            const earlyMatch = isEarlyMatch(matchId);
+            const maxSideBets = earlyMatch ? EARLY_MATCH_CONFIG.maxSideBets : sideBetCount;
+            const seed = parseInt(matchId, 10) || 1;
+            const indices = templates.map((_, i) => i);
+            for (let i = indices.length - 1; i > 0; i--) {
+              const j = Math.floor(seededRandom(seed + i) * (i + 1));
+              [indices[i], indices[j]] = [indices[j], indices[i]];
+            }
+            const selectedTemplates = indices.slice(0, maxSideBets).map((i) => templates[i]);
+            const sideBets = applySideBets(matchId, matchObj, selectedTemplates, maxSideBets, {});
+            saveSideBetQuestions(matchId, sideBets);
+          }
+        }
+      }
+
+      toast.success(`Generated questions for ${tomorrowMatches.length} match(es)`);
+      setTomorrowMatches([]); // Clear the list after generation
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setPreparingTomorrow(false);
+    }
+  }
+
   // Publish questions for a match
   async function handlePublish(match) {
     const matchId = toEngineMatchId(match.match_id);
@@ -325,6 +507,106 @@ export default function AdminDashboard() {
     <div className="max-w-6xl mx-auto px-4 py-10">
       <h1 className="text-2xl font-bold text-gray-200 mb-6">Admin Dashboard</h1>
 
+      {/* Match Summary Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="card text-center py-4">
+          <div className="text-3xl font-bold text-gray-200">{summaryStats.totalMatches}</div>
+          <div className="text-sm text-gray-500">Total Matches</div>
+        </div>
+        <div className="card text-center py-4">
+          <div className="text-3xl font-bold text-green-400">{summaryStats.matchesWithQuestions}</div>
+          <div className="text-sm text-gray-500">Questions Ready</div>
+        </div>
+        <div className="card text-center py-4">
+          <div className="text-3xl font-bold text-blue-400">{summaryStats.matchesWithResults}</div>
+          <div className="text-sm text-gray-500">Results Entered</div>
+        </div>
+        <div className="card text-center py-4">
+          <div className="text-3xl font-bold text-purple-400">{summaryStats.matchesScored}</div>
+          <div className="text-sm text-gray-500">Bets Scored</div>
+        </div>
+      </div>
+
+      {/* Quick Actions Panel */}
+      <div className="card mb-6">
+        <h2 className="text-lg font-semibold text-gray-200 mb-4">Quick Actions</h2>
+        <div className="flex flex-wrap items-center gap-4">
+          <Link
+            to="/schedule"
+            className="px-4 py-2 text-sm bg-gray-700 hover:bg-gray-600 text-gray-200 rounded transition-colors"
+          >
+            View All Matches
+          </Link>
+          <Link
+            to="/leaderboard"
+            className="px-4 py-2 text-sm bg-gray-700 hover:bg-gray-600 text-gray-200 rounded transition-colors"
+          >
+            Leaderboard
+          </Link>
+          <button
+            onClick={handlePrepareTomorrow}
+            disabled={preparingTomorrow}
+            className="px-4 py-2 text-sm bg-brand-600 hover:bg-brand-700 text-white rounded transition-colors disabled:opacity-50"
+          >
+            {preparingTomorrow ? <Spinner size="sm" className="inline" /> : "Prepare Tomorrow's Matches"}
+          </button>
+          {summaryStats.matchesNeedingAttention > 0 && (
+            <span className="px-3 py-1 text-sm bg-amber-900/50 text-amber-400 border border-amber-700 rounded">
+              {summaryStats.matchesNeedingAttention} match(es) need attention
+            </span>
+          )}
+        </div>
+
+        {/* Tomorrow's Matches Panel */}
+        {tomorrowMatches.length > 0 && (
+          <div className="mt-4 p-4 bg-gray-800 rounded-lg border border-gray-700">
+            <h3 className="text-md font-medium text-gray-200 mb-3">
+              Tomorrow's Matches ({getTomorrowDate()})
+            </h3>
+            <div className="space-y-2 mb-4">
+              {tomorrowMatches.map(match => {
+                const matchId = toEngineMatchId(match.match_id);
+                const status = matchStatuses[matchId] || {};
+                return (
+                  <div key={matchId} className="flex items-center justify-between p-2 bg-gray-900 rounded">
+                    <span className="text-gray-200">
+                      {match.teams[0]} vs {match.teams[1]}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {status.standardCreated ? (
+                        <span className="text-xs text-green-400">Standard: {status.standardCount}</span>
+                      ) : (
+                        <span className="text-xs text-red-400">No standard questions</span>
+                      )}
+                      {status.sideCreated ? (
+                        <span className="text-xs text-green-400">Side: {status.sideCount}</span>
+                      ) : (
+                        <span className="text-xs text-red-400">No side bets</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleAutoGenerateForTomorrow}
+                disabled={preparingTomorrow}
+                className="px-4 py-2 text-sm bg-green-600 hover:bg-green-700 text-white rounded transition-colors disabled:opacity-50"
+              >
+                {preparingTomorrow ? <Spinner size="sm" className="inline" /> : "Auto-Generate All Questions"}
+              </button>
+              <button
+                onClick={() => setTomorrowMatches([])}
+                className="px-4 py-2 text-sm bg-gray-600 hover:bg-gray-500 text-white rounded transition-colors"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Publish Error Banner */}
       {publishError && (
         <div className="mb-6 p-4 bg-red-900/30 border border-red-700 rounded-lg">
@@ -385,6 +667,7 @@ export default function AdminDashboard() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-700 text-left">
+              <th className="px-3 py-3 text-gray-400 font-medium">Status</th>
               <th className="px-3 py-3 text-gray-400 font-medium">Match</th>
               <th className="px-3 py-3 text-gray-400 font-medium text-center">Standard Pack</th>
               <th className="px-3 py-3 text-gray-400 font-medium text-center">Side Bets</th>
@@ -408,6 +691,28 @@ export default function AdminDashboard() {
                     isPast ? "opacity-60" : ""
                   }`}
                 >
+                  {/* Status Indicator */}
+                  <td className="px-3 py-3">
+                    <div className="flex items-center gap-2">
+                      {status.statusLevel === 'scored' && (
+                        <span className="w-3 h-3 rounded-full bg-purple-500" title="Bets Scored"></span>
+                      )}
+                      {status.statusLevel === 'results' && (
+                        <span className="w-3 h-3 rounded-full bg-blue-500" title="Results Entered"></span>
+                      )}
+                      {status.statusLevel === 'published' && (
+                        <span className="w-3 h-3 rounded-full bg-green-500" title="Questions Published"></span>
+                      )}
+                      {status.statusLevel === 'draft' && (
+                        <span className="w-3 h-3 rounded-full bg-yellow-500" title="Draft Questions"></span>
+                      )}
+                      {status.statusLevel === 'none' && (
+                        <span className="w-3 h-3 rounded-full bg-red-500" title="No Questions"></span>
+                      )}
+                      <span className="text-xs text-gray-500 capitalize">{status.statusLevel}</span>
+                    </div>
+                  </td>
+
                   {/* Match Info */}
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-2">
@@ -543,11 +848,21 @@ export default function AdminDashboard() {
       </div>
 
       {/* Legend */}
-      <div className="mt-4 text-xs text-gray-600">
-        <span className="text-green-400">{"\u2705"}</span> = Created/Published |{" "}
-        <span className="text-red-400">{"\u274C"}</span> = Not created |{" "}
-        <span className="text-amber-400">Differs</span> = Draft != Published |{" "}
-        <span className="px-1 py-0.5 bg-amber-900/50 text-amber-400 border border-amber-700 rounded text-xs">4Q</span> = Simplified 4-question sheet (first 3 matches)
+      <div className="mt-4 text-xs text-gray-600 space-y-1">
+        <div>
+          <strong className="text-gray-400">Status Indicators:</strong>{" "}
+          <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"></span> None</span>{" | "}
+          <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-500"></span> Draft</span>{" | "}
+          <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500"></span> Published</span>{" | "}
+          <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500"></span> Results</span>{" | "}
+          <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-500"></span> Scored</span>
+        </div>
+        <div>
+          <span className="text-green-400">{"\u2705"}</span> = Created/Published |{" "}
+          <span className="text-red-400">{"\u274C"}</span> = Not created |{" "}
+          <span className="text-amber-400">Differs</span> = Draft != Published |{" "}
+          <span className="px-1 py-0.5 bg-amber-900/50 text-amber-400 border border-amber-700 rounded text-xs">4Q</span> = Simplified 4-question sheet (first 3 matches)
+        </div>
       </div>
     </div>
   );

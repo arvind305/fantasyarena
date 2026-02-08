@@ -2,406 +2,846 @@
   "version": "1.0",
   "templates": [
     {
-      "templateId": "sb_team_first_bat",
-      "text": "Which team will bat first?",
-      "type": "TEAM_PICK",
-      "options": [
-        { "optionId": "teamA", "label": "{{teamA}}", "referenceType": "TEAM", "referenceId": "{{teamAId}}" },
-        { "optionId": "teamB", "label": "{{teamB}}", "referenceType": "TEAM", "referenceId": "{{teamBId}}" }
-      ],
-      "defaultPoints": 5,
-      "tags": ["toss", "first_innings"]
-    },
-    {
-      "templateId": "sb_50_first_innings",
-      "text": "Will the first innings total exceed 50 runs?",
+      "templateId": "bat_century_scored",
+      "category": "BATTING_MILESTONES",
+      "text": "Will any batsman smash a magnificent century (100+ runs)?",
       "type": "YES_NO",
       "options": [
-        { "optionId": "yes", "label": "Yes", "referenceType": "NONE" },
-        { "optionId": "no", "label": "No", "referenceType": "NONE" }
+        { "optionId": "yes", "label": "Yes - Century incoming!", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No - Not today", "referenceType": "NONE", "referenceId": null }
       ],
-      "defaultPoints": 5,
-      "tags": ["runs", "first_innings", "milestones"]
+      "defaultPoints": 200,
+      "defaultPointsWrong": -50,
+      "riskLevel": "HIGH",
+      "tags": ["batting", "century", "milestones", "individual"]
     },
     {
-      "templateId": "sb_boundary_first_over",
+      "templateId": "bat_fifty_scored",
+      "category": "BATTING_MILESTONES",
+      "text": "Will any player notch up a classy fifty (50+ runs)?",
+      "type": "YES_NO",
+      "options": [
+        { "optionId": "yes", "label": "Yes", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 100,
+      "defaultPointsWrong": 0,
+      "riskLevel": "MEDIUM",
+      "tags": ["batting", "fifty", "milestones", "individual"]
+    },
+    {
+      "templateId": "bat_opening_partnership_50",
+      "category": "BATTING_MILESTONES",
+      "text": "Will any opening pair stitch together a 50+ run partnership?",
+      "type": "YES_NO",
+      "options": [
+        { "optionId": "yes", "label": "Yes - Solid start", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No - Early breakthrough", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 150,
+      "defaultPointsWrong": 0,
+      "riskLevel": "MEDIUM",
+      "tags": ["batting", "partnership", "opening", "milestones"]
+    },
+    {
+      "templateId": "bat_total_sixes_over_12",
+      "category": "BATTING_MILESTONES",
+      "text": "Will the match see 12 or more sixes flying into the stands?",
+      "type": "YES_NO",
+      "options": [
+        { "optionId": "yes", "label": "Yes - Sixes galore!", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No - Bowlers dominate", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 120,
+      "defaultPointsWrong": 0,
+      "riskLevel": "MEDIUM",
+      "tags": ["batting", "sixes", "boundaries", "match_total"]
+    },
+    {
+      "templateId": "bat_total_sixes_bracket",
+      "category": "BATTING_MILESTONES",
+      "text": "How many sixes will light up the match?",
+      "type": "MULTI_CHOICE",
+      "options": [
+        { "optionId": "0_5", "label": "0-5 sixes (Bowlers' paradise)", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "6_10", "label": "6-10 sixes (Balanced contest)", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "11_15", "label": "11-15 sixes (Batters in control)", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "16_plus", "label": "16+ sixes (Six-hitting fest!)", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 150,
+      "defaultPointsWrong": 0,
+      "riskLevel": "MEDIUM",
+      "tags": ["batting", "sixes", "boundaries", "match_total"]
+    },
+    {
+      "templateId": "bat_highest_score_bracket",
+      "category": "BATTING_MILESTONES",
+      "text": "What will be the highest individual score in the match?",
+      "type": "MULTI_CHOICE",
+      "options": [
+        { "optionId": "under_30", "label": "Under 30 (Tough batting day)", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "30_49", "label": "30-49 (Decent knock)", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "50_74", "label": "50-74 (Solid fifty)", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "75_99", "label": "75-99 (Near century)", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "100_plus", "label": "100+ (Century hero!)", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 180,
+      "defaultPointsWrong": 0,
+      "riskLevel": "MEDIUM",
+      "tags": ["batting", "individual", "milestones", "runs"]
+    },
+    {
+      "templateId": "bat_first_ball_boundary",
+      "category": "BATTING_MILESTONES",
+      "text": "Will the very first ball of the match be hit for a boundary?",
+      "type": "YES_NO",
+      "options": [
+        { "optionId": "yes", "label": "Yes - Statement of intent!", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No - Cautious start", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 300,
+      "defaultPointsWrong": -100,
+      "riskLevel": "HIGH",
+      "tags": ["batting", "first_ball", "boundary", "rare"]
+    },
+    {
+      "templateId": "bat_first_over_boundary",
+      "category": "BATTING_MILESTONES",
       "text": "Will there be a boundary (4 or 6) in the first over?",
       "type": "YES_NO",
       "options": [
-        { "optionId": "yes", "label": "Yes", "referenceType": "NONE" },
-        { "optionId": "no", "label": "No", "referenceType": "NONE" }
+        { "optionId": "yes", "label": "Yes", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No", "referenceType": "NONE", "referenceId": null }
       ],
-      "defaultPoints": 5,
-      "tags": ["boundary", "powerplay", "first_over"]
+      "defaultPoints": 80,
+      "defaultPointsWrong": 0,
+      "riskLevel": "LOW",
+      "tags": ["batting", "first_over", "boundary", "powerplay"]
     },
     {
-      "templateId": "sb_wicket_powerplay",
-      "text": "Will there be at least 2 wickets in the powerplay (first 6 overs)?",
+      "templateId": "bat_duck_in_match",
+      "category": "BATTING_MILESTONES",
+      "text": "Will any batsman walk back with a duck (0 runs)?",
       "type": "YES_NO",
       "options": [
-        { "optionId": "yes", "label": "Yes", "referenceType": "NONE" },
-        { "optionId": "no", "label": "No", "referenceType": "NONE" }
+        { "optionId": "yes", "label": "Yes - Someone goes for a duck", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No - Everyone scores", "referenceType": "NONE", "referenceId": null }
       ],
-      "defaultPoints": 10,
-      "tags": ["wickets", "powerplay"]
+      "defaultPoints": 75,
+      "defaultPointsWrong": 0,
+      "riskLevel": "LOW",
+      "tags": ["batting", "duck", "wickets"]
     },
     {
-      "templateId": "sb_six_first_innings",
-      "text": "Will there be at least 5 sixes in the first innings?",
-      "type": "YES_NO",
-      "options": [
-        { "optionId": "yes", "label": "Yes", "referenceType": "NONE" },
-        { "optionId": "no", "label": "No", "referenceType": "NONE" }
-      ],
-      "defaultPoints": 10,
-      "tags": ["sixes", "first_innings"]
-    },
-    {
-      "templateId": "sb_total_sixes_match",
-      "text": "Will there be 10+ sixes in the entire match?",
-      "type": "YES_NO",
-      "options": [
-        { "optionId": "yes", "label": "Yes", "referenceType": "NONE" },
-        { "optionId": "no", "label": "No", "referenceType": "NONE" }
-      ],
-      "defaultPoints": 10,
-      "tags": ["sixes", "match_total"]
-    },
-    {
-      "templateId": "sb_highest_score_bracket",
-      "text": "What will be the highest individual score bracket in the match?",
-      "type": "MULTI_CHOICE",
-      "options": [
-        { "optionId": "under_40", "label": "Under 40", "referenceType": "NONE" },
-        { "optionId": "40_to_60", "label": "40-60", "referenceType": "NONE" },
-        { "optionId": "61_to_80", "label": "61-80", "referenceType": "NONE" },
-        { "optionId": "over_80", "label": "Over 80", "referenceType": "NONE" }
-      ],
-      "defaultPoints": 15,
-      "tags": ["runs", "individual", "milestones"]
-    },
-    {
-      "templateId": "sb_fifty_scored",
-      "text": "Will any player score a fifty (50+ runs) in this match?",
-      "type": "YES_NO",
-      "options": [
-        { "optionId": "yes", "label": "Yes", "referenceType": "NONE" },
-        { "optionId": "no", "label": "No", "referenceType": "NONE" }
-      ],
-      "defaultPoints": 10,
-      "tags": ["runs", "milestones", "fifty"]
-    },
-    {
-      "templateId": "sb_hundred_scored",
-      "text": "Will any player score a century (100+ runs) in this match?",
-      "type": "YES_NO",
-      "options": [
-        { "optionId": "yes", "label": "Yes", "referenceType": "NONE" },
-        { "optionId": "no", "label": "No", "referenceType": "NONE" }
-      ],
-      "defaultPoints": 20,
-      "tags": ["runs", "milestones", "century"]
-    },
-    {
-      "templateId": "sb_3_wicket_haul",
-      "text": "Will any bowler take 3+ wickets in this match?",
-      "type": "YES_NO",
-      "options": [
-        { "optionId": "yes", "label": "Yes", "referenceType": "NONE" },
-        { "optionId": "no", "label": "No", "referenceType": "NONE" }
-      ],
-      "defaultPoints": 10,
-      "tags": ["wickets", "bowling", "milestones"]
-    },
-    {
-      "templateId": "sb_4_wicket_haul",
-      "text": "Will any bowler take 4+ wickets in this match?",
-      "type": "YES_NO",
-      "options": [
-        { "optionId": "yes", "label": "Yes", "referenceType": "NONE" },
-        { "optionId": "no", "label": "No", "referenceType": "NONE" }
-      ],
-      "defaultPoints": 15,
-      "tags": ["wickets", "bowling", "milestones"]
-    },
-    {
-      "templateId": "sb_maiden_over",
-      "text": "Will there be a maiden over in this match?",
-      "type": "YES_NO",
-      "options": [
-        { "optionId": "yes", "label": "Yes", "referenceType": "NONE" },
-        { "optionId": "no", "label": "No", "referenceType": "NONE" }
-      ],
-      "defaultPoints": 10,
-      "tags": ["bowling", "maiden"]
-    },
-    {
-      "templateId": "sb_runout_match",
-      "text": "Will there be a run out in this match?",
-      "type": "YES_NO",
-      "options": [
-        { "optionId": "yes", "label": "Yes", "referenceType": "NONE" },
-        { "optionId": "no", "label": "No", "referenceType": "NONE" }
-      ],
-      "defaultPoints": 10,
-      "tags": ["dismissal", "fielding"]
-    },
-    {
-      "templateId": "sb_catch_dropped",
-      "text": "Will there be a dropped catch in this match?",
-      "type": "YES_NO",
-      "options": [
-        { "optionId": "yes", "label": "Yes", "referenceType": "NONE" },
-        { "optionId": "no", "label": "No", "referenceType": "NONE" }
-      ],
-      "defaultPoints": 5,
-      "tags": ["fielding", "catch"]
-    },
-    {
-      "templateId": "sb_drs_used",
-      "text": "Will DRS be used in this match?",
-      "type": "YES_NO",
-      "options": [
-        { "optionId": "yes", "label": "Yes", "referenceType": "NONE" },
-        { "optionId": "no", "label": "No", "referenceType": "NONE" }
-      ],
-      "defaultPoints": 5,
-      "tags": ["drs", "technology"]
-    },
-    {
-      "templateId": "sb_drs_successful",
-      "text": "Will at least one DRS review be successful (decision overturned)?",
-      "type": "YES_NO",
-      "options": [
-        { "optionId": "yes", "label": "Yes", "referenceType": "NONE" },
-        { "optionId": "no", "label": "No", "referenceType": "NONE" }
-      ],
-      "defaultPoints": 10,
-      "tags": ["drs", "technology"]
-    },
-    {
-      "templateId": "sb_win_margin",
-      "text": "What will be the margin of victory?",
-      "type": "MULTI_CHOICE",
-      "options": [
-        { "optionId": "close", "label": "Close (0-10 runs or 1-2 wickets)", "referenceType": "NONE" },
-        { "optionId": "comfortable", "label": "Comfortable (11-30 runs or 3-5 wickets)", "referenceType": "NONE" },
-        { "optionId": "dominant", "label": "Dominant (31+ runs or 6+ wickets)", "referenceType": "NONE" },
-        { "optionId": "super_over", "label": "Super Over", "referenceType": "NONE" }
-      ],
-      "defaultPoints": 15,
-      "tags": ["result", "margin"]
-    },
-    {
-      "templateId": "sb_extras_10_plus",
-      "text": "Will the total extras in the match exceed 10?",
-      "type": "YES_NO",
-      "options": [
-        { "optionId": "yes", "label": "Yes", "referenceType": "NONE" },
-        { "optionId": "no", "label": "No", "referenceType": "NONE" }
-      ],
-      "defaultPoints": 5,
-      "tags": ["extras", "bowling"]
-    },
-    {
-      "templateId": "sb_wide_first_ball",
-      "text": "Will the first ball of the match be a wide?",
-      "type": "YES_NO",
-      "options": [
-        { "optionId": "yes", "label": "Yes", "referenceType": "NONE" },
-        { "optionId": "no", "label": "No", "referenceType": "NONE" }
-      ],
-      "defaultPoints": 15,
-      "tags": ["extras", "first_ball"]
-    },
-    {
-      "templateId": "sb_first_ball_wicket",
-      "text": "Will there be a wicket on the first ball of the match?",
-      "type": "YES_NO",
-      "options": [
-        { "optionId": "yes", "label": "Yes", "referenceType": "NONE" },
-        { "optionId": "no", "label": "No", "referenceType": "NONE" }
-      ],
-      "defaultPoints": 25,
-      "tags": ["wickets", "first_ball"]
-    },
-    {
-      "templateId": "sb_duck_match",
-      "text": "Will there be a duck (0 runs scored) in this match?",
-      "type": "YES_NO",
-      "options": [
-        { "optionId": "yes", "label": "Yes", "referenceType": "NONE" },
-        { "optionId": "no", "label": "No", "referenceType": "NONE" }
-      ],
-      "defaultPoints": 5,
-      "tags": ["batting", "duck"]
-    },
-    {
-      "templateId": "sb_golden_duck",
+      "templateId": "bat_golden_duck",
+      "category": "BATTING_MILESTONES",
       "text": "Will there be a golden duck (out on first ball faced)?",
       "type": "YES_NO",
       "options": [
-        { "optionId": "yes", "label": "Yes", "referenceType": "NONE" },
-        { "optionId": "no", "label": "No", "referenceType": "NONE" }
+        { "optionId": "yes", "label": "Yes - First ball gone!", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No - All survive first ball", "referenceType": "NONE", "referenceId": null }
       ],
-      "defaultPoints": 10,
-      "tags": ["batting", "duck", "first_ball"]
+      "defaultPoints": 150,
+      "defaultPointsWrong": 0,
+      "riskLevel": "MEDIUM",
+      "tags": ["batting", "duck", "golden_duck", "first_ball"]
     },
     {
-      "templateId": "sb_winning_team_6s",
-      "text": "Will the winning team hit more sixes than the losing team?",
+      "templateId": "bat_multiple_fifties",
+      "category": "BATTING_MILESTONES",
+      "text": "Will multiple batsmen (2+) score fifties in the match?",
       "type": "YES_NO",
       "options": [
-        { "optionId": "yes", "label": "Yes", "referenceType": "NONE" },
-        { "optionId": "no", "label": "No", "referenceType": "NONE" }
+        { "optionId": "yes", "label": "Yes - Batting masterclass", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No - One hero only", "referenceType": "NONE", "referenceId": null }
       ],
-      "defaultPoints": 10,
-      "tags": ["sixes", "result"]
+      "defaultPoints": 175,
+      "defaultPointsWrong": -25,
+      "riskLevel": "MEDIUM",
+      "tags": ["batting", "fifty", "milestones", "multiple"]
     },
     {
-      "templateId": "sb_chase_successful",
-      "text": "Will the team batting second successfully chase the target?",
-      "type": "YES_NO",
-      "options": [
-        { "optionId": "yes", "label": "Yes", "referenceType": "NONE" },
-        { "optionId": "no", "label": "No", "referenceType": "NONE" }
-      ],
-      "defaultPoints": 10,
-      "tags": ["result", "chase"]
-    },
-    {
-      "templateId": "sb_powerplay_score",
-      "text": "What will be the combined powerplay score (both innings)?",
+      "templateId": "bat_team_total_bracket",
+      "category": "BATTING_MILESTONES",
+      "text": "What will be the highest team total in the match?",
       "type": "MULTI_CHOICE",
       "options": [
-        { "optionId": "under_80", "label": "Under 80", "referenceType": "NONE" },
-        { "optionId": "80_to_100", "label": "80-100", "referenceType": "NONE" },
-        { "optionId": "101_to_120", "label": "101-120", "referenceType": "NONE" },
-        { "optionId": "over_120", "label": "Over 120", "referenceType": "NONE" }
+        { "optionId": "under_140", "label": "Under 140 (Low scorer)", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "140_169", "label": "140-169 (Par score)", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "170_189", "label": "170-189 (Good total)", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "190_209", "label": "190-209 (High scoring)", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "210_plus", "label": "210+ (Mammoth total!)", "referenceType": "NONE", "referenceId": null }
       ],
-      "defaultPoints": 15,
-      "tags": ["powerplay", "runs"]
+      "defaultPoints": 150,
+      "defaultPointsWrong": 0,
+      "riskLevel": "MEDIUM",
+      "tags": ["batting", "team_total", "runs", "milestones"]
     },
     {
-      "templateId": "sb_death_overs_wickets",
-      "text": "Will there be 3+ wickets in the death overs (overs 16-20) of any innings?",
+      "templateId": "bowl_hat_trick",
+      "category": "BOWLING_MILESTONES",
+      "text": "Will any bowler claim the elusive hat-trick (3 wickets in 3 balls)?",
       "type": "YES_NO",
       "options": [
-        { "optionId": "yes", "label": "Yes", "referenceType": "NONE" },
-        { "optionId": "no", "label": "No", "referenceType": "NONE" }
+        { "optionId": "yes", "label": "Yes - Hat-trick magic!", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No - Not this time", "referenceType": "NONE", "referenceId": null }
       ],
-      "defaultPoints": 10,
-      "tags": ["wickets", "death_overs"]
+      "defaultPoints": 500,
+      "defaultPointsWrong": -100,
+      "riskLevel": "HIGH",
+      "tags": ["bowling", "hat_trick", "wickets", "rare"]
     },
     {
-      "templateId": "sb_last_over_runs",
-      "text": "Will the last over of any innings have 15+ runs?",
+      "templateId": "bowl_four_wicket_haul",
+      "category": "BOWLING_MILESTONES",
+      "text": "Will any bowler claim 4 or more wickets in their spell?",
       "type": "YES_NO",
       "options": [
-        { "optionId": "yes", "label": "Yes", "referenceType": "NONE" },
-        { "optionId": "no", "label": "No", "referenceType": "NONE" }
+        { "optionId": "yes", "label": "Yes - Bowling destruction", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No - Wickets shared", "referenceType": "NONE", "referenceId": null }
       ],
-      "defaultPoints": 10,
-      "tags": ["runs", "last_over"]
+      "defaultPoints": 180,
+      "defaultPointsWrong": -30,
+      "riskLevel": "MEDIUM",
+      "tags": ["bowling", "wickets", "milestones", "individual"]
     },
     {
-      "templateId": "sb_opening_partnership",
-      "text": "Will any opening partnership exceed 40 runs?",
+      "templateId": "bowl_five_wicket_haul",
+      "category": "BOWLING_MILESTONES",
+      "text": "Will any bowler produce a sensational 5-wicket haul?",
       "type": "YES_NO",
       "options": [
-        { "optionId": "yes", "label": "Yes", "referenceType": "NONE" },
-        { "optionId": "no", "label": "No", "referenceType": "NONE" }
+        { "optionId": "yes", "label": "Yes - Fifer incoming!", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No", "referenceType": "NONE", "referenceId": null }
       ],
-      "defaultPoints": 10,
-      "tags": ["partnership", "opening"]
+      "defaultPoints": 350,
+      "defaultPointsWrong": -75,
+      "riskLevel": "HIGH",
+      "tags": ["bowling", "wickets", "five_wicket_haul", "rare"]
     },
     {
-      "templateId": "sb_all_out",
+      "templateId": "bowl_maiden_over",
+      "category": "BOWLING_MILESTONES",
+      "text": "Will there be a maiden over in this T20 battle?",
+      "type": "YES_NO",
+      "options": [
+        { "optionId": "yes", "label": "Yes - Dot ball specialist!", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No - Runs every over", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 200,
+      "defaultPointsWrong": -40,
+      "riskLevel": "MEDIUM",
+      "tags": ["bowling", "maiden", "rare", "dot_balls"]
+    },
+    {
+      "templateId": "bowl_first_over_wicket",
+      "category": "BOWLING_MILESTONES",
+      "text": "Will there be a wicket in the very first over?",
+      "type": "YES_NO",
+      "options": [
+        { "optionId": "yes", "label": "Yes - Early breakthrough!", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No - Openers survive", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 150,
+      "defaultPointsWrong": 0,
+      "riskLevel": "MEDIUM",
+      "tags": ["bowling", "wickets", "first_over", "powerplay"]
+    },
+    {
+      "templateId": "bowl_economy_under_6",
+      "category": "BOWLING_MILESTONES",
+      "text": "Will any bowler (min 3 overs) finish with economy rate under 6?",
+      "type": "YES_NO",
+      "options": [
+        { "optionId": "yes", "label": "Yes - Miserly bowling", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No - Batters dominate", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 175,
+      "defaultPointsWrong": -25,
+      "riskLevel": "MEDIUM",
+      "tags": ["bowling", "economy", "milestones"]
+    },
+    {
+      "templateId": "bowl_best_figures_bracket",
+      "category": "BOWLING_MILESTONES",
+      "text": "What will be the best bowling figures (by wickets) in the match?",
+      "type": "MULTI_CHOICE",
+      "options": [
+        { "optionId": "0_1", "label": "0-1 wickets (Tough day)", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "2", "label": "2 wickets", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "3", "label": "3 wickets", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "4_plus", "label": "4+ wickets (Bowling hero!)", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 130,
+      "defaultPointsWrong": 0,
+      "riskLevel": "LOW",
+      "tags": ["bowling", "wickets", "milestones", "individual"]
+    },
+    {
+      "templateId": "bowl_wicket_first_ball_match",
+      "category": "BOWLING_MILESTONES",
+      "text": "Will there be a wicket on the very first ball of the match?",
+      "type": "YES_NO",
+      "options": [
+        { "optionId": "yes", "label": "Yes - Dream start!", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 400,
+      "defaultPointsWrong": -100,
+      "riskLevel": "HIGH",
+      "tags": ["bowling", "wickets", "first_ball", "rare"]
+    },
+    {
+      "templateId": "match_powerplay_runs_first",
+      "category": "MATCH_EVENTS",
+      "text": "How many runs will {{teamA}} score in the powerplay (first 6 overs)?",
+      "type": "MULTI_CHOICE",
+      "options": [
+        { "optionId": "under_35", "label": "Under 35 (Slow start)", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "35_44", "label": "35-44 (Cautious approach)", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "45_54", "label": "45-54 (Balanced)", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "55_64", "label": "55-64 (Aggressive)", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "65_plus", "label": "65+ (Explosive start!)", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 150,
+      "defaultPointsWrong": 0,
+      "riskLevel": "MEDIUM",
+      "tags": ["match_events", "powerplay", "runs", "first_innings"]
+    },
+    {
+      "templateId": "match_death_overs_runs",
+      "category": "MATCH_EVENTS",
+      "text": "Will any team score 50+ runs in the death overs (overs 16-20)?",
+      "type": "YES_NO",
+      "options": [
+        { "optionId": "yes", "label": "Yes - Death over carnage!", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No - Bowlers hold firm", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 140,
+      "defaultPointsWrong": 0,
+      "riskLevel": "MEDIUM",
+      "tags": ["match_events", "death_overs", "runs"]
+    },
+    {
+      "templateId": "match_death_overs_runs_bracket",
+      "category": "MATCH_EVENTS",
+      "text": "What will be the combined death overs (16-20) runs for both innings?",
+      "type": "MULTI_CHOICE",
+      "options": [
+        { "optionId": "under_70", "label": "Under 70 (Bowlers dominate)", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "70_89", "label": "70-89 (Even battle)", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "90_109", "label": "90-109 (Batters edge)", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "110_plus", "label": "110+ (Run fest!)", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 160,
+      "defaultPointsWrong": 0,
+      "riskLevel": "MEDIUM",
+      "tags": ["match_events", "death_overs", "runs", "combined"]
+    },
+    {
+      "templateId": "match_middle_overs_run_rate",
+      "category": "MATCH_EVENTS",
+      "text": "Will the combined run rate in middle overs (7-15) exceed 8 RPO?",
+      "type": "YES_NO",
+      "options": [
+        { "optionId": "yes", "label": "Yes - No lull in scoring", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No - Spinners strangle", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 120,
+      "defaultPointsWrong": 0,
+      "riskLevel": "LOW",
+      "tags": ["match_events", "middle_overs", "run_rate"]
+    },
+    {
+      "templateId": "match_total_extras",
+      "category": "MATCH_EVENTS",
+      "text": "How many extras will be conceded in the entire match?",
+      "type": "MULTI_CHOICE",
+      "options": [
+        { "optionId": "0_8", "label": "0-8 (Disciplined bowling)", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "9_15", "label": "9-15 (Normal)", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "16_22", "label": "16-22 (Sloppy)", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "23_plus", "label": "23+ (Gift runs galore!)", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 130,
+      "defaultPointsWrong": 0,
+      "riskLevel": "LOW",
+      "tags": ["match_events", "extras", "bowling"]
+    },
+    {
+      "templateId": "match_super_over",
+      "category": "MATCH_EVENTS",
+      "text": "Will this match go to a thrilling Super Over?",
+      "type": "YES_NO",
+      "options": [
+        { "optionId": "yes", "label": "Yes - Tied finish!", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No - Clear result", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 500,
+      "defaultPointsWrong": -100,
+      "riskLevel": "HIGH",
+      "tags": ["match_events", "super_over", "rare", "result"]
+    },
+    {
+      "templateId": "match_last_over_decider",
+      "category": "MATCH_EVENTS",
+      "text": "Will the match be decided in the last over?",
+      "type": "YES_NO",
+      "options": [
+        { "optionId": "yes", "label": "Yes - Nail-biter!", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No - Decided early", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 175,
+      "defaultPointsWrong": 0,
+      "riskLevel": "MEDIUM",
+      "tags": ["match_events", "last_over", "close_match"]
+    },
+    {
+      "templateId": "match_win_margin",
+      "category": "MATCH_EVENTS",
+      "text": "What will be the victory margin?",
+      "type": "MULTI_CHOICE",
+      "options": [
+        { "optionId": "very_close", "label": "Super Close (0-5 runs/1 wicket/Super Over)", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "close", "label": "Close (6-15 runs/2-3 wickets)", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "comfortable", "label": "Comfortable (16-35 runs/4-6 wickets)", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "dominant", "label": "Dominant (36+ runs/7+ wickets)", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 175,
+      "defaultPointsWrong": 0,
+      "riskLevel": "MEDIUM",
+      "tags": ["match_events", "result", "margin"]
+    },
+    {
+      "templateId": "match_all_wickets_fall",
+      "category": "MATCH_EVENTS",
       "text": "Will any team be bowled out (all 10 wickets)?",
       "type": "YES_NO",
       "options": [
-        { "optionId": "yes", "label": "Yes", "referenceType": "NONE" },
-        { "optionId": "no", "label": "No", "referenceType": "NONE" }
+        { "optionId": "yes", "label": "Yes - Complete collapse", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No - Wickets preserved", "referenceType": "NONE", "referenceId": null }
       ],
-      "defaultPoints": 10,
-      "tags": ["wickets", "all_out"]
+      "defaultPoints": 140,
+      "defaultPointsWrong": 0,
+      "riskLevel": "MEDIUM",
+      "tags": ["match_events", "all_out", "wickets"]
     },
     {
-      "templateId": "sb_highest_scorer_team",
-      "text": "Which team will have the highest individual scorer?",
-      "type": "TEAM_PICK",
+      "templateId": "match_20_plus_last_over",
+      "category": "MATCH_EVENTS",
+      "text": "Will any last over (20th) see 20+ runs scored?",
+      "type": "YES_NO",
       "options": [
-        { "optionId": "teamA", "label": "{{teamA}}", "referenceType": "TEAM", "referenceId": "{{teamAId}}" },
-        { "optionId": "teamB", "label": "{{teamB}}", "referenceType": "TEAM", "referenceId": "{{teamBId}}" }
+        { "optionId": "yes", "label": "Yes - Carnage at the end!", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No", "referenceType": "NONE", "referenceId": null }
       ],
-      "defaultPoints": 10,
-      "tags": ["runs", "individual"]
+      "defaultPoints": 250,
+      "defaultPointsWrong": -50,
+      "riskLevel": "HIGH",
+      "tags": ["match_events", "last_over", "runs", "rare"]
     },
     {
-      "templateId": "sb_best_bowler_team",
-      "text": "Which team will have the bowler with most wickets?",
-      "type": "TEAM_PICK",
+      "templateId": "rare_run_out",
+      "category": "RARE_EVENTS",
+      "text": "Will there be a run out in this match?",
+      "type": "YES_NO",
       "options": [
-        { "optionId": "teamA", "label": "{{teamA}}", "referenceType": "TEAM", "referenceId": "{{teamAId}}" },
-        { "optionId": "teamB", "label": "{{teamB}}", "referenceType": "TEAM", "referenceId": "{{teamBId}}" }
+        { "optionId": "yes", "label": "Yes - Direct hit drama!", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No - Clean running", "referenceType": "NONE", "referenceId": null }
       ],
-      "defaultPoints": 10,
-      "tags": ["wickets", "bowling"]
+      "defaultPoints": 100,
+      "defaultPointsWrong": 0,
+      "riskLevel": "LOW",
+      "tags": ["rare_events", "run_out", "fielding", "dismissal"]
     },
     {
-      "templateId": "sb_stumping",
+      "templateId": "rare_stumping",
+      "category": "RARE_EVENTS",
       "text": "Will there be a stumping in this match?",
       "type": "YES_NO",
       "options": [
-        { "optionId": "yes", "label": "Yes", "referenceType": "NONE" },
-        { "optionId": "no", "label": "No", "referenceType": "NONE" }
+        { "optionId": "yes", "label": "Yes - Lightning gloves!", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No - Batsmen stay grounded", "referenceType": "NONE", "referenceId": null }
       ],
-      "defaultPoints": 10,
-      "tags": ["dismissal", "wicketkeeping"]
+      "defaultPoints": 150,
+      "defaultPointsWrong": 0,
+      "riskLevel": "MEDIUM",
+      "tags": ["rare_events", "stumping", "wicketkeeping", "dismissal"]
     },
     {
-      "templateId": "sb_lbw_dismissal",
-      "text": "Will there be an LBW dismissal in this match?",
+      "templateId": "rare_dropped_catch",
+      "category": "RARE_EVENTS",
+      "text": "Will there be a dropped catch that commentators will replay?",
       "type": "YES_NO",
       "options": [
-        { "optionId": "yes", "label": "Yes", "referenceType": "NONE" },
-        { "optionId": "no", "label": "No", "referenceType": "NONE" }
+        { "optionId": "yes", "label": "Yes - Butter fingers!", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No - Clean sheet in field", "referenceType": "NONE", "referenceId": null }
       ],
-      "defaultPoints": 5,
-      "tags": ["dismissal", "lbw"]
+      "defaultPoints": 75,
+      "defaultPointsWrong": 0,
+      "riskLevel": "LOW",
+      "tags": ["rare_events", "dropped_catch", "fielding"]
     },
     {
-      "templateId": "sb_bowled_dismissal",
-      "text": "Will there be a bowled dismissal in this match?",
+      "templateId": "rare_drs_review",
+      "category": "RARE_EVENTS",
+      "text": "Will DRS be used in this match?",
       "type": "YES_NO",
       "options": [
-        { "optionId": "yes", "label": "Yes", "referenceType": "NONE" },
-        { "optionId": "no", "label": "No", "referenceType": "NONE" }
+        { "optionId": "yes", "label": "Yes - Review time!", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No - Umpires got it right", "referenceType": "NONE", "referenceId": null }
       ],
-      "defaultPoints": 5,
-      "tags": ["dismissal", "bowled"]
+      "defaultPoints": 60,
+      "defaultPointsWrong": 0,
+      "riskLevel": "LOW",
+      "tags": ["rare_events", "drs", "technology", "review"]
     },
     {
-      "templateId": "sb_hit_wicket",
-      "text": "Will there be a hit wicket dismissal in this match?",
+      "templateId": "rare_drs_overturn",
+      "category": "RARE_EVENTS",
+      "text": "Will a DRS review successfully overturn an on-field decision?",
       "type": "YES_NO",
       "options": [
-        { "optionId": "yes", "label": "Yes", "referenceType": "NONE" },
-        { "optionId": "no", "label": "No", "referenceType": "NONE" }
+        { "optionId": "yes", "label": "Yes - Umpire's call reversed!", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No - On-field call stands", "referenceType": "NONE", "referenceId": null }
       ],
-      "defaultPoints": 25,
-      "tags": ["dismissal", "rare"]
+      "defaultPoints": 125,
+      "defaultPointsWrong": 0,
+      "riskLevel": "MEDIUM",
+      "tags": ["rare_events", "drs", "technology", "overturn"]
     },
     {
-      "templateId": "sb_free_hit",
-      "text": "Will there be a boundary off a free hit?",
+      "templateId": "rare_retired_hurt",
+      "category": "RARE_EVENTS",
+      "text": "Will any batsman be retired hurt during the match?",
       "type": "YES_NO",
       "options": [
-        { "optionId": "yes", "label": "Yes", "referenceType": "NONE" },
-        { "optionId": "no", "label": "No", "referenceType": "NONE" }
+        { "optionId": "yes", "label": "Yes - Injury concern", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No - Everyone fit", "referenceType": "NONE", "referenceId": null }
       ],
-      "defaultPoints": 10,
-      "tags": ["boundary", "free_hit"]
+      "defaultPoints": 300,
+      "defaultPointsWrong": -75,
+      "riskLevel": "HIGH",
+      "tags": ["rare_events", "retired_hurt", "injury", "rare"]
+    },
+    {
+      "templateId": "rare_hit_wicket",
+      "category": "RARE_EVENTS",
+      "text": "Will there be a hit wicket dismissal?",
+      "type": "YES_NO",
+      "options": [
+        { "optionId": "yes", "label": "Yes - Bizarre dismissal!", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 400,
+      "defaultPointsWrong": -100,
+      "riskLevel": "HIGH",
+      "tags": ["rare_events", "hit_wicket", "dismissal", "rare"]
+    },
+    {
+      "templateId": "rare_obstructing_field",
+      "category": "RARE_EVENTS",
+      "text": "Will there be an obstructing the field dismissal?",
+      "type": "YES_NO",
+      "options": [
+        { "optionId": "yes", "label": "Yes - Controversial out!", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 500,
+      "defaultPointsWrong": -100,
+      "riskLevel": "HIGH",
+      "tags": ["rare_events", "obstructing_field", "dismissal", "ultra_rare"]
+    },
+    {
+      "templateId": "rare_boundary_off_free_hit",
+      "category": "RARE_EVENTS",
+      "text": "Will a batsman smash a boundary off a free hit?",
+      "type": "YES_NO",
+      "options": [
+        { "optionId": "yes", "label": "Yes - Free runs taken!", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No - Opportunity missed", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 120,
+      "defaultPointsWrong": 0,
+      "riskLevel": "MEDIUM",
+      "tags": ["rare_events", "free_hit", "boundary"]
+    },
+    {
+      "templateId": "player_captain_score_30",
+      "category": "PLAYER_PROPS",
+      "text": "Will the {{teamA}} captain score 30+ runs?",
+      "type": "YES_NO",
+      "options": [
+        { "optionId": "yes", "label": "Yes - Captain leads from front", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 140,
+      "defaultPointsWrong": 0,
+      "riskLevel": "MEDIUM",
+      "tags": ["player_props", "captain", "batting", "individual"]
+    },
+    {
+      "templateId": "player_captain_battle",
+      "category": "PLAYER_PROPS",
+      "text": "Which captain will score more runs?",
+      "type": "MULTI_CHOICE",
+      "options": [
+        { "optionId": "teamA_captain", "label": "{{teamA}} Captain", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "teamB_captain", "label": "{{teamB}} Captain", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "tie", "label": "Exact same runs!", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 150,
+      "defaultPointsWrong": 0,
+      "riskLevel": "MEDIUM",
+      "tags": ["player_props", "captain", "comparison", "batting"]
+    },
+    {
+      "templateId": "player_opener_vs_finisher",
+      "category": "PLAYER_PROPS",
+      "text": "Will the top scorer be an opener (batting 1-2) or finisher (batting 5-7)?",
+      "type": "MULTI_CHOICE",
+      "options": [
+        { "optionId": "opener", "label": "Opener - Foundation layer", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "finisher", "label": "Finisher - Late surge", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "middle", "label": "Middle order (3-4)", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 160,
+      "defaultPointsWrong": 0,
+      "riskLevel": "MEDIUM",
+      "tags": ["player_props", "batting_position", "top_scorer"]
+    },
+    {
+      "templateId": "player_strike_rate_150",
+      "category": "PLAYER_PROPS",
+      "text": "Will any batsman (min 20 balls) finish with a strike rate above 150?",
+      "type": "YES_NO",
+      "options": [
+        { "optionId": "yes", "label": "Yes - Explosive innings!", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No - Controlled batting", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 110,
+      "defaultPointsWrong": 0,
+      "riskLevel": "LOW",
+      "tags": ["player_props", "strike_rate", "batting"]
+    },
+    {
+      "templateId": "player_strike_rate_200",
+      "category": "PLAYER_PROPS",
+      "text": "Will any batsman (min 15 balls) achieve a strike rate above 200?",
+      "type": "YES_NO",
+      "options": [
+        { "optionId": "yes", "label": "Yes - Destruction mode!", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 175,
+      "defaultPointsWrong": -25,
+      "riskLevel": "MEDIUM",
+      "tags": ["player_props", "strike_rate", "batting", "aggressive"]
+    },
+    {
+      "templateId": "player_wicketkeeper_catch",
+      "category": "PLAYER_PROPS",
+      "text": "Will either wicketkeeper take 2+ catches in the match?",
+      "type": "YES_NO",
+      "options": [
+        { "optionId": "yes", "label": "Yes - Safe hands!", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 130,
+      "defaultPointsWrong": 0,
+      "riskLevel": "MEDIUM",
+      "tags": ["player_props", "wicketkeeper", "catches", "fielding"]
+    },
+    {
+      "templateId": "player_best_bowler_economy",
+      "category": "PLAYER_PROPS",
+      "text": "Which bowler will have the best economy rate (min 2 overs)?",
+      "type": "MULTI_CHOICE",
+      "options": [
+        { "optionId": "teamA_bowler", "label": "A {{teamA}} bowler", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "teamB_bowler", "label": "A {{teamB}} bowler", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 120,
+      "defaultPointsWrong": 0,
+      "riskLevel": "LOW",
+      "tags": ["player_props", "bowling", "economy", "comparison"]
+    },
+    {
+      "templateId": "player_spinner_wickets",
+      "category": "PLAYER_PROPS",
+      "text": "Will spinners claim more wickets than pacers in the match?",
+      "type": "YES_NO",
+      "options": [
+        { "optionId": "yes", "label": "Yes - Spin to win!", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No - Pace is ace", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 150,
+      "defaultPointsWrong": 0,
+      "riskLevel": "MEDIUM",
+      "tags": ["player_props", "spinners", "pacers", "wickets", "comparison"]
+    },
+    {
+      "templateId": "fun_more_boundaries",
+      "category": "FUN_BETS",
+      "text": "Which team will hit more boundaries (4s and 6s combined)?",
+      "type": "MULTI_CHOICE",
+      "options": [
+        { "optionId": "teamA", "label": "{{teamA}}", "referenceType": "TEAM", "referenceId": null },
+        { "optionId": "teamB", "label": "{{teamB}}", "referenceType": "TEAM", "referenceId": null },
+        { "optionId": "tie", "label": "Exactly equal!", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 120,
+      "defaultPointsWrong": 0,
+      "riskLevel": "LOW",
+      "tags": ["fun_bets", "boundaries", "team_comparison"]
+    },
+    {
+      "templateId": "fun_first_wicket_team",
+      "category": "FUN_BETS",
+      "text": "Which team will lose a wicket first (across both innings)?",
+      "type": "MULTI_CHOICE",
+      "options": [
+        { "optionId": "teamA", "label": "{{teamA}}", "referenceType": "TEAM", "referenceId": null },
+        { "optionId": "teamB", "label": "{{teamB}}", "referenceType": "TEAM", "referenceId": null }
+      ],
+      "defaultPoints": 100,
+      "defaultPointsWrong": 0,
+      "riskLevel": "LOW",
+      "tags": ["fun_bets", "first_wicket", "team_comparison"]
+    },
+    {
+      "templateId": "fun_chase_successful",
+      "category": "FUN_BETS",
+      "text": "Will the team batting second successfully chase down the target?",
+      "type": "YES_NO",
+      "options": [
+        { "optionId": "yes", "label": "Yes - Chasers win!", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No - First innings score defended", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 100,
+      "defaultPointsWrong": 0,
+      "riskLevel": "LOW",
+      "tags": ["fun_bets", "chase", "result"]
+    },
+    {
+      "templateId": "fun_dot_balls_total",
+      "category": "FUN_BETS",
+      "text": "How many dot balls will there be in the entire match?",
+      "type": "MULTI_CHOICE",
+      "options": [
+        { "optionId": "under_60", "label": "Under 60 (Free-flowing runs)", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "60_79", "label": "60-79 (Balanced)", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "80_99", "label": "80-99 (Tight bowling)", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "100_plus", "label": "100+ (Dot ball fest!)", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 140,
+      "defaultPointsWrong": 0,
+      "riskLevel": "MEDIUM",
+      "tags": ["fun_bets", "dot_balls", "bowling"]
+    },
+    {
+      "templateId": "fun_fours_vs_sixes",
+      "category": "FUN_BETS",
+      "text": "Will there be more fours or sixes in the match?",
+      "type": "MULTI_CHOICE",
+      "options": [
+        { "optionId": "fours", "label": "Fours - Ground strokes rule!", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "sixes", "label": "Sixes - Power hitting!", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "equal", "label": "Exactly equal!", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 100,
+      "defaultPointsWrong": 0,
+      "riskLevel": "LOW",
+      "tags": ["fun_bets", "fours", "sixes", "boundaries"]
+    },
+    {
+      "templateId": "fun_first_boundary_type",
+      "category": "FUN_BETS",
+      "text": "Will the first boundary of the match be a four or a six?",
+      "type": "MULTI_CHOICE",
+      "options": [
+        { "optionId": "four", "label": "Four - Along the ground", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "six", "label": "Six - Over the rope!", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 90,
+      "defaultPointsWrong": 0,
+      "riskLevel": "LOW",
+      "tags": ["fun_bets", "first_boundary", "fours", "sixes"]
+    },
+    {
+      "templateId": "fun_wide_or_no_ball_first",
+      "category": "FUN_BETS",
+      "text": "What will come first - a wide or a no-ball?",
+      "type": "MULTI_CHOICE",
+      "options": [
+        { "optionId": "wide", "label": "Wide", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no_ball", "label": "No-ball", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "neither", "label": "Neither in the match!", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 80,
+      "defaultPointsWrong": 0,
+      "riskLevel": "LOW",
+      "tags": ["fun_bets", "extras", "wide", "no_ball"]
+    },
+    {
+      "templateId": "fun_highest_partnership",
+      "category": "FUN_BETS",
+      "text": "What will be the highest partnership of the match?",
+      "type": "MULTI_CHOICE",
+      "options": [
+        { "optionId": "under_40", "label": "Under 40 (Wickets falling)", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "40_59", "label": "40-59 (Decent stand)", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "60_79", "label": "60-79 (Strong partnership)", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "80_plus", "label": "80+ (Match-defining!)", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 150,
+      "defaultPointsWrong": 0,
+      "riskLevel": "MEDIUM",
+      "tags": ["fun_bets", "partnership", "batting"]
+    },
+    {
+      "templateId": "fun_batting_first_wins",
+      "category": "FUN_BETS",
+      "text": "Will the team batting first win the match?",
+      "type": "YES_NO",
+      "options": [
+        { "optionId": "yes", "label": "Yes - Defend the total!", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No - Chase masters!", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 100,
+      "defaultPointsWrong": 0,
+      "riskLevel": "LOW",
+      "tags": ["fun_bets", "result", "batting_first"]
+    },
+    {
+      "templateId": "fun_powerplay_wickets",
+      "category": "FUN_BETS",
+      "text": "How many wickets will fall in both powerplays combined?",
+      "type": "MULTI_CHOICE",
+      "options": [
+        { "optionId": "0_2", "label": "0-2 (Batters dominate)", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "3_4", "label": "3-4 (Balanced start)", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "5_6", "label": "5-6 (Bowlers strike)", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "7_plus", "label": "7+ (Carnage!)", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 140,
+      "defaultPointsWrong": 0,
+      "riskLevel": "MEDIUM",
+      "tags": ["fun_bets", "powerplay", "wickets"]
+    },
+    {
+      "templateId": "fun_winning_team_more_sixes",
+      "category": "FUN_BETS",
+      "text": "Will the winning team have hit more sixes than the losing team?",
+      "type": "YES_NO",
+      "options": [
+        { "optionId": "yes", "label": "Yes - Power equals victory", "referenceType": "NONE", "referenceId": null },
+        { "optionId": "no", "label": "No - Smart cricket wins", "referenceType": "NONE", "referenceId": null }
+      ],
+      "defaultPoints": 110,
+      "defaultPointsWrong": 0,
+      "riskLevel": "LOW",
+      "tags": ["fun_bets", "sixes", "result", "comparison"]
     }
   ]
 }

@@ -12,10 +12,12 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { trackEvent } from "../analytics";
+import { migrateUserBets } from "../lib/betMigration";
 
 const AuthContext = createContext(null);
 
-const STORAGE_KEY = "fantasy_arena_auth";
+// Changed from "fantasy_arena_auth" to force re-login and trigger bet migration
+const STORAGE_KEY = "fantasy_arena_auth_v2";
 const CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || "";
 const DEV_MODE = process.env.NODE_ENV === "development" && !CLIENT_ID;
 
@@ -51,6 +53,14 @@ function persistUser(user) {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(loadPersistedUser);
 
+  // On initial load, migrate any localStorage bets for persisted user
+  useEffect(() => {
+    const persistedUser = loadPersistedUser();
+    if (persistedUser?.userId) {
+      migrateUserBets(persistedUser.userId).catch(() => {});
+    }
+  }, []);
+
   // Handle the credential response from Google
   const handleCredentialResponse = useCallback((response) => {
     const payload = decodeJwtPayload(response.credential);
@@ -66,6 +76,8 @@ export function AuthProvider({ children }) {
     setUser(authUser);
     persistUser(authUser);
     trackEvent("sign_in", { userId: authUser.userId });
+    // Silently migrate any localStorage bets to Supabase
+    migrateUserBets(authUser.userId).catch(() => {});
   }, []);
 
   // Initialize GIS once the script is loaded
@@ -111,6 +123,8 @@ export function AuthProvider({ children }) {
       setUser(devUser);
       persistUser(devUser);
       trackEvent("sign_in", { userId: devUser.userId, dev: true });
+      // Silently migrate any localStorage bets to Supabase
+      migrateUserBets(devUser.userId).catch(() => {});
       return;
     }
 
@@ -140,6 +154,8 @@ export function AuthProvider({ children }) {
                 setUser(authUser);
                 persistUser(authUser);
                 trackEvent("sign_in", { userId: authUser.userId });
+                // Silently migrate any localStorage bets to Supabase
+                migrateUserBets(authUser.userId).catch(() => {});
               });
           }
         },

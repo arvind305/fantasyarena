@@ -499,7 +499,7 @@ export async function apiSaveMatchQuestions(matchId, questions) {
     return { success: true, count: questions.length };
   }
   if (USE_LOCAL_ENGINE) return mock(() => engine.saveMatchQuestions(matchId, questions));
-  return realPost(`/admin/match/${matchId}/questions`, { questions });
+  return realPost(`/admin/${matchId}/questions`, { questions });
 }
 
 // ── Admin: Match Results & Scoring ──────────────────────────────────────────
@@ -537,7 +537,7 @@ export async function apiSaveMatchResults(matchId, resultsPayload) {
     return { success: true, matchId };
   }
 
-  return realPost(`/admin/match/${matchId}/results`, resultsPayload);
+  return realPost(`/admin/${matchId}/results`, resultsPayload);
 }
 
 /**
@@ -557,11 +557,53 @@ export async function apiCalculateMatchScores(matchId, eventId = 't20wc_2026') {
       console.warn('[api] Failed to lock bets:', lockError.message);
     }
 
-    // Then call backend to trigger scoring calculation
-    return realPost(`/admin/match/${matchId}/score`, { eventId });
+    // Try calling backend first
+    try {
+      const result = await realPost(`/admin/${matchId}/score`, { eventId });
+      return result;
+    } catch (backendError) {
+      console.warn('[api] Backend scoring failed, trying Supabase RPC:', backendError.message);
+
+      // Fallback: Try Supabase RPC function if backend fails
+      try {
+        const { data, error } = await supabase.rpc('calculate_match_scores', {
+          p_match_id: matchId,
+          p_event_id: eventId
+        });
+
+        if (error) {
+          // If RPC doesn't exist, provide helpful error message
+          if (error.message.includes('function') && error.message.includes('does not exist')) {
+            throw new Error(
+              'Scoring function not installed. Please run the SQL in src/db/admin-scoring-function.sql ' +
+              'in your Supabase SQL Editor, or configure SUPABASE_SERVICE_ROLE_KEY in the backend .env file.'
+            );
+          }
+          throw new Error(error.message);
+        }
+
+        if (data && data.success === false) {
+          throw new Error(data.error || 'Scoring failed');
+        }
+
+        return {
+          success: true,
+          message: `Scored ${data?.betsScored || 0} bets for match ${matchId}`,
+          ...data
+        };
+      } catch (rpcError) {
+        // Re-throw with original backend error if RPC also fails
+        throw new Error(
+          `Backend: ${backendError.message}. ` +
+          `Fallback: ${rpcError.message}. ` +
+          'To fix: Either run the backend with SUPABASE_SERVICE_ROLE_KEY configured, ' +
+          'or install the scoring function from src/db/admin-scoring-function.sql in Supabase.'
+        );
+      }
+    }
   }
 
-  return realPost(`/admin/match/${matchId}/score`, { eventId });
+  return realPost(`/admin/${matchId}/score`, { eventId });
 }
 
 /**
@@ -590,7 +632,7 @@ export async function apiGetMatchResults(matchId) {
     };
   }
 
-  return realGet(`/admin/match/${matchId}/results`);
+  return realGet(`/admin/${matchId}/results`);
 }
 
 /**
@@ -612,5 +654,5 @@ export async function apiLockMatchBets(matchId) {
     };
   }
 
-  return realPost(`/admin/match/${matchId}/lock-bets`, {});
+  return realPost(`/admin/${matchId}/lock-bets`, {});
 }
