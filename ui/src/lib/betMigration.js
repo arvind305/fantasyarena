@@ -19,9 +19,11 @@ const MIGRATION_FLAG = "betting_arena_migrated";
 function getLocalStorageBets() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
+    console.log('[betMigration] localStorage raw data:', raw ? 'Found (' + raw.length + ' chars)' : 'EMPTY');
     if (!raw) return [];
 
     const state = JSON.parse(raw);
+    console.log('[betMigration] Parsed state, bets:', state.bets ? Object.keys(state.bets) : 'NONE');
     if (!state.bets) return [];
 
     const allBets = [];
@@ -107,16 +109,26 @@ async function migrateBet(bet) {
  * and reassigns them to the user's real Google ID.
  */
 export async function migrateUserBets(userId) {
-  if (!userId) return { migrated: 0, total: 0 };
-  if (!supabase || !isSupabaseConfigured()) return { migrated: 0, total: 0 };
+  console.log('[betMigration] Starting migration for user:', userId?.substring(0, 12) + '...');
+
+  if (!userId) {
+    console.log('[betMigration] No userId provided');
+    return { migrated: 0, total: 0 };
+  }
+  if (!supabase || !isSupabaseConfigured()) {
+    console.log('[betMigration] Supabase not configured');
+    return { migrated: 0, total: 0 };
+  }
 
   // Check if already migrated
   const migratedUsers = getMigratedUsers();
   if (migratedUsers.includes(userId)) {
+    console.log('[betMigration] User already migrated previously');
     return { migrated: 0, total: 0, alreadyMigrated: true };
   }
 
   const localBets = getLocalStorageBets();
+  console.log('[betMigration] Found', localBets.length, 'total bets in localStorage');
 
   // Get bets for this user OR for dev_user_001 (legacy shared ID)
   // Reassign dev_user_001 bets to the real user
