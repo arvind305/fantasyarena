@@ -152,6 +152,159 @@
         "createdAt": "2026-02-07T00:00:00.000Z",
         "status": "OPEN"
       }
+    ],
+    "wc_m4": [
+      {
+        "questionId": "q_wc_m4_winner",
+        "matchId": "wc_m4",
+        "eventId": "t20wc_2026",
+        "section": "STANDARD",
+        "kind": "WINNER",
+        "type": "TEAM_PICK",
+        "text": "Who will win the match?",
+        "points": 1000,
+        "superOverMultiplier": 5,
+        "options": [
+          {
+            "optionId": "opt_wc_m4_winner_teamA",
+            "label": "NZ",
+            "referenceType": "TEAM",
+            "referenceId": "nz",
+            "weight": 1
+          },
+          {
+            "optionId": "opt_wc_m4_winner_teamB",
+            "label": "AFG",
+            "referenceType": "TEAM",
+            "referenceId": "afg",
+            "weight": 1
+          },
+          {
+            "optionId": "opt_wc_m4_winner_superover",
+            "label": "Super Over",
+            "referenceType": "NONE",
+            "referenceId": null,
+            "weight": 5
+          }
+        ],
+        "createdAt": "2026-02-08T05:00:08.733Z",
+        "status": "OPEN"
+      },
+      {
+        "questionId": "q_wc_m4_total_runs",
+        "matchId": "wc_m4",
+        "eventId": "t20wc_2026",
+        "section": "STANDARD",
+        "kind": "TOTAL_RUNS",
+        "type": "NUMERIC_INPUT",
+        "text": "Predict the total runs scored in the match (both innings combined)",
+        "points": 1000,
+        "options": [],
+        "createdAt": "2026-02-08T05:00:08.733Z",
+        "status": "OPEN"
+      }
+    ],
+    "wc_m5": [
+      {
+        "questionId": "q_wc_m5_winner",
+        "matchId": "wc_m5",
+        "eventId": "t20wc_2026",
+        "section": "STANDARD",
+        "kind": "WINNER",
+        "type": "TEAM_PICK",
+        "text": "Who will win the match?",
+        "points": 1000,
+        "superOverMultiplier": 5,
+        "options": [
+          {
+            "optionId": "opt_wc_m5_winner_teamA",
+            "label": "ENG",
+            "referenceType": "TEAM",
+            "referenceId": "eng",
+            "weight": 1
+          },
+          {
+            "optionId": "opt_wc_m5_winner_teamB",
+            "label": "NEP",
+            "referenceType": "TEAM",
+            "referenceId": "nep",
+            "weight": 1
+          },
+          {
+            "optionId": "opt_wc_m5_winner_superover",
+            "label": "Super Over",
+            "referenceType": "NONE",
+            "referenceId": null,
+            "weight": 5
+          }
+        ],
+        "createdAt": "2026-02-08T05:00:08.733Z",
+        "status": "OPEN"
+      },
+      {
+        "questionId": "q_wc_m5_total_runs",
+        "matchId": "wc_m5",
+        "eventId": "t20wc_2026",
+        "section": "STANDARD",
+        "kind": "TOTAL_RUNS",
+        "type": "NUMERIC_INPUT",
+        "text": "Predict the total runs scored in the match (both innings combined)",
+        "points": 1000,
+        "options": [],
+        "createdAt": "2026-02-08T05:00:08.733Z",
+        "status": "OPEN"
+      }
+    ],
+    "wc_m6": [
+      {
+        "questionId": "q_wc_m6_winner",
+        "matchId": "wc_m6",
+        "eventId": "t20wc_2026",
+        "section": "STANDARD",
+        "kind": "WINNER",
+        "type": "TEAM_PICK",
+        "text": "Who will win the match?",
+        "points": 1000,
+        "superOverMultiplier": 5,
+        "options": [
+          {
+            "optionId": "opt_wc_m6_winner_teamA",
+            "label": "SL",
+            "referenceType": "TEAM",
+            "referenceId": "sl",
+            "weight": 1
+          },
+          {
+            "optionId": "opt_wc_m6_winner_teamB",
+            "label": "IRE",
+            "referenceType": "TEAM",
+            "referenceId": "ire",
+            "weight": 1
+          },
+          {
+            "optionId": "opt_wc_m6_winner_superover",
+            "label": "Super Over",
+            "referenceType": "NONE",
+            "referenceId": null,
+            "weight": 5
+          }
+        ],
+        "createdAt": "2026-02-08T05:00:08.733Z",
+        "status": "OPEN"
+      },
+      {
+        "questionId": "q_wc_m6_total_runs",
+        "matchId": "wc_m6",
+        "eventId": "t20wc_2026",
+        "section": "STANDARD",
+        "kind": "TOTAL_RUNS",
+        "type": "NUMERIC_INPUT",
+        "text": "Predict the total runs scored in the match (both innings combined)",
+        "points": 1000,
+        "options": [],
+        "createdAt": "2026-02-08T05:00:08.733Z",
+        "status": "OPEN"
+      }
     ]
   }
 }
