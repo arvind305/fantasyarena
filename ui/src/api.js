@@ -135,6 +135,7 @@ export async function apiSubmitBets(matchId, userId, answers) {
   if (blocked) return blocked;
 
   if (supabase && isSupabaseConfigured()) {
+    console.log("[api] Submitting bet to Supabase:", matchId, userId);
     const now = new Date().toISOString();
     const betId = `bet_${userId}_${matchId}`;
     const { data, error } = await supabase
@@ -150,10 +151,16 @@ export async function apiSubmitBets(matchId, userId, answers) {
       }, { onConflict: 'user_id,match_id' })
       .select()
       .single();
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error("[api] Supabase bet submission failed:", error.message);
+      throw new Error(error.message);
+    }
+    console.log("[api] Bet saved to Supabase successfully");
     return { success: true, submittedAt: data.submitted_at, isLocked: data.is_locked };
   }
 
+  // WARNING: Supabase not configured - bets go to localStorage only!
+  console.warn("[api] WARNING: Supabase not configured! Bet going to localStorage only - may be lost!");
   if (USE_LOCAL_ENGINE) return mock(() => engine.submitBets(matchId, userId, answers));
   return realPost(`/match/${matchId}/bets`, { userId, answers });
 }

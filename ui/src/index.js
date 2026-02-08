@@ -32,14 +32,25 @@ import AdminMatchBuilder from "./pages/AdminMatchBuilder";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminMatchResults from "./pages/AdminMatchResults";
 import InAppBrowserWarning from "./components/InAppBrowserWarning";
+import { isSupabaseConfigured } from "./lib/supabase";
 
 trackAppOpen();
 startPolling();
 
+// CRITICAL: Log configuration status for debugging
+console.log("========================================");
+console.log("[CONFIG] Fantasy Arena Startup Check");
+console.log("========================================");
+console.log("[CONFIG] Engine mode:", ENGINE_MODE);
+console.log("[CONFIG] Supabase configured:", isSupabaseConfigured() ? "YES" : "NO - BETS WILL BE LOST!");
+console.log("[CONFIG] Google Client ID:", process.env.REACT_APP_GOOGLE_CLIENT_ID ? "SET" : "MISSING");
+if (!isSupabaseConfigured()) {
+  console.error("[CONFIG] CRITICAL: Supabase is NOT configured. All bets will go to localStorage only!");
+}
+console.log("========================================");
+
 if (IS_SHADOW_MODE) {
   console.log(`[app] Running in SHADOW mode — bet submissions disabled, data polling active.`);
-} else {
-  console.log(`[app] Engine mode: ${ENGINE_MODE}`);
 }
 
 // Load admin config before rendering
