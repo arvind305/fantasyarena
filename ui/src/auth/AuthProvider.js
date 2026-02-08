@@ -13,6 +13,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { trackEvent } from "../analytics";
 import { migrateUserBets } from "../lib/betMigration";
+import { saveUserProfile } from "../lib/userProfile";
 
 const AuthContext = createContext(null);
 
@@ -53,10 +54,13 @@ function persistUser(user) {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(loadPersistedUser);
 
-  // On initial load, migrate any localStorage bets for persisted user
+  // On initial load, sync user profile and migrate any localStorage bets
   useEffect(() => {
     const persistedUser = loadPersistedUser();
     if (persistedUser?.userId) {
+      // Save/update user profile in Supabase
+      saveUserProfile(persistedUser).catch(() => {});
+      // Migrate any localStorage bets
       migrateUserBets(persistedUser.userId).catch(() => {});
     }
   }, []);
@@ -76,6 +80,8 @@ export function AuthProvider({ children }) {
     setUser(authUser);
     persistUser(authUser);
     trackEvent("sign_in", { userId: authUser.userId });
+    // Save user profile to Supabase (for leaderboard display names)
+    saveUserProfile(authUser).catch(() => {});
     // Silently migrate any localStorage bets to Supabase
     migrateUserBets(authUser.userId).catch(() => {});
   }, []);
@@ -123,6 +129,8 @@ export function AuthProvider({ children }) {
       setUser(devUser);
       persistUser(devUser);
       trackEvent("sign_in", { userId: devUser.userId, dev: true });
+      // Save user profile to Supabase (for leaderboard display names)
+      saveUserProfile(devUser).catch(() => {});
       // Silently migrate any localStorage bets to Supabase
       migrateUserBets(devUser.userId).catch(() => {});
       return;
@@ -154,6 +162,8 @@ export function AuthProvider({ children }) {
                 setUser(authUser);
                 persistUser(authUser);
                 trackEvent("sign_in", { userId: authUser.userId });
+                // Save user profile to Supabase (for leaderboard display names)
+                saveUserProfile(authUser).catch(() => {});
                 // Silently migrate any localStorage bets to Supabase
                 migrateUserBets(authUser.userId).catch(() => {});
               });
