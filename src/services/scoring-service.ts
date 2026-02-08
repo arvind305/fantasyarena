@@ -139,39 +139,54 @@ const DEFAULT_RULE_VERSION: RuleVersion = {
 /**
  * Calculate points for TOTAL_RUNS question using distance-based scoring
  *
- * Scoring tiers:
- * - Exact match: 100% of max points
- * - Within 10 runs: 75% of max points
- * - Within 25 runs: 50% of max points
- * - Within 50 runs: 25% of max points
- * - Beyond 50 runs: 0 points
+ * The admin sets a BASE POINTS value for the question. Scoring tiers are
+ * percentages of this base, with exact match getting a 5x bonus.
+ *
+ * Scoring tiers (based on absolute difference from actual):
+ * - Exact (0):   500% of base points (5x bonus for perfect prediction)
+ * - Diff 1:      100% of base points (the base value)
+ * - Diff 2-5:    50% of base points
+ * - Diff 6-10:   25% of base points
+ * - Diff 11-15:  10% of base points
+ * - Diff > 15:   0 points
+ *
+ * Example: If admin sets base points = 1000
+ * - Exact match: 5000 pts
+ * - Off by 1: 1000 pts
+ * - Off by 3: 500 pts
+ * - Off by 8: 250 pts
+ * - Off by 12: 100 pts
+ * - Off by 20: 0 pts
  *
  * @param predicted - User's predicted total runs
  * @param actual - Actual total runs from match
- * @param maxPoints - Maximum points for this question
+ * @param basePoints - Base points set by admin for this question
  * @returns Calculated points based on distance
  */
 export function calculateTotalRunsPoints(
   predicted: number,
   actual: number,
-  maxPoints: number
+  basePoints: number
 ): number {
   const distance = Math.abs(predicted - actual);
 
   if (distance === 0) {
-    // Exact match - 100%
-    return maxPoints;
+    // Exact match - 500% (5x bonus)
+    return Math.round(basePoints * 5);
+  } else if (distance === 1) {
+    // Off by 1 - 100% (base value)
+    return basePoints;
+  } else if (distance <= 5) {
+    // Off by 2-5 - 50%
+    return Math.round(basePoints * 0.5);
   } else if (distance <= 10) {
-    // Within 10 runs - 75%
-    return Math.round(maxPoints * 0.75);
-  } else if (distance <= 25) {
-    // Within 25 runs - 50%
-    return Math.round(maxPoints * 0.5);
-  } else if (distance <= 50) {
-    // Within 50 runs - 25%
-    return Math.round(maxPoints * 0.25);
+    // Off by 6-10 - 25%
+    return Math.round(basePoints * 0.25);
+  } else if (distance <= 15) {
+    // Off by 11-15 - 10%
+    return Math.round(basePoints * 0.1);
   } else {
-    // Beyond 50 runs - 0%
+    // Off by more than 15 - 0%
     return 0;
   }
 }

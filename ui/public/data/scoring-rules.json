@@ -1,0 +1,44 @@
+{
+  "version": "1.1",
+  "lastUpdated": "2026-02-08",
+  "rules": {
+    "WINNER": {
+      "description": "Predict the winning team",
+      "scoring": "Full points if correct, 0 if wrong",
+      "example": "If question is worth 1000 points, you get 1000 for correct prediction, 0 for wrong"
+    },
+    "TOTAL_RUNS": {
+      "description": "Predict the total combined runs scored by both teams",
+      "scoring": "Points based on how close your prediction is to the actual total",
+      "tiers": [
+        { "difference": "Exact (0)", "multiplier": "5x", "description": "Perfect prediction - 5x bonus!" },
+        { "difference": "Off by 1", "multiplier": "1x", "description": "Base points (100%)" },
+        { "difference": "Off by 2-5", "multiplier": "0.5x", "description": "Half points (50%)" },
+        { "difference": "Off by 6-10", "multiplier": "0.25x", "description": "Quarter points (25%)" },
+        { "difference": "Off by 11-15", "multiplier": "0.1x", "description": "10% of points" },
+        { "difference": "Off by 16+", "multiplier": "0x", "description": "No points" }
+      ],
+      "example": {
+        "basePoints": 1000,
+        "actualTotal": 295,
+        "predictions": [
+          { "predicted": 295, "points": 5000, "note": "Exact match = 5x bonus" },
+          { "predicted": 294, "points": 1000, "note": "Off by 1 = base points" },
+          { "predicted": 296, "points": 1000, "note": "Off by 1 = base points" },
+          { "predicted": 292, "points": 500, "note": "Off by 3 = 50%" },
+          { "predicted": 300, "points": 500, "note": "Off by 5 = 50%" },
+          { "predicted": 288, "points": 250, "note": "Off by 7 = 25%" },
+          { "predicted": 305, "points": 250, "note": "Off by 10 = 25%" },
+          { "predicted": 283, "points": 100, "note": "Off by 12 = 10%" },
+          { "predicted": 280, "points": 100, "note": "Off by 15 = 10%" },
+          { "predicted": 275, "points": 0, "note": "Off by 20 = 0 points" }
+        ]
+      }
+    }
+  },
+  "notes": [
+    "Scoring rules may be updated by admins for future matches",
+    "Points are calculated automatically when match results are entered",
+    "Leaderboard updates in real-time after scoring"
+  ]
+}
