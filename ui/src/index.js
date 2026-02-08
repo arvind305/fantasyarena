@@ -31,6 +31,7 @@ import Spinner from "./components/Spinner";
 import AdminMatchBuilder from "./pages/AdminMatchBuilder";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminMatchResults from "./pages/AdminMatchResults";
+import InAppBrowserWarning from "./components/InAppBrowserWarning";
 
 trackAppOpen();
 startPolling();
@@ -104,6 +105,7 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <ToastProvider>
+          <InAppBrowserWarning />
           <div className="min-h-screen flex flex-col">
             <Navbar />
             <main className="flex-1">
