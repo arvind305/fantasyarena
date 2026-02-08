@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
+    "@supabase/supabase-js": "^2.95.3",
     "autoprefixer": "^10.4.23",
     "postcss": "^8.5.6",
     "react": "^18.2.0",
@@ -15,7 +16,7 @@
     "start": "set PORT=3001 && react-scripts start",
     "build": "react-scripts build"
   },
-  "proxy": "http://localhost:3000",
+  "proxy": "http://localhost:10000",
   "browserslist": {
     "production": [
       ">0.2%",

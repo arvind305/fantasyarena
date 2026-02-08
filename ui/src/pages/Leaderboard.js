@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiGetLeaderboard, apiGetMatches } from "../api";
 import { useAuth } from "../auth/AuthProvider";
@@ -7,6 +7,7 @@ import { useToast } from "../components/Toast";
 import { SkeletonCard } from "../components/Spinner";
 import Tabs, { useTabsWithUrl, useUrlSync } from "../components/Tabs";
 import { formatMatchDate, formatMatchTime, isToday } from "../utils/date";
+import { supabase, isSupabaseConfigured } from "../lib/supabase";
 
 const RANK_STYLE = {
   1: { badge: "bg-gradient-to-br from-yellow-400 to-amber-600 text-gray-900", ring: "ring-2 ring-yellow-500/40", label: "\u{1F947}" },
@@ -52,9 +53,7 @@ export default function Leaderboard() {
   }, []);
 
   // Load leaderboard data for Overall tab
-  useEffect(() => {
-    if (activeTab !== "overall") return;
-
+  const loadLeaderboard = useCallback(() => {
     setLoading(true);
     apiGetLeaderboard("global")
       .then(setData)
@@ -63,7 +62,37 @@ export default function Leaderboard() {
         setData([]);
       })
       .finally(() => setLoading(false));
-  }, [activeTab]);
+  }, [toast]);
+
+  useEffect(() => {
+    if (activeTab !== "overall") return;
+    loadLeaderboard();
+  }, [activeTab, loadLeaderboard]);
+
+  // Subscribe to realtime leaderboard updates (if Supabase is configured)
+  useEffect(() => {
+    if (!isSupabaseConfigured() || !supabase || activeTab !== "overall") return;
+
+    const channel = supabase
+      .channel('leaderboard-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'leaderboard'
+        },
+        (payload) => {
+          // Refresh leaderboard on any change
+          loadLeaderboard();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeTab, loadLeaderboard]);
 
   // Reset loading for other tabs
   useEffect(() => {
@@ -377,6 +406,7 @@ function LeaderboardTable({ data, currentUserId }) {
             <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wider">
               <th className="text-left px-5 py-3">Rank</th>
               <th className="text-left px-5 py-3">Player</th>
+              <th className="text-center px-3 py-3">Matches</th>
               <th className="text-right px-5 py-3">Points</th>
             </tr>
           </thead>
@@ -385,6 +415,9 @@ function LeaderboardTable({ data, currentUserId }) {
               const rank = e.rank ?? i + 1;
               const style = RANK_STYLE[rank];
               const isCurrentUser = e.userId === currentUserId;
+              // Calculate rank change (positive = moved up)
+              const rankChange = e.previous_rank ? e.previous_rank - rank : 0;
+              const isNew = e.is_new || (e.matches_played === 1 && !e.previous_rank);
               return (
                 <tr
                   key={e.userId}
@@ -398,11 +431,27 @@ function LeaderboardTable({ data, currentUserId }) {
                   style={{ animationDelay: `${Math.min(i * 60, 600)}ms` }}
                 >
                   <td className="px-5 py-3.5">
-                    {style ? (
-                      <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${style.badge}`}>{rank}</span>
-                    ) : (
-                      <span className="text-gray-500 font-medium text-sm pl-1.5">{rank}</span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {style ? (
+                        <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${style.badge}`}>{rank}</span>
+                      ) : (
+                        <span className="text-gray-500 font-medium text-sm pl-1.5">{rank}</span>
+                      )}
+                      {/* Rank change indicator */}
+                      {rankChange > 0 && (
+                        <span className="text-xs text-green-400 flex items-center">
+                          <span className="mr-0.5">▲</span>{rankChange}
+                        </span>
+                      )}
+                      {rankChange < 0 && (
+                        <span className="text-xs text-red-400 flex items-center">
+                          <span className="mr-0.5">▼</span>{Math.abs(rankChange)}
+                        </span>
+                      )}
+                      {isNew && (
+                        <span className="px-1 py-0.5 text-[9px] font-semibold bg-purple-600/50 text-purple-300 rounded">NEW</span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-2">
@@ -414,10 +463,20 @@ function LeaderboardTable({ data, currentUserId }) {
                       )}
                     </div>
                   </td>
+                  <td className="px-3 py-3.5 text-center">
+                    <span className="text-xs text-gray-500">{e.matches_played ?? e.matchesPlayed ?? 0}</span>
+                  </td>
                   <td className="px-5 py-3.5 text-right">
-                    <span className={`font-bold text-lg ${rank === 1 ? "text-yellow-400" : rank === 2 ? "text-gray-300" : rank === 3 ? "text-amber-500" : "text-gray-400"}`}>
-                      {e.totalScore ?? e.score}
-                    </span>
+                    <div className="flex flex-col items-end">
+                      <span className={`font-bold text-lg ${rank === 1 ? "text-yellow-400" : rank === 2 ? "text-gray-300" : rank === 3 ? "text-amber-500" : "text-gray-400"}`}>
+                        {e.totalScore ?? e.total_score ?? e.score}
+                      </span>
+                      {e.last_match_score !== undefined && e.last_match_score !== null && e.last_match_score !== 0 && (
+                        <span className="text-[10px] text-gray-500">
+                          Last: {e.last_match_score > 0 ? '+' : ''}{e.last_match_score}
+                        </span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );

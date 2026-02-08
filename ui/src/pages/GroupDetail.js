@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { apiGetGroupDetail } from "../api";
+import { useAuth } from "../auth/AuthProvider";
+import { resolveIdentity } from "../auth/identity";
 import { useToast } from "../components/Toast";
 import Spinner from "../components/Spinner";
+import { supabase, isSupabaseConfigured } from "../lib/supabase";
 
 const RANK_STYLE = {
   1: "from-yellow-400 to-amber-600 text-gray-900",
@@ -12,17 +15,49 @@ const RANK_STYLE = {
 
 export default function GroupDetail() {
   const { groupId } = useParams();
+  const { user } = useAuth();
+  const identity = resolveIdentity(user);
   const toast = useToast();
   const [group, setGroup] = useState(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
+  const loadGroup = useCallback(() => {
     apiGetGroupDetail(groupId)
       .then(setGroup)
       .catch((err) => toast.error(err.message))
       .finally(() => setLoading(false));
-  }, [groupId]);
+  }, [groupId, toast]);
+
+  useEffect(() => {
+    loadGroup();
+  }, [loadGroup]);
+
+  // Subscribe to realtime updates for group members (if Supabase is configured)
+  useEffect(() => {
+    if (!isSupabaseConfigured() || !supabase) return;
+
+    const channel = supabase
+      .channel(`group-${groupId}-changes`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'group_members',
+          filter: `group_id=eq.${groupId}`
+        },
+        (payload) => {
+          // Refresh group data on any member change
+          loadGroup();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [groupId, loadGroup]);
 
   if (loading) return <div className="max-w-3xl mx-auto px-4 py-10 text-center"><Spinner size="lg" /></div>;
   if (!group) return <div className="max-w-3xl mx-auto px-4 py-10 card text-center"><p className="text-gray-400">Group not found</p></div>;
@@ -92,7 +127,7 @@ export default function GroupDetail() {
         </button>
       </div>
 
-      <h2 className="text-xl font-bold mb-4 text-gray-200">Leaderboard</h2>
+      <h2 className="text-xl font-bold mb-4 text-gray-200">Group Leaderboard</h2>
       <div className="card p-0 overflow-hidden">
         <table className="w-full">
           <thead>
@@ -103,24 +138,53 @@ export default function GroupDetail() {
             </tr>
           </thead>
           <tbody>
-            {group.leaderboard.map((m) => (
-              <tr key={m.userId} className={`border-b border-gray-800/50 last:border-0 ${m.rank <= 3 ? "bg-gray-800/30" : "hover:bg-gray-800/20"}`}>
-                <td className="px-5 py-3.5">
-                  {RANK_STYLE[m.rank] ? (
-                    <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold bg-gradient-to-br ${RANK_STYLE[m.rank]}`}>
-                      {m.rank}
-                    </span>
-                  ) : (
-                    <span className="text-gray-500 font-medium text-sm pl-1.5">{m.rank}</span>
-                  )}
-                </td>
-                <td className="px-5 py-3.5 font-semibold text-gray-200">{m.displayName}</td>
-                <td className="px-5 py-3.5 text-right font-bold text-gray-300">{m.score}</td>
-              </tr>
-            ))}
+            {group.leaderboard.map((m) => {
+              const isCurrentUser = m.userId === identity.userId;
+              return (
+                <tr
+                  key={m.userId}
+                  className={`border-b border-gray-800/50 last:border-0 ${
+                    isCurrentUser
+                      ? "bg-blue-900/20 hover:bg-blue-900/30"
+                      : m.rank <= 3
+                      ? "bg-gray-800/30"
+                      : "hover:bg-gray-800/20"
+                  }`}
+                >
+                  <td className="px-5 py-3.5">
+                    {RANK_STYLE[m.rank] ? (
+                      <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold bg-gradient-to-br ${RANK_STYLE[m.rank]}`}>
+                        {m.rank}
+                      </span>
+                    ) : (
+                      <span className="text-gray-500 font-medium text-sm pl-1.5">{m.rank}</span>
+                    )}
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <div className="flex items-center gap-2">
+                      <span className={`font-semibold ${isCurrentUser ? "text-blue-300" : "text-gray-200"}`}>
+                        {m.displayName}
+                      </span>
+                      {isCurrentUser && (
+                        <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-blue-600 text-white rounded">You</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-5 py-3.5 text-right font-bold text-gray-300">{m.score}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
+
+      {/* Empty state */}
+      {group.leaderboard.length === 0 && (
+        <div className="card text-center py-8 mt-4">
+          <p className="text-gray-400">No scores yet.</p>
+          <p className="text-gray-600 text-sm mt-1">Scores will appear after matches are completed.</p>
+        </div>
+      )}
     </div>
   );
 }

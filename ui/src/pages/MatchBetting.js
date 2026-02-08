@@ -5,7 +5,6 @@ import { useAuth } from "../auth/AuthProvider";
 import { resolveIdentity } from "../auth/identity";
 import { useToast } from "../components/Toast";
 import Spinner from "../components/Spinner";
-import { isEarlyMatch } from "../mock/MatchTemplateGenerator";
 
 function formatDate(iso) {
   return new Date(iso).toLocaleString(undefined, {
@@ -73,22 +72,16 @@ export default function MatchBetting() {
       .finally(() => setLoading(false));
   }, [matchId]);
 
-  // For early matches (first 3), only show WINNER and TOTAL_RUNS
-  const earlyMatch = isEarlyMatch(matchId);
-  const filteredQuestions = earlyMatch
-    ? questions.filter((q) => q.kind === "WINNER" || q.kind === "TOTAL_RUNS")
-    : questions;
-
-  // Split questions by section
-  const standardQuestions = filteredQuestions.filter((q) => q.section === "STANDARD");
-  const sideQuestions = earlyMatch ? [] : filteredQuestions.filter((q) => q.section === "SIDE");
+  // Split questions by section - show all questions (admin controls what appears)
+  const standardQuestions = questions.filter((q) => q.section === "STANDARD");
+  const sideQuestions = questions.filter((q) => q.section === "SIDE");
   // Legacy questions (no section) for backwards compatibility
-  const legacyQuestions = earlyMatch ? [] : filteredQuestions.filter((q) => !q.section);
+  const legacyQuestions = questions.filter((q) => !q.section);
 
   // Check if we have required sections
   const hasStandard = standardQuestions.length > 0 || legacyQuestions.length > 0;
-  // For early matches, no side bets required
-  const hasSide = earlyMatch ? true : sideQuestions.length > 0;
+  // Side bets are optional - admin controls whether they're included
+  const hasSide = sideQuestions.length > 0 || true; // Always allow submission if standard exists
 
   // Lock and editability are derived from SERVER-PROVIDED status.
   const allQuestionsOpen = questions.length > 0 && questions.every((q) => q.status === "OPEN");
@@ -99,11 +92,8 @@ export default function MatchBetting() {
   function validateSubmission() {
     const errors = [];
 
-    // For early matches, only WINNER and TOTAL_RUNS are required
-    // For other matches, WINNER, TOTAL_RUNS, and PLAYER_PICK are required
-    const requiredKinds = earlyMatch
-      ? ["WINNER", "TOTAL_RUNS"]
-      : ["WINNER", "TOTAL_RUNS", "PLAYER_PICK"];
+    // WINNER, TOTAL_RUNS, and PLAYER_PICK are always required if present
+    const requiredKinds = ["WINNER", "TOTAL_RUNS", "PLAYER_PICK"];
 
     const requiredStandard = standardQuestions.filter((q) =>
       requiredKinds.includes(q.kind)
@@ -124,14 +114,14 @@ export default function MatchBetting() {
     // Runner question (required only if exists and runnersEnabled)
     // Runner is optional - user can skip if they don't want to pick runners
 
-    // Side bets (all required, but skipped for early matches)
+    // Side bets (all required if present)
     for (const q of sideQuestions) {
       if (!answers[q.questionId]) {
         errors.push(`Please answer side bet: ${q.text}`);
       }
     }
 
-    // Legacy questions (all required, but skipped for early matches)
+    // Legacy questions (all required if present)
     for (const q of legacyQuestions) {
       if (!answers[q.questionId]) {
         errors.push(`Please answer: ${q.text}`);

@@ -13,7 +13,6 @@ import * as Ext from "./ExternalDataAdapter";
 import * as QuestionStore from "./QuestionStore";
 import {
   buildLongTermBets,
-  GROUPS,
   SAMPLE_PROFILE,
   GLOBAL_LEADERBOARD,
 } from "./bettingData";
@@ -23,9 +22,12 @@ const STORAGE_KEY = "betting_arena_state";
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
+    const parsed = raw ? JSON.parse(raw) : {};
+    // Ensure groups array exists
+    if (!parsed.groups) parsed.groups = [];
+    return parsed;
   } catch {
-    return {};
+    return { groups: [] };
   }
 }
 
@@ -37,6 +39,19 @@ function saveState(s) {
 
 function st() {
   return loadState();
+}
+
+// Get groups from localStorage (persisted)
+function getPersistedGroups() {
+  const s = loadState();
+  return s.groups || [];
+}
+
+// Save groups to localStorage
+function saveGroups(groups) {
+  const s = loadState();
+  s.groups = groups;
+  saveState(s);
 }
 
 // ── Events ───────────────────────────────────────────────────────────────────
@@ -320,7 +335,8 @@ export function getPlayerProfile(playerId) {
  */
 export function getLeaderboard(scope = "global", scopeId) {
   if (scope === "group") {
-    const group = GROUPS.find((g) => g.groupId === scopeId);
+    const groups = getPersistedGroups();
+    const group = groups.find((g) => g.groupId === scopeId);
     if (!group) throw new Error("Group not found");
     return [...group.members]
       .sort((a, b) => b.score - a.score)
@@ -329,11 +345,12 @@ export function getLeaderboard(scope = "global", scopeId) {
   return GLOBAL_LEADERBOARD;
 }
 
-// ── Groups (user-generated) ──────────────────────────────────────────────────
+// ── Groups (user-generated, persisted to localStorage) ───────────────────────
 
 export function getGroups(userId) {
-  if (!userId) return GROUPS;
-  return GROUPS.filter((g) => g.memberIds.includes(userId));
+  const groups = getPersistedGroups();
+  if (!userId) return groups;
+  return groups.filter((g) => g.memberIds.includes(userId));
 }
 
 export function createGroup(name, userId, displayName) {
@@ -352,24 +369,29 @@ export function createGroup(name, userId, displayName) {
     members: [{ userId, displayName, score: 0 }],
     createdAt: now,
   };
-  GROUPS.push(group);
+  const groups = getPersistedGroups();
+  groups.push(group);
+  saveGroups(groups);
   return group;
 }
 
 export function joinGroup(code, userId, displayName) {
   if (!userId) throw new Error("AUTHENTICATION_REQUIRED");
-  const group = GROUPS.find((g) => g.joinCode === code);
+  const groups = getPersistedGroups();
+  const group = groups.find((g) => g.joinCode === code);
   if (!group) throw new Error("INVALID_GROUP_CODE");
   if (group.memberIds.includes(userId)) {
     throw new Error("ALREADY_A_MEMBER");
   }
   group.memberIds.push(userId);
   group.members.push({ userId, displayName, score: 0 });
+  saveGroups(groups);
   return group;
 }
 
 export function getGroupDetail(groupId) {
-  const group = GROUPS.find((g) => g.groupId === groupId);
+  const groups = getPersistedGroups();
+  const group = groups.find((g) => g.groupId === groupId);
   if (!group) throw new Error("Group not found");
   return {
     ...group,

@@ -13,8 +13,6 @@ import {
   selectTemplates,
   preloadGeneratorData,
   DEFAULT_CONFIG,
-  isEarlyMatch,
-  EARLY_MATCH_CONFIG,
 } from "../mock/MatchTemplateGenerator";
 import { saveMatchConfig, getMatchConfig } from "../mock/QuestionStore";
 
@@ -27,6 +25,54 @@ function formatDate(iso) {
     minute: "2-digit",
   });
 }
+
+// Chaos mode presets with high multipliers and negative scoring
+const CHAOS_PRESETS = {
+  mild: {
+    name: "Mild Chaos",
+    description: "2x multipliers, no negative scoring",
+    winnerPointsX: 20,
+    totalRunsPointsX: 20,
+    playerPickSlots: 3,
+    multiplierPreset: [1, 1.5, 2],
+    sideBetPointsDefault: 20,
+    enableNegativeScoring: false,
+  },
+  wild: {
+    name: "Wild Chaos",
+    description: "5x multipliers, -50% penalty for wrong answers",
+    winnerPointsX: 50,
+    totalRunsPointsX: 50,
+    playerPickSlots: 5,
+    multiplierPreset: [1, 2, 3, 4, 5],
+    sideBetPointsDefault: 50,
+    sideBetPointsWrong: -25,
+    enableNegativeScoring: true,
+  },
+  extreme: {
+    name: "Extreme Chaos",
+    description: "10x+ multipliers, full negative scoring",
+    winnerPointsX: 100,
+    totalRunsPointsX: 100,
+    playerPickSlots: 5,
+    multiplierPreset: [2, 4, 6, 8, 10],
+    sideBetPointsDefault: 100,
+    sideBetPointsWrong: -100,
+    enableNegativeScoring: true,
+  },
+  allOrNothing: {
+    name: "All or Nothing",
+    description: "1000 pts if all correct, 0 otherwise",
+    winnerPointsX: 1000,
+    totalRunsPointsX: 1000,
+    playerPickSlots: 1,
+    multiplierPreset: [1],
+    sideBetPointsDefault: 1000,
+    sideBetPointsWrong: -1000,
+    enableNegativeScoring: true,
+    allOrNothing: true,
+  },
+};
 
 export default function AdminMatchBuilder() {
   const { matchId } = useParams();
@@ -48,6 +94,24 @@ export default function AdminMatchBuilder() {
   const [selectedTemplateIds, setSelectedTemplateIds] = useState([]);
   const [sideBetOverrides, setSideBetOverrides] = useState({});
   const [showLibraryPicker, setShowLibraryPicker] = useState(false);
+
+  // Custom question builder state
+  const [showCustomBuilder, setShowCustomBuilder] = useState(false);
+  const [customQuestion, setCustomQuestion] = useState({
+    text: "",
+    type: "YES_NO",
+    kind: "SIDE_BET",
+    section: "SIDE",
+    points: 10,
+    pointsWrong: 0,
+    options: [
+      { label: "Yes", optionId: "" },
+      { label: "No", optionId: "" },
+    ],
+  });
+
+  // Question editing state
+  const [editingQuestionId, setEditingQuestionId] = useState(null);
 
   const adminEmail = getAdminEmail();
   const isAdmin = user && adminEmail && user.email?.trim().toLowerCase() === adminEmail;
@@ -153,6 +217,146 @@ export default function AdminMatchBuilder() {
     }));
   }
 
+  // Apply chaos mode preset
+  function applyChaosPreset(presetKey) {
+    const preset = CHAOS_PRESETS[presetKey];
+    if (!preset) return;
+    setConfig((prev) => ({
+      ...prev,
+      winnerPointsX: preset.winnerPointsX,
+      totalRunsPointsX: preset.totalRunsPointsX,
+      playerPickSlots: preset.playerPickSlots,
+      multiplierPreset: [...preset.multiplierPreset],
+      sideBetPointsDefault: preset.sideBetPointsDefault,
+      enableNegativeScoring: preset.enableNegativeScoring,
+      sideBetPointsWrong: preset.sideBetPointsWrong || 0,
+      allOrNothing: preset.allOrNothing || false,
+    }));
+    setCustomMultipliers(true);
+    toast.success(`Applied "${preset.name}" preset`);
+  }
+
+  // Add custom question
+  function handleAddCustomQuestion() {
+    if (!customQuestion.text.trim()) {
+      toast.error("Question text is required");
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const questionId = "q_custom_" + Math.random().toString(36).slice(2, 10);
+
+    // Generate option IDs
+    const processedOptions = customQuestion.options.map((opt, i) => ({
+      ...opt,
+      optionId: `opt_${questionId}_${i}`,
+      referenceType: "NONE",
+      referenceId: null,
+    }));
+
+    const newQuestion = {
+      questionId,
+      matchId,
+      eventId: match?.eventId,
+      section: customQuestion.section,
+      kind: customQuestion.kind,
+      type: customQuestion.type,
+      text: customQuestion.text,
+      points: customQuestion.points,
+      pointsWrong: customQuestion.pointsWrong,
+      options: processedOptions,
+      createdAt: now,
+      isCustom: true,
+    };
+
+    setQuestions((prev) => [...prev, newQuestion]);
+    toast.success("Custom question added");
+
+    // Reset form
+    setCustomQuestion({
+      text: "",
+      type: "YES_NO",
+      kind: "SIDE_BET",
+      section: "SIDE",
+      points: 10,
+      pointsWrong: 0,
+      options: [
+        { label: "Yes", optionId: "" },
+        { label: "No", optionId: "" },
+      ],
+    });
+    setShowCustomBuilder(false);
+  }
+
+  // Delete question
+  function handleDeleteQuestion(questionId) {
+    setQuestions((prev) => prev.filter((q) => q.questionId !== questionId));
+    toast.success("Question removed");
+  }
+
+  // Toggle question enabled/disabled
+  function handleToggleQuestion(questionId) {
+    setQuestions((prev) =>
+      prev.map((q) =>
+        q.questionId === questionId ? { ...q, disabled: !q.disabled } : q
+      )
+    );
+  }
+
+  // Update question points
+  function handleUpdateQuestionPoints(questionId, points, pointsWrong) {
+    setQuestions((prev) =>
+      prev.map((q) =>
+        q.questionId === questionId
+          ? { ...q, points: points ?? q.points, pointsWrong: pointsWrong ?? q.pointsWrong }
+          : q
+      )
+    );
+  }
+
+  // Move question up/down
+  function handleMoveQuestion(questionId, direction) {
+    setQuestions((prev) => {
+      const idx = prev.findIndex((q) => q.questionId === questionId);
+      if (idx === -1) return prev;
+      if (direction === "up" && idx === 0) return prev;
+      if (direction === "down" && idx === prev.length - 1) return prev;
+
+      const newQuestions = [...prev];
+      const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+      [newQuestions[idx], newQuestions[swapIdx]] = [newQuestions[swapIdx], newQuestions[idx]];
+      return newQuestions;
+    });
+  }
+
+  // Update custom question option
+  function updateCustomOption(index, label) {
+    setCustomQuestion((prev) => ({
+      ...prev,
+      options: prev.options.map((opt, i) => (i === index ? { ...opt, label } : opt)),
+    }));
+  }
+
+  // Add option to custom question
+  function addCustomOption() {
+    setCustomQuestion((prev) => ({
+      ...prev,
+      options: [...prev.options, { label: "", optionId: "" }],
+    }));
+  }
+
+  // Remove option from custom question
+  function removeCustomOption(index) {
+    if (customQuestion.options.length <= 2) {
+      toast.error("Minimum 2 options required");
+      return;
+    }
+    setCustomQuestion((prev) => ({
+      ...prev,
+      options: prev.options.filter((_, i) => i !== index),
+    }));
+  }
+
   async function handleGenerateStandard() {
     if (!match) return;
 
@@ -199,11 +403,7 @@ export default function AdminMatchBuilder() {
 
     setGenerating(true);
     try {
-      // For early matches (first 3), enforce max 1 side bet
-      const earlyMatch = isEarlyMatch(matchId);
-      const maxSideBets = earlyMatch ? EARLY_MATCH_CONFIG.maxSideBets : config.sideBetCount;
-
-      // Select templates
+      // Select templates - no limit on number of side bets
       let templatesToUse =
         selectedTemplateIds.length > 0
           ? selectTemplates(library, selectedTemplateIds, selectedTemplateIds.length)
@@ -212,12 +412,6 @@ export default function AdminMatchBuilder() {
       if (templatesToUse.length === 0) {
         toast.error("No side bet templates selected or available");
         return;
-      }
-
-      // For early matches, warn and limit to 1
-      if (earlyMatch && templatesToUse.length > maxSideBets) {
-        toast.error(`Early match: only ${maxSideBets} side bet allowed. Using first selected.`);
-        templatesToUse = templatesToUse.slice(0, maxSideBets);
       }
 
       const sideBets = applySideBets(
@@ -236,11 +430,7 @@ export default function AdminMatchBuilder() {
       ];
 
       setQuestions(newQuestions);
-      if (earlyMatch) {
-        toast.success(`Added 1 side bet (simplified sheet for early match)`);
-      } else {
-        toast.success(`Added ${sideBets.length} side bet questions`);
-      }
+      toast.success(`Added ${sideBets.length} side bet questions`);
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -305,21 +495,27 @@ export default function AdminMatchBuilder() {
       {/* Admin Title */}
       <h1 className="text-xl font-bold text-gray-200 mb-6">Match Config + Generate</h1>
 
-      {/* Early Match Banner */}
-      {isEarlyMatch(matchId) && (
-        <div className="mb-6 p-4 bg-amber-900/30 border border-amber-700 rounded-lg">
-          <p className="text-amber-400 font-semibold">Simplified 4-Question Sheet</p>
-          <p className="text-amber-300/80 text-sm mt-1">
-            This is one of the first 3 matches. Betting sheet is limited to:
-          </p>
-          <ul className="text-amber-300/70 text-xs mt-2 ml-4 list-disc">
-            <li>Winner (+{EARLY_MATCH_CONFIG.winnerPoints} pts, Super Over +{EARLY_MATCH_CONFIG.superOverPoints} pts)</li>
-            <li>Total Runs (+{EARLY_MATCH_CONFIG.totalRunsPoints} pts, distance-based grid)</li>
-            <li>Player Pick (+{EARLY_MATCH_CONFIG.playerPickPoints} pts)</li>
-            <li>1 Side Bet only (+{EARLY_MATCH_CONFIG.sideBetPoints} pts)</li>
-          </ul>
+      {/* Chaos Mode Presets */}
+      <div className="card mb-6 bg-gradient-to-r from-red-950/30 to-orange-950/30 border-red-800/50">
+        <h2 className="text-lg font-semibold text-red-400 mb-3 flex items-center gap-2">
+          <span>🔥</span> Chaos Mode Presets
+        </h2>
+        <p className="text-sm text-gray-400 mb-4">
+          Quick presets for high-stakes matches with multipliers and risk/reward mechanics.
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {Object.entries(CHAOS_PRESETS).map(([key, preset]) => (
+            <button
+              key={key}
+              onClick={() => applyChaosPreset(key)}
+              className="p-3 rounded-lg border border-red-700/50 bg-red-900/20 hover:bg-red-900/40 transition-colors text-left"
+            >
+              <div className="text-sm font-semibold text-red-300">{preset.name}</div>
+              <div className="text-xs text-gray-500 mt-1">{preset.description}</div>
+            </button>
+          ))}
         </div>
-      )}
+      </div>
 
       {/* Section A: Match Config Panel */}
       <div className="card mb-6">
@@ -355,11 +551,12 @@ export default function AdminMatchBuilder() {
             <input
               type="number"
               min="1"
-              max="5"
+              max="20"
               value={config.playerPickSlots}
               onChange={(e) => updateConfig("playerPickSlots", parseInt(e.target.value, 10) || 1)}
               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200"
             />
+            <p className="text-xs text-gray-600 mt-1">Unlimited slots supported</p>
           </div>
 
           {/* Multiplier Preset */}
@@ -457,15 +654,16 @@ export default function AdminMatchBuilder() {
         <div className="mt-4 pt-4 border-t border-gray-700">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Side Bet Count (min 1)</label>
+              <label className="block text-xs text-gray-500 mb-1">Side Bet Count</label>
               <input
                 type="number"
-                min="1"
-                max="10"
+                min="0"
+                max="50"
                 value={config.sideBetCount}
-                onChange={(e) => updateConfig("sideBetCount", Math.max(1, parseInt(e.target.value, 10) || 1))}
+                onChange={(e) => updateConfig("sideBetCount", Math.max(0, parseInt(e.target.value, 10) || 0))}
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200"
               />
+              <p className="text-xs text-gray-600 mt-1">0 = no side bets required</p>
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1">Side Bet Default Points</label>
@@ -504,8 +702,141 @@ export default function AdminMatchBuilder() {
           >
             {showLibraryPicker ? "Hide" : "Show"} Library Picker
           </button>
+          <button
+            onClick={() => setShowCustomBuilder(!showCustomBuilder)}
+            className="px-4 py-2 text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
+          >
+            {showCustomBuilder ? "Hide" : "Add"} Custom Question
+          </button>
         </div>
       </div>
+
+      {/* Custom Question Builder */}
+      {showCustomBuilder && (
+        <div className="card mb-6 border-emerald-700/50">
+          <h2 className="text-lg font-semibold text-emerald-400 mb-4">Custom Question Builder</h2>
+
+          <div className="space-y-4">
+            {/* Question Text */}
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Question Text *</label>
+              <input
+                type="text"
+                value={customQuestion.text}
+                onChange={(e) => setCustomQuestion((prev) => ({ ...prev, text: e.target.value }))}
+                placeholder="e.g., Will there be a century scored in this match?"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {/* Question Type */}
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Type</label>
+                <select
+                  value={customQuestion.type}
+                  onChange={(e) => {
+                    const type = e.target.value;
+                    let options = customQuestion.options;
+                    if (type === "YES_NO") {
+                      options = [{ label: "Yes", optionId: "" }, { label: "No", optionId: "" }];
+                    }
+                    setCustomQuestion((prev) => ({ ...prev, type, options }));
+                  }}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200"
+                >
+                  <option value="YES_NO">Yes/No</option>
+                  <option value="MULTI_CHOICE">Multiple Choice</option>
+                  <option value="NUMERIC_INPUT">Numeric Input</option>
+                </select>
+              </div>
+
+              {/* Section */}
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Section</label>
+                <select
+                  value={customQuestion.section}
+                  onChange={(e) => setCustomQuestion((prev) => ({ ...prev, section: e.target.value }))}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200"
+                >
+                  <option value="SIDE">Side Bet</option>
+                  <option value="STANDARD">Standard</option>
+                </select>
+              </div>
+
+              {/* Points Correct */}
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Points (Correct)</label>
+                <input
+                  type="number"
+                  value={customQuestion.points}
+                  onChange={(e) => setCustomQuestion((prev) => ({ ...prev, points: parseInt(e.target.value, 10) || 0 }))}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200"
+                />
+              </div>
+
+              {/* Points Wrong */}
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Points (Wrong)</label>
+                <input
+                  type="number"
+                  value={customQuestion.pointsWrong}
+                  onChange={(e) => setCustomQuestion((prev) => ({ ...prev, pointsWrong: parseInt(e.target.value, 10) || 0 }))}
+                  placeholder="0 or negative"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200"
+                />
+                <p className="text-xs text-gray-600 mt-1">Use negative for penalty</p>
+              </div>
+            </div>
+
+            {/* Options (for non-numeric types) */}
+            {customQuestion.type !== "NUMERIC_INPUT" && (
+              <div>
+                <label className="block text-xs text-gray-500 mb-2">Options</label>
+                <div className="space-y-2">
+                  {customQuestion.options.map((opt, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={opt.label}
+                        onChange={(e) => updateCustomOption(i, e.target.value)}
+                        placeholder={`Option ${i + 1}`}
+                        className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200"
+                      />
+                      {customQuestion.options.length > 2 && (
+                        <button
+                          onClick={() => removeCustomOption(i)}
+                          className="p-2 text-red-400 hover:text-red-300"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {customQuestion.type === "MULTI_CHOICE" && (
+                  <button
+                    onClick={addCustomOption}
+                    className="mt-2 text-sm text-emerald-400 hover:text-emerald-300"
+                  >
+                    + Add Option
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Add Button */}
+            <div className="pt-2">
+              <button
+                onClick={handleAddCustomQuestion}
+                className="btn-primary px-6 py-2"
+              >
+                Add Question
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Section B: Side Bet Library Picker */}
       {showLibraryPicker && (
@@ -612,7 +943,18 @@ export default function AdminMatchBuilder() {
                 <h3 className="text-sm font-semibold text-brand-400 mb-2">Standard Bets</h3>
                 <div className="space-y-2">
                   {standardQuestions.map((q, i) => (
-                    <QuestionPreviewCard key={q.questionId} question={q} index={i} />
+                    <QuestionPreviewCard
+                      key={q.questionId}
+                      question={q}
+                      index={i}
+                      onDelete={() => handleDeleteQuestion(q.questionId)}
+                      onToggle={() => handleToggleQuestion(q.questionId)}
+                      onUpdatePoints={(pts, ptsWrong) => handleUpdateQuestionPoints(q.questionId, pts, ptsWrong)}
+                      onMoveUp={() => handleMoveQuestion(q.questionId, "up")}
+                      onMoveDown={() => handleMoveQuestion(q.questionId, "down")}
+                      isFirst={i === 0}
+                      isLast={i === standardQuestions.length - 1}
+                    />
                   ))}
                 </div>
               </div>
@@ -624,7 +966,18 @@ export default function AdminMatchBuilder() {
                 <h3 className="text-sm font-semibold text-purple-400 mb-2">Side Bets</h3>
                 <div className="space-y-2">
                   {sideQuestions.map((q, i) => (
-                    <QuestionPreviewCard key={q.questionId} question={q} index={i} />
+                    <QuestionPreviewCard
+                      key={q.questionId}
+                      question={q}
+                      index={i}
+                      onDelete={() => handleDeleteQuestion(q.questionId)}
+                      onToggle={() => handleToggleQuestion(q.questionId)}
+                      onUpdatePoints={(pts, ptsWrong) => handleUpdateQuestionPoints(q.questionId, pts, ptsWrong)}
+                      onMoveUp={() => handleMoveQuestion(q.questionId, "up")}
+                      onMoveDown={() => handleMoveQuestion(q.questionId, "down")}
+                      isFirst={i === 0}
+                      isLast={i === sideQuestions.length - 1}
+                    />
                   ))}
                 </div>
               </div>
@@ -636,7 +989,18 @@ export default function AdminMatchBuilder() {
                 <h3 className="text-sm font-semibold text-gray-400 mb-2">Legacy Questions</h3>
                 <div className="space-y-2">
                   {legacyQuestions.map((q, i) => (
-                    <QuestionPreviewCard key={q.questionId} question={q} index={i} />
+                    <QuestionPreviewCard
+                      key={q.questionId}
+                      question={q}
+                      index={i}
+                      onDelete={() => handleDeleteQuestion(q.questionId)}
+                      onToggle={() => handleToggleQuestion(q.questionId)}
+                      onUpdatePoints={(pts, ptsWrong) => handleUpdateQuestionPoints(q.questionId, pts, ptsWrong)}
+                      onMoveUp={() => handleMoveQuestion(q.questionId, "up")}
+                      onMoveDown={() => handleMoveQuestion(q.questionId, "down")}
+                      isFirst={i === 0}
+                      isLast={i === legacyQuestions.length - 1}
+                    />
                   ))}
                 </div>
               </div>
@@ -669,45 +1033,156 @@ export default function AdminMatchBuilder() {
   );
 }
 
-function QuestionPreviewCard({ question, index }) {
+function QuestionPreviewCard({
+  question,
+  index,
+  onDelete,
+  onToggle,
+  onUpdatePoints,
+  onMoveUp,
+  onMoveDown,
+  isFirst,
+  isLast,
+}) {
   const q = question;
+  const [isEditing, setIsEditing] = useState(false);
+  const [editPoints, setEditPoints] = useState(q.points);
+  const [editPointsWrong, setEditPointsWrong] = useState(q.pointsWrong || 0);
+
+  const handleSavePoints = () => {
+    onUpdatePoints(editPoints, editPointsWrong);
+    setIsEditing(false);
+  };
+
   return (
-    <div className="p-3 bg-gray-800/50 rounded-lg border border-gray-700">
-      <div className="flex items-start justify-between">
+    <div
+      className={`p-3 bg-gray-800/50 rounded-lg border transition-all ${
+        q.disabled ? "border-gray-700 opacity-50" : "border-gray-700"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        {/* Reorder buttons */}
+        <div className="flex flex-col gap-1">
+          <button
+            onClick={onMoveUp}
+            disabled={isFirst}
+            className={`p-1 text-xs ${isFirst ? "text-gray-700" : "text-gray-500 hover:text-gray-300"}`}
+          >
+            ▲
+          </button>
+          <button
+            onClick={onMoveDown}
+            disabled={isLast}
+            className={`p-1 text-xs ${isLast ? "text-gray-700" : "text-gray-500 hover:text-gray-300"}`}
+          >
+            ▼
+          </button>
+        </div>
+
         <div className="flex-1">
           <div className="text-sm text-gray-200">
             <span className="text-gray-500 mr-2">{index + 1}.</span>
             {q.text}
-          </div>
-          <div className="flex flex-wrap items-center gap-2 mt-1 text-xs">
-            <span className="text-gray-500">Kind: {q.kind}</span>
-            <span className="text-gray-600">|</span>
-            <span className="text-gray-500">Type: {q.type}</span>
-            <span className="text-gray-600">|</span>
-            <span className="text-gray-500">Points: {q.points}</span>
-            {q.slot && (
-              <>
-                <span className="text-gray-600">|</span>
-                <span className="text-gray-500">
-                  Slot {q.slot.index + 1} ({q.slot.multiplier}x)
-                </span>
-              </>
+            {q.isCustom && (
+              <span className="ml-2 text-xs px-1.5 py-0.5 bg-emerald-900/50 text-emerald-400 rounded">
+                Custom
+              </span>
             )}
-            {q.weight && q.kind === "WINNER" && (
-              <>
-                <span className="text-gray-600">|</span>
-                <span className="text-gray-500">SuperOver: {q.weight}x</span>
-              </>
+            {q.disabled && (
+              <span className="ml-2 text-xs px-1.5 py-0.5 bg-red-900/50 text-red-400 rounded">
+                Disabled
+              </span>
             )}
           </div>
+
+          {isEditing ? (
+            <div className="flex items-center gap-3 mt-2">
+              <div className="flex items-center gap-1">
+                <label className="text-xs text-gray-500">Pts:</label>
+                <input
+                  type="number"
+                  value={editPoints}
+                  onChange={(e) => setEditPoints(parseInt(e.target.value, 10) || 0)}
+                  className="w-16 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-gray-200"
+                />
+              </div>
+              <div className="flex items-center gap-1">
+                <label className="text-xs text-gray-500">Wrong:</label>
+                <input
+                  type="number"
+                  value={editPointsWrong}
+                  onChange={(e) => setEditPointsWrong(parseInt(e.target.value, 10) || 0)}
+                  className="w-16 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-gray-200"
+                />
+              </div>
+              <button
+                onClick={handleSavePoints}
+                className="px-2 py-1 text-xs bg-emerald-600 text-white rounded hover:bg-emerald-700"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => setIsEditing(false)}
+                className="px-2 py-1 text-xs text-gray-400 hover:text-gray-300"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2 mt-1 text-xs">
+              <span className="text-gray-500">Kind: {q.kind}</span>
+              <span className="text-gray-600">|</span>
+              <span className="text-gray-500">Type: {q.type}</span>
+              <span className="text-gray-600">|</span>
+              <span
+                className="text-gray-500 cursor-pointer hover:text-brand-400"
+                onClick={() => setIsEditing(true)}
+              >
+                Points: {q.points}
+                {q.pointsWrong ? ` / ${q.pointsWrong}` : ""} ✎
+              </span>
+              {q.slot && (
+                <>
+                  <span className="text-gray-600">|</span>
+                  <span className="text-gray-500">
+                    Slot {q.slot.index + 1} ({q.slot.multiplier}x)
+                  </span>
+                </>
+              )}
+              {q.weight && q.kind === "WINNER" && (
+                <>
+                  <span className="text-gray-600">|</span>
+                  <span className="text-gray-500">SuperOver: {q.weight}x</span>
+                </>
+              )}
+            </div>
+          )}
         </div>
-        <div className="text-right">
-          {q.options.length > 0 && (
-            <span className="text-xs text-gray-500">{q.options.length} options</span>
-          )}
-          {q.type === "NUMERIC_INPUT" && (
-            <span className="text-xs text-amber-500">Numeric</span>
-          )}
+
+        {/* Action buttons */}
+        <div className="flex items-center gap-2">
+          <div className="text-right text-xs text-gray-500">
+            {q.options.length > 0 && <span>{q.options.length} opts</span>}
+            {q.type === "NUMERIC_INPUT" && <span className="text-amber-500">Numeric</span>}
+          </div>
+          <button
+            onClick={onToggle}
+            className={`p-1.5 rounded ${
+              q.disabled
+                ? "text-emerald-400 hover:bg-emerald-900/30"
+                : "text-amber-400 hover:bg-amber-900/30"
+            }`}
+            title={q.disabled ? "Enable" : "Disable"}
+          >
+            {q.disabled ? "○" : "●"}
+          </button>
+          <button
+            onClick={onDelete}
+            className="p-1.5 text-red-400 hover:bg-red-900/30 rounded"
+            title="Delete"
+          >
+            ✕
+          </button>
         </div>
       </div>
     </div>

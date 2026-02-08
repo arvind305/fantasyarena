@@ -30,6 +30,7 @@ import { initializeQuestionStore } from "./mock/QuestionStore";
 import Spinner from "./components/Spinner";
 import AdminMatchBuilder from "./pages/AdminMatchBuilder";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminMatchResults from "./pages/AdminMatchResults";
 
 trackAppOpen();
 startPolling();
@@ -60,18 +61,18 @@ async function loadAdminConfig() {
 }
 
 function App() {
-  const [ready, setReady] = useState(!USE_LOCAL_ENGINE);
+  const [ready, setReady] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (USE_LOCAL_ENGINE) {
-      Promise.all([initializeAdapter(), initializeQuestionStore()])
-        .then(() => setReady(true))
-        .catch((err) => {
-          console.error("[app] Failed to load static data:", err);
-          setError(err.message);
-        });
-    }
+    // Always initialize the adapter - we use it for static data (events, matches, teams, players)
+    // even in live mode where Supabase handles user data (groups, bets, leaderboard)
+    Promise.all([initializeAdapter(), initializeQuestionStore()])
+      .then(() => setReady(true))
+      .catch((err) => {
+        console.error("[app] Failed to load static data:", err);
+        setError(err.message);
+      });
   }, []);
 
   if (error) {
@@ -125,6 +126,7 @@ function App() {
                 <Route path="/faq" element={<FAQ />} />
                 <Route path="/about" element={<About />} />
                 <Route path="/admin/match/:matchId" element={<AdminMatchBuilder />} />
+                <Route path="/admin/match/:matchId/results" element={<AdminMatchResults />} />
                 <Route path="/admin/dashboard" element={<AdminDashboard />} />
               </Routes>
             </main>

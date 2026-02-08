@@ -260,6 +260,7 @@ export const DEFAULT_CONFIG = {
 
 /**
  * Generate standard betting questions pack for a match.
+ * All matches now use the full configurable pack - no early match restrictions.
  *
  * @param {Object} match - Match object with teamA, teamB, squads
  * @param {Object} squads - Squads object (teamId -> playerIds array)
@@ -269,14 +270,8 @@ export const DEFAULT_CONFIG = {
 export function generateStandardPack(match, squads, config = {}) {
   const cfg = { ...DEFAULT_CONFIG, ...config };
   const now = new Date().toISOString();
-  const matchId = match.matchId;
 
-  // Check if this is an early match (simplified 3-question pack)
-  if (isEarlyMatch(matchId)) {
-    return generateEarlyMatchPack(match, squads, now);
-  }
-
-  // Standard full pack for regular matches
+  // All matches use the full configurable pack
   return generateFullPack(match, squads, cfg, now);
 }
 
@@ -517,34 +512,27 @@ function buildPlayerOptions(match, squads) {
 
 /**
  * Apply side bets from library to a match.
+ * No limits on number of side bets - fully admin-configurable.
  *
  * @param {string} matchId - Match ID
  * @param {Object} match - Match object with teamA, teamB
  * @param {Array} templates - Side bet templates to apply
- * @param {number} count - Number of side bets to create (min 1)
+ * @param {number} count - Number of side bets to create
  * @param {Object} overridePoints - Optional map of templateId -> points override
  * @returns {Array} Array of side bet questions
  */
-export function applySideBets(matchId, match, templates, count = 1, overridePoints = {}) {
+export function applySideBets(matchId, match, templates, count = 0, overridePoints = {}) {
   const questions = [];
   const now = new Date().toISOString();
 
-  // For early matches, enforce exactly 1 side bet with fixed points
-  const earlyMatch = isEarlyMatch(matchId);
-  const maxCount = earlyMatch ? EARLY_MATCH_CONFIG.maxSideBets : count;
-  const defaultPoints = earlyMatch ? EARLY_MATCH_CONFIG.sideBetPoints : null;
-
-  // Ensure at least 1 side bet, but cap at maxCount
-  const actualCount = Math.min(Math.max(1, count), maxCount);
-  const templatesToUse = templates.slice(0, actualCount);
+  // Use all provided templates up to count (0 = unlimited)
+  const templatesToUse = count > 0 ? templates.slice(0, count) : templates;
 
   for (const template of templatesToUse) {
-    // For early matches, use fixed points; otherwise use override or default
-    const points = earlyMatch
-      ? defaultPoints
-      : (overridePoints[template.templateId] !== undefined
-          ? overridePoints[template.templateId]
-          : template.defaultPoints);
+    // Use override points if provided, otherwise use template default
+    const points = overridePoints[template.templateId] !== undefined
+      ? overridePoints[template.templateId]
+      : template.defaultPoints;
 
     // Process template options (replace placeholders)
     const processedOptions = template.options.map((opt) => ({

@@ -514,12 +514,20 @@ export default function AdminDashboard() {
                         )}
                       </button>
 
-                      {/* Link to detailed builder */}
+                      {/* Link to Match Builder */}
                       <Link
                         to={`/admin/match/${matchId}`}
                         className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-gray-200 rounded transition-colors"
                       >
-                        Edit
+                        Builder
+                      </Link>
+
+                      {/* Link to Match Results */}
+                      <Link
+                        to={`/admin/match/${matchId}/results`}
+                        className="px-2 py-1 text-xs bg-orange-600 hover:bg-orange-700 text-white rounded transition-colors"
+                      >
+                        Results
                       </Link>
                     </div>
                   </td>

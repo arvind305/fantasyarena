@@ -83,3 +83,9 @@ export const API_BASE_URL = process.env.REACT_APP_API_URL || "";
 export function getAdminEmail() {
   return (window.__FA_ADMIN_EMAIL__ || process.env.REACT_APP_ADMIN_EMAIL || "").trim().toLowerCase();
 }
+
+/**
+ * Helper to check if running in live mode.
+ * Returns true when ENGINE_MODE === 'live'.
+ */
+export const isLiveMode = () => ENGINE_MODE === 'live';
