@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { resolveIdentity } from "../auth/identity";
@@ -6,6 +6,7 @@ import { apiGetMatches } from "../api";
 import { initializeQuestionStore, getQuestions } from "../mock/QuestionStore";
 import Tabs, { useTabsWithUrl, useUrlSync } from "../components/Tabs";
 import { formatMatchDate } from "../utils/date";
+import { supabase, isSupabaseConfigured } from "../lib/supabase";
 
 const STATS_TABS = [
   { key: "overview", label: "Overview" },
@@ -28,6 +29,9 @@ export default function Stats() {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [historyFilter, setHistoryFilter] = useState("all"); // "all" | "scored" | "pending"
+
+  // Supabase scored bets for breakdowns
+  const [scoredBets, setScoredBets] = useState([]);
 
   // Load matches and questions on mount
   useEffect(() => {
@@ -68,6 +72,25 @@ export default function Stats() {
     }
   }, [identity.userId, matches]);
 
+  // Load scored bets from Supabase for breakdowns
+  useEffect(() => {
+    if (!identity.userId || !isSupabaseConfigured() || !supabase) return;
+
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("bets")
+          .select("match_id, score, winner_points, total_runs_points, player_pick_points, side_bet_points, runner_points")
+          .eq("user_id", identity.userId)
+          .not("score", "is", null);
+
+        if (!error && data) setScoredBets(data);
+      } catch (err) {
+        console.warn("[Stats] Error loading scored bets:", err);
+      }
+    })();
+  }, [identity.userId]);
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-10">
       {/* Header */}
@@ -107,33 +130,192 @@ export default function Stats() {
 
       {/* Breakdowns Tab */}
       {activeTab === "breakdowns" && (
-        <div className="animate-fade-in">
-          {/* Header */}
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold text-gray-200 mb-1">Breakdowns</h2>
-            <p className="text-gray-500 text-sm">See how standard bets vs side bets contribute to your score.</p>
-          </div>
+        <BreakdownsTab scoredBets={scoredBets} matches={matches} />
+      )}
+    </div>
+  );
+}
 
-          {/* Breakdown Sections */}
-          <div className="space-y-4">
-            <BreakdownCard
-              icon="📊"
-              title="Standard vs Side Bets"
-              description="Compare your performance on standard and side bets"
-            />
-            <BreakdownCard
-              icon="🎯"
-              title="Accuracy by Bet Type"
-              description="See which bet categories you're strongest at"
-            />
-            <BreakdownCard
-              icon="🏏"
-              title="Points by Match"
-              description="Track how your points accumulated across matches"
-            />
+function BreakdownsTab({ scoredBets, matches }) {
+  const hasData = scoredBets.length > 0;
+
+  // Compute breakdowns from scored bets
+  const breakdown = useMemo(() => {
+    if (!hasData) return null;
+
+    let totalWinner = 0;
+    let totalRuns = 0;
+    let totalPlayerPick = 0;
+    let totalSideBet = 0;
+    let totalRunner = 0;
+    let totalScore = 0;
+
+    const byMatch = [];
+
+    scoredBets.forEach((b) => {
+      const w = b.winner_points || 0;
+      const r = b.total_runs_points || 0;
+      const p = b.player_pick_points || 0;
+      const s = b.side_bet_points || 0;
+      const rn = b.runner_points || 0;
+      const sc = b.score || 0;
+
+      totalWinner += w;
+      totalRuns += r;
+      totalPlayerPick += p;
+      totalSideBet += s;
+      totalRunner += rn;
+      totalScore += sc;
+
+      const match = matches.find((m) => m.matchId === b.match_id);
+      byMatch.push({
+        matchId: b.match_id,
+        label: match ? `${match.teamA} vs ${match.teamB}` : b.match_id,
+        score: sc,
+        winner: w,
+        totalRuns: r,
+        playerPick: p,
+        sideBet: s,
+        runner: rn,
+      });
+    });
+
+    // Standard = winner + total_runs, Side = side_bet
+    const standardTotal = totalWinner + totalRuns;
+    const standardPct = totalScore > 0 ? Math.round((standardTotal / totalScore) * 100) : 0;
+    const sidePct = totalScore > 0 ? Math.round((totalSideBet / totalScore) * 100) : 0;
+    const playerPct = totalScore > 0 ? Math.round((totalPlayerPick / totalScore) * 100) : 0;
+    const runnerPct = totalScore > 0 ? Math.round((totalRunner / totalScore) * 100) : 0;
+
+    return {
+      totalScore,
+      categories: [
+        { label: "Winner Picks", points: totalWinner, color: "bg-blue-500" },
+        { label: "Total Runs", points: totalRuns, color: "bg-emerald-500" },
+        { label: "Player Picks", points: totalPlayerPick, color: "bg-purple-500" },
+        { label: "Side Bets", points: totalSideBet, color: "bg-amber-500" },
+        { label: "Runner Bonus", points: totalRunner, color: "bg-pink-500" },
+      ],
+      split: {
+        standard: { points: standardTotal, pct: standardPct },
+        side: { points: totalSideBet, pct: sidePct },
+        player: { points: totalPlayerPick, pct: playerPct },
+        runner: { points: totalRunner, pct: runnerPct },
+      },
+      byMatch: byMatch.sort((a, b) => b.score - a.score),
+    };
+  }, [scoredBets, matches, hasData]);
+
+  if (!hasData) {
+    return (
+      <div className="animate-fade-in">
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold text-gray-200 mb-1">Breakdowns</h2>
+          <p className="text-gray-500 text-sm">See how your points are distributed across bet types.</p>
+        </div>
+        <div className="card text-center py-16 bg-gray-900/30">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-800/50 flex items-center justify-center">
+            <svg className="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+          </div>
+          <p className="text-gray-400 text-lg mb-2">No scored bets yet</p>
+          <p className="text-gray-600 text-sm">Breakdowns will appear once your bets are scored.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="animate-fade-in">
+      <div className="mb-6">
+        <h2 className="text-xl font-semibold text-gray-200 mb-1">Breakdowns</h2>
+        <p className="text-gray-500 text-sm">See how your points are distributed across bet types.</p>
+      </div>
+
+      <div className="space-y-6">
+        {/* Points by Category */}
+        <div className="card">
+          <h3 className="font-semibold text-gray-200 mb-4">Points by Category</h3>
+          <div className="space-y-3">
+            {breakdown.categories.map((cat) => {
+              const pct = breakdown.totalScore > 0 ? Math.round((cat.points / breakdown.totalScore) * 100) : 0;
+              return (
+                <div key={cat.label}>
+                  <div className="flex items-center justify-between text-sm mb-1">
+                    <span className="text-gray-400">{cat.label}</span>
+                    <span className="text-gray-200 font-medium">{cat.points} pts <span className="text-gray-600">({pct}%)</span></span>
+                  </div>
+                  <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full ${cat.color} rounded-full transition-all duration-700`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-4 pt-3 border-t border-gray-800 flex justify-between">
+            <span className="text-gray-500 text-sm">Total</span>
+            <span className="text-gray-100 font-bold">{breakdown.totalScore} pts</span>
           </div>
         </div>
-      )}
+
+        {/* Standard vs Side vs Player */}
+        <div className="card">
+          <h3 className="font-semibold text-gray-200 mb-4">Standard vs Side Bets</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-gray-800/50 rounded-lg p-4 text-center">
+              <p className="text-2xl font-bold text-blue-400">{breakdown.split.standard.pct}%</p>
+              <p className="text-xs text-gray-500 mt-1">Standard Bets</p>
+              <p className="text-sm text-gray-400">{breakdown.split.standard.points} pts</p>
+            </div>
+            <div className="bg-gray-800/50 rounded-lg p-4 text-center">
+              <p className="text-2xl font-bold text-amber-400">{breakdown.split.side.pct}%</p>
+              <p className="text-xs text-gray-500 mt-1">Side Bets</p>
+              <p className="text-sm text-gray-400">{breakdown.split.side.points} pts</p>
+            </div>
+            <div className="bg-gray-800/50 rounded-lg p-4 text-center">
+              <p className="text-2xl font-bold text-purple-400">{breakdown.split.player.pct}%</p>
+              <p className="text-xs text-gray-500 mt-1">Player Picks</p>
+              <p className="text-sm text-gray-400">{breakdown.split.player.points} pts</p>
+            </div>
+            <div className="bg-gray-800/50 rounded-lg p-4 text-center">
+              <p className="text-2xl font-bold text-pink-400">{breakdown.split.runner.pct}%</p>
+              <p className="text-xs text-gray-500 mt-1">Runner Bonus</p>
+              <p className="text-sm text-gray-400">{breakdown.split.runner.points} pts</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Points by Match */}
+        <div className="card">
+          <h3 className="font-semibold text-gray-200 mb-4">Points by Match</h3>
+          <div className="space-y-2">
+            {breakdown.byMatch.map((m, i) => {
+              const pct = breakdown.totalScore > 0 ? Math.round((m.score / breakdown.totalScore) * 100) : 0;
+              return (
+                <div key={m.matchId} className="flex items-center gap-3 py-2 border-b border-gray-800/50 last:border-0">
+                  <span className="text-gray-600 text-xs w-6 text-right">{i + 1}.</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-gray-300 truncate">{m.label}</p>
+                    <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden mt-1">
+                      <div
+                        className="h-full bg-gradient-to-r from-brand-500 to-cyan-500 rounded-full transition-all duration-500"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                  <span className={`text-sm font-semibold whitespace-nowrap ${m.score > 0 ? "text-emerald-400" : "text-gray-500"}`}>
+                    {m.score > 0 ? "+" : ""}{m.score}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -304,23 +486,6 @@ function StatCard({ icon, label, value, valueColor = "text-gray-100" }) {
           <p className="text-gray-500 text-sm">{label}</p>
           <p className={`text-2xl font-bold ${valueColor}`}>{value}</p>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function BreakdownCard({ icon, title, description }) {
-  return (
-    <div className="card">
-      <div className="flex items-center gap-3 mb-3">
-        <div className="w-10 h-10 rounded-lg bg-gray-800 flex items-center justify-center text-xl shrink-0">
-          {icon}
-        </div>
-        <h3 className="font-semibold text-gray-200">{title}</h3>
-      </div>
-      <div className="bg-gray-900/50 rounded-lg p-6 text-center">
-        <p className="text-gray-500 text-sm">{description}</p>
-        <p className="text-gray-600 text-xs mt-2">Available after matches are scored</p>
       </div>
     </div>
   );
@@ -576,7 +741,7 @@ function BetHistoryCard({ bet, index }) {
             to={`/match/${bet.matchId}`}
             className="text-xs text-brand-400 hover:text-brand-300"
           >
-            View Match →
+            View Match &rarr;
           </Link>
         )}
       </div>

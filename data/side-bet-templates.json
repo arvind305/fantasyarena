@@ -1,0 +1,256 @@
+{
+  "version": "1.0",
+  "description": "Side bet template bank for T20 cricket matches. Admin picks from this bank when configuring match side bets.",
+  "templates": [
+    {
+      "id": "century_in_match",
+      "category": "Batting Milestones",
+      "question_text": "Will a century be scored in this match?",
+      "options": ["Yes", "No"],
+      "suggested_points_correct": 500,
+      "suggested_points_wrong": 0,
+      "difficulty": "hard",
+      "notes": "Centuries are rare in T20s. Use higher points for correct."
+    },
+    {
+      "id": "fifty_plus_scored",
+      "category": "Batting Milestones",
+      "question_text": "Will a half-century (50+) be scored in this match?",
+      "options": ["Yes", "No"],
+      "suggested_points_correct": 300,
+      "suggested_points_wrong": 0,
+      "difficulty": "medium",
+      "notes": "Half-centuries are common. Lower points."
+    },
+    {
+      "id": "highest_individual_score",
+      "category": "Batting Milestones",
+      "question_text": "What will be the highest individual score in this match?",
+      "options": ["0-30", "31-50", "51-75", "76+"],
+      "suggested_points_correct": 400,
+      "suggested_points_wrong": 0,
+      "difficulty": "medium",
+      "notes": "Predicting the range of the top scorer."
+    },
+    {
+      "id": "total_sixes_in_match",
+      "category": "Batting - Boundaries",
+      "question_text": "How many sixes will be hit in this match?",
+      "options": ["0-8", "9-14", "15-20", "21+"],
+      "suggested_points_correct": 400,
+      "suggested_points_wrong": 0,
+      "difficulty": "medium",
+      "notes": "Average T20I has ~12-15 sixes."
+    },
+    {
+      "id": "total_fours_in_match",
+      "category": "Batting - Boundaries",
+      "question_text": "How many fours will be hit in this match?",
+      "options": ["0-15", "16-25", "26-35", "36+"],
+      "suggested_points_correct": 400,
+      "suggested_points_wrong": 0,
+      "difficulty": "medium",
+      "notes": "Average T20I has ~20-25 fours."
+    },
+    {
+      "id": "wides_over_10",
+      "category": "Bowling - Extras",
+      "question_text": "Will the number of wides be >10 in this match?",
+      "options": ["Yes", "No"],
+      "suggested_points_correct": 400,
+      "suggested_points_wrong": 0,
+      "difficulty": "medium",
+      "notes": "Average T20I has 8-12 wides."
+    },
+    {
+      "id": "wides_first_8_overs",
+      "category": "Bowling - Extras",
+      "question_text": "Will the number of wides be >10 in the first 8 overs of the first innings?",
+      "options": ["Yes", "No"],
+      "suggested_points_correct": 500,
+      "suggested_points_wrong": 0,
+      "difficulty": "hard",
+      "notes": "Harder to predict for a subset of overs."
+    },
+    {
+      "id": "total_extras_in_match",
+      "category": "Bowling - Extras",
+      "question_text": "How many total extras will be bowled in this match?",
+      "options": ["0-10", "11-20", "21-30", "31+"],
+      "suggested_points_correct": 400,
+      "suggested_points_wrong": 0,
+      "difficulty": "medium",
+      "notes": "Includes wides, no-balls, byes, leg-byes."
+    },
+    {
+      "id": "man_of_the_match_type",
+      "category": "Player Awards",
+      "question_text": "Who will be the Man of the Match?",
+      "options": ["Top 3 batsmen (either side)", "Batsmen 4-6 (either side)", "Batsmen 7-11 (either side)"],
+      "suggested_points_correct": 500,
+      "suggested_points_wrong": 0,
+      "difficulty": "hard",
+      "notes": "Based on batting order position of the MoM."
+    },
+    {
+      "id": "spinners_vs_pacers",
+      "category": "Bowling Analysis",
+      "question_text": "Who will give lesser runs in the game (both sides combined)?",
+      "options": ["Spinners", "Pacers"],
+      "suggested_points_correct": 400,
+      "suggested_points_wrong": 0,
+      "difficulty": "medium",
+      "notes": "Compare total runs conceded by spinners vs pacers across both innings."
+    },
+    {
+      "id": "powerplay_runs_first_innings",
+      "category": "Phase-wise Scoring",
+      "question_text": "How many runs will be scored in the powerplay of the first innings?",
+      "options": ["<=30", "31-50", "51-80", "81-100", ">100"],
+      "suggested_points_correct": 400,
+      "suggested_points_wrong": 0,
+      "difficulty": "medium",
+      "notes": "Powerplay = first 6 overs. Average T20I powerplay score is ~45-55."
+    },
+    {
+      "id": "powerplay_runs_second_innings",
+      "category": "Phase-wise Scoring",
+      "question_text": "How many runs will be scored in the powerplay of the second innings?",
+      "options": ["<=30", "31-50", "51-80", "81-100", ">100"],
+      "suggested_points_correct": 400,
+      "suggested_points_wrong": 0,
+      "difficulty": "medium",
+      "notes": "Second innings powerplay often differs due to chase dynamics."
+    },
+    {
+      "id": "death_overs_runs",
+      "category": "Phase-wise Scoring",
+      "question_text": "How many runs will be scored in the death overs (16-20) of the first innings?",
+      "options": ["<=50", "51-70", "71-90", ">90"],
+      "suggested_points_correct": 400,
+      "suggested_points_wrong": 0,
+      "difficulty": "medium",
+      "notes": "Death overs = overs 16-20. Average ~60-75 runs."
+    },
+    {
+      "id": "wickets_in_powerplay",
+      "category": "Bowling Milestones",
+      "question_text": "How many wickets will fall in the first innings powerplay?",
+      "options": ["0", "1", "2", "3+"],
+      "suggested_points_correct": 400,
+      "suggested_points_wrong": 0,
+      "difficulty": "medium",
+      "notes": "Average 1-2 wickets in T20I powerplay."
+    },
+    {
+      "id": "total_wickets_in_match",
+      "category": "Bowling Milestones",
+      "question_text": "How many total wickets will fall in this match?",
+      "options": ["0-8", "9-12", "13-16", "17-20"],
+      "suggested_points_correct": 400,
+      "suggested_points_wrong": 0,
+      "difficulty": "medium",
+      "notes": "Average T20I has ~12-14 wickets."
+    },
+    {
+      "id": "will_there_be_hat_trick",
+      "category": "Bowling Milestones",
+      "question_text": "Will a hat-trick be taken in this match?",
+      "options": ["Yes", "No"],
+      "suggested_points_correct": 1000,
+      "suggested_points_wrong": 0,
+      "difficulty": "very_hard",
+      "notes": "Extremely rare. High reward for correct Yes prediction."
+    },
+    {
+      "id": "first_innings_score_range",
+      "category": "Match Flow",
+      "question_text": "What will the first innings total be?",
+      "options": ["<=120", "121-150", "151-180", "181-200", ">200"],
+      "suggested_points_correct": 400,
+      "suggested_points_wrong": 0,
+      "difficulty": "medium",
+      "notes": "Average T20I first innings score is ~155-165."
+    },
+    {
+      "id": "winning_margin_type",
+      "category": "Match Flow",
+      "question_text": "Will the winning team win by runs or wickets?",
+      "options": ["By runs (batting first wins)", "By wickets (chasing team wins)"],
+      "suggested_points_correct": 300,
+      "suggested_points_wrong": 0,
+      "difficulty": "easy",
+      "notes": "Essentially a 50-50 question."
+    },
+    {
+      "id": "will_match_go_to_last_over",
+      "category": "Match Flow",
+      "question_text": "Will the match go to the last over (20th over of 2nd innings)?",
+      "options": ["Yes", "No"],
+      "suggested_points_correct": 300,
+      "suggested_points_wrong": 0,
+      "difficulty": "easy",
+      "notes": "Close matches often go to the wire."
+    },
+    {
+      "id": "opening_partnership_runs",
+      "category": "Partnerships",
+      "question_text": "How many runs will the first innings opening partnership score?",
+      "options": ["0-15", "16-35", "36-60", "61+"],
+      "suggested_points_correct": 400,
+      "suggested_points_wrong": 0,
+      "difficulty": "medium",
+      "notes": "Average T20I opening partnership is ~25-35."
+    },
+    {
+      "id": "highest_partnership",
+      "category": "Partnerships",
+      "question_text": "What will the highest partnership of the match be?",
+      "options": ["0-30", "31-50", "51-80", "81+"],
+      "suggested_points_correct": 400,
+      "suggested_points_wrong": 0,
+      "difficulty": "medium",
+      "notes": "Average highest partnership in T20I is ~50-60."
+    },
+    {
+      "id": "dot_ball_percentage",
+      "category": "Bowling Analysis",
+      "question_text": "What will the dot ball percentage be in the match?",
+      "options": ["<30%", "30-40%", "41-50%", ">50%"],
+      "suggested_points_correct": 500,
+      "suggested_points_wrong": 0,
+      "difficulty": "hard",
+      "notes": "Average T20I dot ball % is ~35-40%."
+    },
+    {
+      "id": "will_dls_be_used",
+      "category": "Match Events",
+      "question_text": "Will DLS method be used in this match?",
+      "options": ["Yes", "No"],
+      "suggested_points_correct": 500,
+      "suggested_points_wrong": -100,
+      "difficulty": "hard",
+      "notes": "Rain/weather dependent. Risky with negative wrong points."
+    },
+    {
+      "id": "first_ball_outcome",
+      "category": "Match Events",
+      "question_text": "What will happen on the first ball of the match?",
+      "options": ["Dot ball", "1-2 runs", "Boundary (4 or 6)", "Wicket/Wide/No-ball"],
+      "suggested_points_correct": 500,
+      "suggested_points_wrong": 0,
+      "difficulty": "hard",
+      "notes": "Fun opening bet. Dot ball is most common (~40%)."
+    },
+    {
+      "id": "team_to_score_most_in_powerplay",
+      "category": "Phase-wise Scoring",
+      "question_text": "Which team will score more runs in their respective powerplay?",
+      "options": ["Team batting first", "Team batting second", "Equal"],
+      "suggested_points_correct": 300,
+      "suggested_points_wrong": 0,
+      "difficulty": "easy",
+      "notes": "Options are generic - admin can customize per match with actual team names."
+    }
+  ]
+}

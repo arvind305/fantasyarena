@@ -48,6 +48,8 @@ export default function MatchConfig() {
   ]);
 
   const [sideBetsForm, setSideBetsForm] = useState([]);
+  const [sideBetTemplates, setSideBetTemplates] = useState([]);
+  const [showTemplates, setShowTemplates] = useState(false);
   const [playerStats, setPlayerStats] = useState({});
   const [teamPlayers, setTeamPlayers] = useState({ teamA: [], teamB: [] });
 
@@ -105,6 +107,16 @@ export default function MatchConfig() {
       })));
     }
   }, [config, slots, sideBets]);
+
+  // Load side bet templates
+  useEffect(() => {
+    if (activeTab === "sidebets" && sideBetTemplates.length === 0) {
+      fetch("/data/side-bet-templates.json")
+        .then((r) => r.json())
+        .then((data) => setSideBetTemplates(data.templates || []))
+        .catch(() => {});
+    }
+  }, [activeTab, sideBetTemplates.length]);
 
   // Load players for stats tab
   useEffect(() => {
@@ -232,6 +244,18 @@ export default function MatchConfig() {
 
   function updateSideBet(index, field, value) {
     setSideBetsForm((prev) => prev.map((sb, i) => i === index ? { ...sb, [field]: value } : sb));
+  }
+
+  function addFromTemplate(template) {
+    setSideBetsForm((prev) => [...prev, {
+      questionText: template.question_text,
+      options: template.options,
+      pointsCorrect: template.suggested_points_correct,
+      pointsWrong: template.suggested_points_wrong,
+      correctAnswer: null,
+      status: "OPEN",
+    }]);
+    setShowTemplates(false);
   }
 
   if (!user) return <Navigate to="/" replace />;
@@ -453,7 +477,42 @@ export default function MatchConfig() {
               ))}
             </div>
 
-            <button onClick={addSideBet} className="btn-secondary text-sm">+ Add Side Bet</button>
+            <div className="flex gap-2 flex-wrap">
+              <button onClick={addSideBet} className="btn-secondary text-sm">+ Add Blank</button>
+              <button onClick={() => setShowTemplates(!showTemplates)} className="btn-secondary text-sm bg-purple-900/30 border-purple-700/50 text-purple-300 hover:bg-purple-900/50">
+                {showTemplates ? "Hide Templates" : "Pick from Template Bank"}
+              </button>
+            </div>
+
+            {/* Template Bank Picker */}
+            {showTemplates && sideBetTemplates.length > 0 && (
+              <div className="p-4 rounded-xl bg-gray-800/70 border border-purple-700/30 max-h-80 overflow-y-auto">
+                <p className="text-xs text-gray-400 mb-3">Click a template to add it as a side bet. Points can be adjusted after adding.</p>
+                {(() => {
+                  const categories = [...new Set(sideBetTemplates.map((t) => t.category))];
+                  return categories.map((cat) => (
+                    <div key={cat} className="mb-3">
+                      <p className="text-xs font-semibold text-purple-400 mb-1.5">{cat}</p>
+                      <div className="space-y-1.5">
+                        {sideBetTemplates.filter((t) => t.category === cat).map((t) => (
+                          <button
+                            key={t.id}
+                            onClick={() => addFromTemplate(t)}
+                            className="w-full text-left p-2.5 rounded-lg bg-gray-900/60 hover:bg-gray-900 border border-gray-700/50 hover:border-purple-600/50 transition-colors"
+                          >
+                            <p className="text-sm text-gray-200">{t.question_text}</p>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              Options: {t.options.join(", ")} | +{t.suggested_points_correct}pts correct
+                              {t.suggested_points_wrong !== 0 && ` / ${t.suggested_points_wrong}pts wrong`}
+                            </p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ));
+                })()}
+              </div>
+            )}
 
             <button onClick={handleSaveSideBets} disabled={admin.saving} className="btn-primary">
               {admin.saving ? <Spinner size="sm" className="inline mr-2" /> : null}
