@@ -117,7 +117,7 @@ export default function Profile() {
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-gray-200 group-hover:text-brand-300">View Your Stats</h3>
-          <p className="text-gray-500 text-sm">Performance analytics coming in Phase 3</p>
+          <p className="text-gray-500 text-sm">View your betting performance and history</p>
         </div>
         <span className="text-gray-500 group-hover:text-brand-400 transition-colors">→</span>
       </Link>

@@ -77,7 +77,7 @@ export default function Stats() {
             Stats
           </span>
         </h1>
-        <p className="text-gray-500">Your betting performance and history will appear here (Phase 3).</p>
+        <p className="text-gray-500">Your betting performance and history.</p>
       </div>
 
       {/* Tabs */}
@@ -320,7 +320,7 @@ function BreakdownCard({ icon, title, description }) {
       </div>
       <div className="bg-gray-900/50 rounded-lg p-6 text-center">
         <p className="text-gray-500 text-sm">{description}</p>
-        <p className="text-gray-600 text-xs mt-2">Coming in Phase 3</p>
+        <p className="text-gray-600 text-xs mt-2">Available after matches are scored</p>
       </div>
     </div>
   );

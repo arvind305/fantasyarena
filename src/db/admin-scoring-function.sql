@@ -3,12 +3,15 @@
 -- It should be called with the service role key or from an Edge Function.
 
 -- Drop existing function if exists
-DROP FUNCTION IF EXISTS calculate_match_scores(VARCHAR, VARCHAR, JSONB);
+DROP FUNCTION IF EXISTS calculate_match_scores(character varying, character varying);
+DROP FUNCTION IF EXISTS calculate_match_scores(text, text);
+DROP FUNCTION IF EXISTS calculate_match_scores(character varying, character varying, jsonb);
+DROP FUNCTION IF EXISTS calculate_match_scores(text, text, jsonb);
 
 -- Create the scoring function
 CREATE OR REPLACE FUNCTION calculate_match_scores(
-    p_match_id VARCHAR,
-    p_event_id VARCHAR,
+    p_match_id TEXT,
+    p_event_id TEXT,
     p_match_result JSONB DEFAULT NULL
 )
 RETURNS JSONB AS $$
@@ -147,7 +150,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Grant execute permission to authenticated users (admin check should be done in app layer)
-GRANT EXECUTE ON FUNCTION calculate_match_scores TO authenticated;
+GRANT EXECUTE ON FUNCTION calculate_match_scores(TEXT, TEXT, JSONB) TO authenticated;
 
 -- Comment for documentation
-COMMENT ON FUNCTION calculate_match_scores IS 'Calculate and apply scores for all bets on a match. Should only be called by admin users.';
+COMMENT ON FUNCTION calculate_match_scores(TEXT, TEXT, JSONB) IS 'Calculate and apply scores for all bets on a match. Should only be called by admin users.';

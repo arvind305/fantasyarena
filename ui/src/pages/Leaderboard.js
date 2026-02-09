@@ -248,7 +248,7 @@ export default function Leaderboard() {
         <div className="animate-fade-in">
           <div className="mb-6">
             <h2 className="text-xl font-bold text-gray-100 mb-1">Today</h2>
-            <p className="text-gray-500 text-sm">Today's match leaderboards arrive in Phase 2. For now, jump into today's matches.</p>
+            <p className="text-gray-500 text-sm">Today's matches and scores.</p>
           </div>
 
           {todayMatches.length === 0 ? (
@@ -376,10 +376,8 @@ export default function Leaderboard() {
                 </button>
               </div>
 
-              {/* Phase 2 Notice */}
-              <p className="text-gray-600 text-sm text-center">
-                Match leaderboards will appear in Phase 2.
-              </p>
+              {/* Match Leaderboard */}
+              <MatchLeaderboard matchId={selectedMatch} />
             </div>
           ) : (
             <div className="card text-center py-8 bg-gray-900/30">
@@ -387,12 +385,112 @@ export default function Leaderboard() {
                 Select a match above to view details and place bets.
               </p>
               <p className="text-gray-600 text-xs mt-1">
-                Match leaderboards will appear here in Phase 2.
+                Select a match to see who scored the most.
               </p>
             </div>
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function MatchLeaderboard({ matchId }) {
+  const [entries, setEntries] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!matchId || !isSupabaseConfigured() || !supabase) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    (async () => {
+      try {
+        // Fetch bets for this match that have been scored
+        const { data: bets, error } = await supabase
+          .from('bets')
+          .select('user_id, score, winner_points, total_runs_points, player_pick_points, side_bet_points, runner_points')
+          .eq('match_id', matchId)
+          .order('score', { ascending: false });
+
+        if (error) throw error;
+        if (!bets || bets.length === 0) { setEntries([]); return; }
+
+        // Get display names from leaderboard table
+        const userIds = bets.map(b => b.user_id);
+        const { data: profiles } = await supabase
+          .from('leaderboard')
+          .select('user_id, display_name')
+          .in('user_id', userIds);
+
+        const nameMap = {};
+        (profiles || []).forEach(p => { nameMap[p.user_id] = p.display_name; });
+
+        setEntries(bets.map((b, i) => ({
+          rank: i + 1,
+          userId: b.user_id,
+          displayName: nameMap[b.user_id] || b.user_id.slice(0, 8) + '...',
+          score: b.score || 0,
+          winnerPts: b.winner_points || 0,
+          totalRunsPts: b.total_runs_points || 0,
+          playerPickPts: b.player_pick_points || 0,
+          sideBetPts: b.side_bet_points || 0,
+          runnerPts: b.runner_points || 0,
+        })));
+      } catch (err) {
+        console.warn('[Leaderboard] Error fetching match scores:', err);
+        setEntries([]);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [matchId]);
+
+  if (loading) {
+    return <div className="space-y-3">{[1, 2, 3].map(i => <SkeletonCard key={i} />)}</div>;
+  }
+
+  if (entries.length === 0) {
+    return (
+      <div className="card text-center py-8 bg-gray-900/30">
+        <p className="text-gray-500 text-sm">No scored bets for this match yet.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="card p-0 overflow-hidden">
+      <table className="w-full">
+        <thead className="bg-gray-900">
+          <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wider">
+            <th className="text-left px-4 py-3">#</th>
+            <th className="text-left px-4 py-3">Player</th>
+            <th className="text-right px-4 py-3">Score</th>
+          </tr>
+        </thead>
+        <tbody>
+          {entries.map((e) => {
+            const style = RANK_STYLE[e.rank];
+            return (
+              <tr key={e.userId} className="border-b border-gray-800/50 last:border-0 hover:bg-gray-800/20">
+                <td className="px-4 py-3">
+                  {style ? (
+                    <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${style.badge}`}>{e.rank}</span>
+                  ) : (
+                    <span className="text-gray-500 text-sm pl-1.5">{e.rank}</span>
+                  )}
+                </td>
+                <td className="px-4 py-3 font-semibold text-gray-200">{e.displayName}</td>
+                <td className="px-4 py-3 text-right">
+                  <span className={`font-bold text-lg ${e.rank <= 3 ? "text-amber-400" : "text-gray-300"}`}>{e.score}</span>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }

@@ -46,7 +46,7 @@ export interface Player {
 /**
  * Player match statistics
  * Reference: Constitution Section 4 (Player Scoring Grid)
- * 
+ *
  * All stats are raw values from official data sources.
  * Section 4.5 Validity Rule: Even 1 ball faced or bowled is valid for scoring.
  */
@@ -59,11 +59,13 @@ export interface PlayerMatchStats {
   readonly ballsFaced: number;
   readonly fours: number;
   readonly sixes: number;
+  readonly strikeRate: number;       // Calculated: (runs / ballsFaced) * 100, rounded
 
   // Bowling stats (Section 4.2)
   readonly wickets: number;
   readonly oversBowled: number;      // Decimal format: 3.4 = 3 overs 4 balls
   readonly runsConceded: number;
+  readonly economyRate: number;      // Calculated: runsConceded / overs bowled
   readonly hasTakenHatTrick: boolean;
 
   // Fielding stats (Section 4.3)
@@ -183,7 +185,7 @@ export interface Bet {
 /**
  * Scoring rule coefficients
  * Reference: Constitution Section 4 (Player Scoring Grid)
- * 
+ *
  * CRITICAL CONSTRAINT (Section 11):
  * - Admin may NOT change base stat points
  * - These values are IMMUTABLE once a rule version is created
@@ -194,16 +196,19 @@ export interface ScoringRules {
   readonly pointsPerRun: number;           // Constitution: 1
   readonly pointsPerFour: number;          // Constitution: 10
   readonly pointsPerSix: number;           // Constitution: 20
+  readonly strikeRateMultiplier: number;   // Constitution: 1 (SR directly converts to points, rounded)
   readonly centuryBonus: number;           // Constitution: 200 (for 100+ runs)
   readonly centuryThreshold: number;       // Constitution: 100
 
   // Bowling (Section 4.2)
   readonly pointsPerWicket: number;        // Constitution: 20
-  readonly rpoTier1Threshold: number;      // Constitution: 6 (RPO ≤ 6)
-  readonly rpoTier1Points: number;         // Constitution: 100
-  readonly rpoTier2Threshold: number;      // Constitution: 8 (RPO > 6 and ≤ 8)
-  readonly rpoTier2Points: number;         // Constitution: 50
-  readonly rpoTier3Points: number;         // Constitution: 25 (RPO > 8)
+  readonly economyTier1Threshold: number;  // Constitution: 6 (Economy ≤ 6)
+  readonly economyTier1Points: number;     // Constitution: 100
+  readonly economyTier2Threshold: number;  // Constitution: 8 (Economy > 6 and ≤ 8)
+  readonly economyTier2Points: number;     // Constitution: 50
+  readonly economyTier3Threshold: number;  // Constitution: 10 (Economy > 8 and ≤ 10)
+  readonly economyTier3Points: number;     // Constitution: 25
+  readonly economyTier4Points: number;     // Constitution: 0 (Economy > 10)
   readonly fiveWicketHaulBonus: number;    // Constitution: 200
   readonly fiveWicketHaulThreshold: number;// Constitution: 5
   readonly hatTrickBonus: number;          // Constitution: 200
@@ -240,7 +245,7 @@ export interface RuleVersion {
 
 /**
  * The canonical scoring rules as defined in Constitution.md Section 4
- * 
+ *
  * This is the SINGLE SOURCE OF TRUTH for base scoring.
  * Admin CANNOT modify these values (Section 11).
  */
@@ -249,16 +254,19 @@ export const CONSTITUTION_V1_SCORING_RULES: ScoringRules = {
   pointsPerRun: 1,
   pointsPerFour: 10,
   pointsPerSix: 20,
+  strikeRateMultiplier: 1,          // SR 150 = 150 points (rounded)
   centuryBonus: 200,
   centuryThreshold: 100,
 
   // Bowling (Section 4.2)
   pointsPerWicket: 20,
-  rpoTier1Threshold: 6,
-  rpoTier1Points: 100,
-  rpoTier2Threshold: 8,
-  rpoTier2Points: 50,
-  rpoTier3Points: 25,
+  economyTier1Threshold: 6,         // Economy ≤ 6
+  economyTier1Points: 100,
+  economyTier2Threshold: 8,         // Economy > 6 and ≤ 8
+  economyTier2Points: 50,
+  economyTier3Threshold: 10,        // Economy > 8 and ≤ 10
+  economyTier3Points: 25,
+  economyTier4Points: 0,            // Economy > 10
   fiveWicketHaulBonus: 200,
   fiveWicketHaulThreshold: 5,
   hatTrickBonus: 200,

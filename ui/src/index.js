@@ -31,6 +31,11 @@ import Spinner from "./components/Spinner";
 import AdminMatchBuilder from "./pages/AdminMatchBuilder";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminMatchResults from "./pages/AdminMatchResults";
+import AdminDashboardV2 from "./pages/admin/AdminDashboardV2";
+import MatchList from "./pages/admin/MatchList";
+import MatchConfig from "./pages/admin/MatchConfig";
+import LongTermConfig from "./pages/admin/LongTermConfig";
+import ScoreMatch from "./pages/admin/ScoreMatch";
 import InAppBrowserWarning from "./components/InAppBrowserWarning";
 import { isSupabaseConfigured } from "./lib/supabase";
 
@@ -138,9 +143,14 @@ function App() {
                 <Route path="/rules" element={<Rules />} />
                 <Route path="/faq" element={<FAQ />} />
                 <Route path="/about" element={<About />} />
-                <Route path="/admin/match/:matchId" element={<AdminMatchBuilder />} />
+                <Route path="/admin/match/:matchId" element={<MatchConfig />} />
                 <Route path="/admin/match/:matchId/results" element={<AdminMatchResults />} />
-                <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                <Route path="/admin/dashboard" element={<AdminDashboardV2 />} />
+                <Route path="/admin/matches" element={<MatchList />} />
+                <Route path="/admin/long-term" element={<LongTermConfig />} />
+                <Route path="/admin/score/:matchId" element={<ScoreMatch />} />
+                <Route path="/admin/legacy/dashboard" element={<AdminDashboard />} />
+                <Route path="/admin/legacy/match/:matchId" element={<AdminMatchBuilder />} />
               </Routes>
             </main>
             <footer className="border-t border-gray-800 py-6 text-center text-xs text-gray-600">
