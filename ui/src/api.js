@@ -148,7 +148,7 @@ export async function apiSubmitBets(matchId, userId, answers) {
         submitted_at: now,
         is_locked: false,
         score: null
-      }, { onConflict: 'user_id,match_id' })
+      }, { onConflict: 'bet_id' })
       .select()
       .single();
     if (error) {
@@ -156,7 +156,7 @@ export async function apiSubmitBets(matchId, userId, answers) {
       throw new Error(error.message);
     }
     console.log("[api] Bet saved to Supabase successfully");
-    return { success: true, submittedAt: data.submitted_at, isLocked: data.is_locked };
+    return data;
   }
 
   // WARNING: Supabase not configured - bets go to localStorage only!
@@ -333,7 +333,7 @@ export async function apiSubmitBetV2(matchId, userId, betData) {
       submitted_at: now,
       is_locked: false,
       score: null,
-    }, { onConflict: 'user_id,match_id' })
+    }, { onConflict: 'bet_id' })
     .select()
     .single();
 
@@ -342,11 +342,7 @@ export async function apiSubmitBetV2(matchId, userId, betData) {
     throw new Error(error.message);
   }
 
-  return {
-    success: true,
-    submittedAt: data.submitted_at,
-    isLocked: data.is_locked,
-  };
+  return data;
 }
 
 // ── Long-term Bets ─────────────────────────────────────────────────────────

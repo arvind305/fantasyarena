@@ -115,8 +115,8 @@ export default function MatchBetting() {
   // V2: Lock check based on match_config.lock_time
   const lockTime = config?.lockTime;
   const isLockedByTime = lockTime && new Date(lockTime) <= new Date();
-  const isLockedV2 = isLockedByTime || config?.status === "LOCKED" || config?.status === "SCORED" || existing?.is_locked;
-  const isEditableV2 = !isLockedV2 && config?.status !== "SCORED";
+  const isLockedV2 = isLockedByTime || config?.status === "LOCKED" || config?.status === "SCORED" || config?.status === "DRAFT" || existing?.is_locked;
+  const isEditableV2 = !isLockedV2 && config?.status === "OPEN";
 
   // V1 (legacy): Lock check
   const allQuestionsOpen = questions.length > 0 && questions.every((q) => q.status === "OPEN");

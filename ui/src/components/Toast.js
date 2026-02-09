@@ -17,12 +17,12 @@ export function ToastProvider({ children }) {
     }, 4000);
   }, []);
 
-  const toast = useCallback(
-    {
+  const toast = React.useMemo(
+    () => ({
       success: (msg) => addToast(msg, "success"),
       error: (msg) => addToast(msg, "error"),
       info: (msg) => addToast(msg, "info"),
-    },
+    }),
     [addToast]
   );
 

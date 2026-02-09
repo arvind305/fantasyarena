@@ -14,6 +14,7 @@ const links = [
 
 // Secondary links accessible from within pages or mobile menu
 const moreLinks = [
+  { to: "/long-term-bets", label: "Predictions" },
   { to: "/schedule", label: "Schedule" },
   { to: "/players", label: "Players" },
   { to: "/groups", label: "Groups" },

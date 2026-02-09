@@ -1,46 +1,72 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { apiGetTeams, apiGetEvents } from "../api";
+import { apiGetSquads } from "../api";
 import Spinner from "../components/Spinner";
 
+// Group definitions for T20 World Cup 2026
+const GROUPS = {
+  A: ["USA", "PAK", "IND", "NAM", "NED"],
+  B: ["ZIM", "SL", "AUS", "OMAN", "IRE"],
+  C: ["SCO", "WI", "ENG", "ITA", "NEP"],
+  D: ["NZ", "RSA", "UAE", "AFG", "CAN"],
+};
 const GROUP_ORDER = ["A", "B", "C", "D"];
 
+// Team brand colors keyed by team_code
+const TEAM_COLORS = {
+  IND: "#1e90ff",
+  PAK: "#006400",
+  USA: "#b22234",
+  NED: "#ff6600",
+  NAM: "#003580",
+  AUS: "#ffcc00",
+  SL: "#0033a0",
+  IRE: "#169b62",
+  ZIM: "#ffd700",
+  OMAN: "#c8102e",
+  ENG: "#cf142b",
+  WI: "#7b3f00",
+  ITA: "#009246",
+  NEP: "#dc143c",
+  SCO: "#0065bd",
+  RSA: "#007749",
+  NZ: "#000000",
+  AFG: "#0066b2",
+  CAN: "#ff0000",
+  UAE: "#00732f",
+};
+
 export default function Teams() {
-  const [teams, setTeams] = useState([]);
-  const [event, setEvent] = useState(null);
+  const [squads, setSquads] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    Promise.all([apiGetTeams(), apiGetEvents()])
-      .then(([teamsData, events]) => {
-        setTeams(teamsData);
-        if (events?.length) setEvent(events[0]);
+    apiGetSquads("t20wc_2026")
+      .then((data) => setSquads(data))
+      .catch((err) => {
+        console.error("[Teams] Failed to load squads:", err);
+        setError(err.message);
       })
       .finally(() => setLoading(false));
   }, []);
 
+  // Organize squads into groups
   const teamsByGroup = useMemo(() => {
-    if (!event?.groups) return null;
+    if (!squads.length) return {};
 
     const groups = {};
     for (const groupName of GROUP_ORDER) {
-      const teamCodes = event.groups[groupName] || [];
-      const groupTeams = teamCodes
-        .map((code) => {
-          const team = teams.find(
-            (t) =>
-              t.shortName === code ||
-              t.teamId.toLowerCase() === code.toLowerCase()
-          );
-          return team;
-        })
+      const codes = GROUPS[groupName] || [];
+      const groupTeams = codes
+        .map((code) => squads.find((s) => s.teamCode === code))
         .filter(Boolean);
       if (groupTeams.length > 0) {
         groups[groupName] = groupTeams;
       }
     }
     return groups;
-  }, [teams, event]);
+  }, [squads]);
 
   if (loading) {
     return (
@@ -50,7 +76,23 @@ export default function Teams() {
     );
   }
 
-  const hasGroups = teamsByGroup && Object.keys(teamsByGroup).length > 0;
+  if (error) {
+    return (
+      <div className="max-w-5xl mx-auto px-4 py-10">
+        <div className="card text-center">
+          <p className="text-red-400">Failed to load teams: {error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="btn-primary mt-4"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const hasGroups = Object.keys(teamsByGroup).length > 0;
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-10">
@@ -83,10 +125,10 @@ export default function Teams() {
                   Group {groupName}
                 </h2>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                  {teamsByGroup[groupName].map((t, i) => (
+                  {teamsByGroup[groupName].map((squad, i) => (
                     <TeamCard
-                      key={t.teamId}
-                      team={t}
+                      key={squad.teamCode}
+                      squad={squad}
                       delay={groupIndex * 100 + i * 60}
                     />
                   ))}
@@ -96,8 +138,8 @@ export default function Teams() {
         )
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {teams.map((t, i) => (
-            <TeamCard key={t.teamId} team={t} delay={i * 60} />
+          {squads.map((squad, i) => (
+            <TeamCard key={squad.teamCode} squad={squad} delay={i * 60} />
           ))}
         </div>
       )}
@@ -105,22 +147,26 @@ export default function Teams() {
   );
 }
 
-function TeamCard({ team: t, delay = 0 }) {
+function TeamCard({ squad, delay = 0 }) {
+  const color = TEAM_COLORS[squad.teamCode] || "#888888";
+
   return (
     <Link
-      to={`/teams/${t.teamId}`}
+      to={`/teams/${squad.teamCode}`}
       className="card hover:border-brand-700 transition-all duration-300 group animate-slide-up"
       style={{ animationDelay: `${delay}ms` }}
     >
       <div
         className="w-14 h-14 rounded-xl flex items-center justify-center font-bold text-xl mb-3"
-        style={{ backgroundColor: t.color + "25", color: t.color }}
+        style={{ backgroundColor: color + "25", color: color }}
       >
-        {t.shortName}
+        {squad.teamCode}
       </div>
       <h3 className="font-semibold text-gray-100 group-hover:text-brand-300 transition-colors">
-        {t.name}
+        {squad.teamName}
       </h3>
     </Link>
   );
 }
+
+export { TEAM_COLORS };

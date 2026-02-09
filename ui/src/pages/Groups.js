@@ -34,7 +34,7 @@ export default function Groups() {
     apiGetGroups(user ? identity.userId : null)
       .then(setGroups)
       .finally(() => setLoading(false));
-  }, []);
+  }, [user, identity.userId]);
 
   async function handleCreate() {
     if (!user) return toast.error("Sign in to create a group");
@@ -46,8 +46,9 @@ export default function Groups() {
       setNewName("");
       setNewlyCreated(group); // Show the newly created group with code
       toast.success(`Group created! Share the code with friends.`);
-    } catch (err) { toast.error(err.message); }
-    finally { setCreating(false); }
+    } catch (err) {
+      toast.error(err.message || "Failed to create group. Please try again.");
+    } finally { setCreating(false); }
   }
 
   async function handleCopyCode(e, groupObj) {
@@ -78,8 +79,12 @@ export default function Groups() {
       });
       setJoinCode("");
       toast.success(`Joined "${group.name}"!`);
-    } catch (err) { toast.error(err.message); }
-    finally { setJoining(false); }
+    } catch (err) {
+      const msg = err.message;
+      if (msg === "INVALID_GROUP_CODE") toast.error("Invalid group code. Please check and try again.");
+      else if (msg === "ALREADY_A_MEMBER") toast.error("You're already a member of this group.");
+      else toast.error(msg || "Failed to join group. Please try again.");
+    } finally { setJoining(false); }
   }
 
   if (loading) return <div className="max-w-4xl mx-auto px-4 py-10 text-center"><Spinner size="lg" /></div>;

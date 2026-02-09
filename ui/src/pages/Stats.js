@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { resolveIdentity } from "../auth/identity";
 import { apiGetMatches } from "../api";
-import { initializeQuestionStore, getQuestions } from "../mock/QuestionStore";
 import Tabs, { useTabsWithUrl, useUrlSync } from "../components/Tabs";
 import { formatMatchDate } from "../utils/date";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
@@ -30,63 +29,45 @@ export default function Stats() {
   const [loading, setLoading] = useState(true);
   const [historyFilter, setHistoryFilter] = useState("all"); // "all" | "scored" | "pending"
 
-  // Supabase scored bets for breakdowns
-  const [scoredBets, setScoredBets] = useState([]);
+  // Scored bets for breakdowns (derived from betHistory)
+  const scoredBets = useMemo(
+    () => betHistory.filter((b) => b.score !== null && b.score !== undefined),
+    [betHistory]
+  );
 
-  // Load matches and questions on mount
+  // Load matches on mount
   useEffect(() => {
-    Promise.all([apiGetMatches(), initializeQuestionStore()])
-      .then(([m]) => {
-        setMatches(m);
-      })
-      .finally(() => setLoading(false));
+    apiGetMatches()
+      .then((m) => setMatches(m))
+      .catch((err) => console.warn("[Stats] Error loading matches:", err));
   }, []);
 
-  // Load user bets from localStorage when matches are loaded
+  // Load user bets from Supabase
   useEffect(() => {
-    if (!identity.userId || matches.length === 0) return;
-
-    try {
-      const raw = JSON.parse(localStorage.getItem("betting_arena_state") || "{}");
-      const userBets = raw.bets?.[identity.userId] || {};
-
-      // Convert to array and enrich with match data
-      const betsArray = Object.entries(userBets).map(([matchId, bet]) => {
-        const match = matches.find((m) => m.matchId === matchId);
-        const questions = getQuestions(matchId);
-        return {
-          matchId,
-          ...bet,
-          match,
-          questions,
-        };
-      });
-
-      // Sort by submittedAt descending (newest first)
-      betsArray.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
-
-      setBetHistory(betsArray);
-    } catch (err) {
-      console.warn("[Stats] Error loading bet history:", err);
-      setBetHistory([]);
+    if (!identity.userId || !isSupabaseConfigured() || !supabase) {
+      setLoading(false);
+      return;
     }
-  }, [identity.userId, matches]);
-
-  // Load scored bets from Supabase for breakdowns
-  useEffect(() => {
-    if (!identity.userId || !isSupabaseConfigured() || !supabase) return;
 
     (async () => {
       try {
         const { data, error } = await supabase
           .from("bets")
-          .select("match_id, score, winner_points, total_runs_points, player_pick_points, side_bet_points, runner_points")
+          .select("match_id, answers, player_picks, side_bet_answers, runner_picks, score, winner_points, total_runs_points, player_pick_points, side_bet_points, runner_points, submitted_at, is_locked")
           .eq("user_id", identity.userId)
-          .not("score", "is", null);
+          .order("submitted_at", { ascending: false });
 
-        if (!error && data) setScoredBets(data);
+        if (error) {
+          console.warn("[Stats] Supabase error:", error.message);
+          setBetHistory([]);
+        } else {
+          setBetHistory(data || []);
+        }
       } catch (err) {
-        console.warn("[Stats] Error loading scored bets:", err);
+        console.warn("[Stats] Error loading bets:", err);
+        setBetHistory([]);
+      } finally {
+        setLoading(false);
       }
     })();
   }, [identity.userId]);
@@ -122,6 +103,7 @@ export default function Stats() {
       {activeTab === "history" && (
         <BetHistoryTab
           betHistory={betHistory}
+          matches={matches}
           loading={loading}
           historyFilter={historyFilter}
           setHistoryFilter={setHistoryFilter}
@@ -322,14 +304,17 @@ function BreakdownsTab({ scoredBets, matches }) {
 
 function OverviewTab({ betHistory, loading }) {
   // Compute metrics from bet history
-  const matchesPlayed = new Set(betHistory.map((b) => b.matchId)).size;
+  const matchesPlayed = new Set(betHistory.map((b) => b.match_id)).size;
   const betsSubmitted = betHistory.length;
   const pendingCount = betHistory.filter((b) => b.score === null || b.score === undefined).length;
   const scoredCount = betHistory.filter((b) => b.score !== null && b.score !== undefined).length;
 
-  // Last activity: most recent submittedAt
-  const lastActivity = betHistory.length > 0
-    ? new Date(betHistory[0].submittedAt).toLocaleDateString(undefined, {
+  // Total score across all scored bets
+  const totalScore = betHistory.reduce((sum, b) => sum + (b.score || 0), 0);
+
+  // Last activity: most recent submitted_at
+  const lastActivity = betHistory.length > 0 && betHistory[0].submitted_at
+    ? new Date(betHistory[0].submitted_at).toLocaleDateString(undefined, {
         month: "short",
         day: "numeric",
         hour: "2-digit",
@@ -394,6 +379,26 @@ function OverviewTab({ betHistory, loading }) {
         <h2 className="text-xl font-semibold text-gray-200 mb-1">Overview</h2>
         <p className="text-gray-500 text-sm">Your betting activity at a glance.</p>
       </div>
+
+      {/* Total Score Highlight */}
+      {scoredCount > 0 && (
+        <div className="card mb-6 bg-gradient-to-r from-brand-950/50 to-cyan-950/30 border-brand-800/40">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-500 text-sm">Total Score</p>
+              <p className={`text-3xl font-bold ${totalScore >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                {totalScore > 0 ? "+" : ""}{totalScore} pts
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-gray-500 text-sm">Avg per match</p>
+              <p className="text-xl font-semibold text-gray-200">
+                {scoredCount > 0 ? Math.round(totalScore / scoredCount) : 0} pts
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stats Grid */}
       <div className="grid sm:grid-cols-2 gap-4 mb-6">
@@ -505,7 +510,7 @@ const STATUS_BADGE_STYLES = {
   NO_RESULT: "bg-gray-800/80 text-gray-400 border-gray-700",
 };
 
-function BetHistoryTab({ betHistory, loading, historyFilter, setHistoryFilter }) {
+function BetHistoryTab({ betHistory, matches, loading, historyFilter, setHistoryFilter }) {
   // Filter bets based on selected filter
   const filteredBets = betHistory.filter((bet) => {
     if (historyFilter === "all") return true;
@@ -589,7 +594,7 @@ function BetHistoryTab({ betHistory, loading, historyFilter, setHistoryFilter })
           {filteredBets.length > 0 ? (
             <div className="space-y-4">
               {filteredBets.map((bet, index) => (
-                <BetHistoryCard key={bet.matchId} bet={bet} index={index} />
+                <BetHistoryCard key={bet.match_id} bet={bet} matches={matches} index={index} />
               ))}
             </div>
           ) : (
@@ -605,41 +610,74 @@ function BetHistoryTab({ betHistory, loading, historyFilter, setHistoryFilter })
   );
 }
 
-function BetHistoryCard({ bet, index }) {
+/**
+ * Extract readable bet details from Supabase bet data.
+ * Answers JSONB has keys like "wc_m1_winner" and "wc_m1_total_runs".
+ */
+function extractBetDetails(bet) {
+  const details = [];
+  const answers = bet.answers || {};
+
+  // Extract winner pick from answers
+  const winnerKey = Object.keys(answers).find((k) => k.includes("winner"));
+  if (winnerKey) {
+    details.push({ label: "Winner Pick", value: answers[winnerKey] });
+  }
+
+  // Extract total runs from answers
+  const runsKey = Object.keys(answers).find((k) => k.includes("total_runs"));
+  if (runsKey) {
+    details.push({ label: "Total Runs", value: answers[runsKey] });
+  }
+
+  // Player picks
+  if (bet.player_picks && bet.player_picks.length > 0) {
+    bet.player_picks.forEach((pp) => {
+      details.push({
+        label: `Player Pick (Slot ${pp.slot || "?"})`,
+        value: pp.player_name || pp.player_id,
+      });
+    });
+  }
+
+  // Side bet answers
+  if (bet.side_bet_answers && Object.keys(bet.side_bet_answers).length > 0) {
+    Object.entries(bet.side_bet_answers).forEach(([, answer]) => {
+      details.push({ label: "Side Bet", value: String(answer) });
+    });
+  }
+
+  // Runner picks
+  if (bet.runner_picks && bet.runner_picks.length > 0) {
+    bet.runner_picks.forEach((rp) => {
+      details.push({ label: "Runner", value: rp.display_name || rp.user_id });
+    });
+  }
+
+  return details;
+}
+
+function BetHistoryCard({ bet, matches, index }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const { match, questions, answers, score, submittedAt } = bet;
+  const { score, submitted_at } = bet;
 
-  // Build question map for lookup
-  const questionMap = new Map(questions.map((q) => [q.questionId, q]));
-
-  // Get match display info
+  // Find match info
+  const match = matches.find((m) => m.matchId === bet.match_id);
   const matchTitle = match
     ? `${match.teamA} vs ${match.teamB}`
-    : `Match ${bet.matchId}`;
+    : bet.match_id;
   const matchDate = match?.scheduledTime
     ? formatMatchDate(match.scheduledTime)
     : "";
   const matchStatus = match?.status || "UPCOMING";
   const statusLabel = matchStatus.charAt(0) + matchStatus.slice(1).toLowerCase();
 
-  // Get answer display value
-  const getAnswerDisplay = (questionId, answerId) => {
-    const question = questionMap.get(questionId);
-    if (!question) return String(answerId);
-
-    // For numeric input, just show the value
-    if (question.type === "NUMERIC_INPUT") {
-      return answerId;
-    }
-
-    // For option-based questions, find the option label
-    const option = question.options?.find((o) => o.optionId === answerId);
-    return option?.label || String(answerId);
-  };
+  const isScored = score !== null && score !== undefined;
+  const betDetails = extractBetDetails(bet);
 
   // Score badge display
   const renderScoreBadge = () => {
-    if (score === null || score === undefined) {
+    if (!isScored) {
       return <span className="text-sm text-gray-500 bg-gray-800/50 px-2 py-1 rounded">Pending</span>;
     }
     const colorClass = score > 0 ? "text-emerald-400" : score < 0 ? "text-red-400" : "text-gray-400";
@@ -650,8 +688,6 @@ function BetHistoryCard({ bet, index }) {
       </span>
     );
   };
-
-  const answerCount = Object.keys(answers).length;
 
   return (
     <div
@@ -679,71 +715,98 @@ function BetHistoryCard({ bet, index }) {
         </div>
       </div>
 
-      {/* Expand/Collapse Toggle */}
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full mt-3 py-2 text-sm text-gray-400 hover:text-gray-300 flex items-center justify-center gap-1 transition-colors"
-      >
-        {isExpanded ? (
-          <>
-            <span>Hide answers</span>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-            </svg>
-          </>
-        ) : (
-          <>
-            <span>Show answers ({answerCount})</span>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </>
-        )}
-      </button>
+      {/* Point breakdown (for scored bets) */}
+      {isScored && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {bet.winner_points != null && bet.winner_points !== 0 && (
+            <span className={`text-xs px-2 py-0.5 rounded ${bet.winner_points > 0 ? "bg-blue-900/40 text-blue-400" : "bg-red-900/40 text-red-400"}`}>
+              Winner {bet.winner_points > 0 ? "+" : ""}{bet.winner_points}
+            </span>
+          )}
+          {bet.total_runs_points != null && bet.total_runs_points !== 0 && (
+            <span className={`text-xs px-2 py-0.5 rounded ${bet.total_runs_points > 0 ? "bg-emerald-900/40 text-emerald-400" : "bg-red-900/40 text-red-400"}`}>
+              Runs {bet.total_runs_points > 0 ? "+" : ""}{bet.total_runs_points}
+            </span>
+          )}
+          {bet.player_pick_points != null && bet.player_pick_points !== 0 && (
+            <span className={`text-xs px-2 py-0.5 rounded ${bet.player_pick_points > 0 ? "bg-purple-900/40 text-purple-400" : "bg-red-900/40 text-red-400"}`}>
+              Players {bet.player_pick_points > 0 ? "+" : ""}{bet.player_pick_points}
+            </span>
+          )}
+          {bet.side_bet_points != null && bet.side_bet_points !== 0 && (
+            <span className={`text-xs px-2 py-0.5 rounded ${bet.side_bet_points > 0 ? "bg-amber-900/40 text-amber-400" : "bg-red-900/40 text-red-400"}`}>
+              Side Bet {bet.side_bet_points > 0 ? "+" : ""}{bet.side_bet_points}
+            </span>
+          )}
+          {bet.runner_points != null && bet.runner_points !== 0 && (
+            <span className={`text-xs px-2 py-0.5 rounded ${bet.runner_points > 0 ? "bg-pink-900/40 text-pink-400" : "bg-red-900/40 text-red-400"}`}>
+              Runner {bet.runner_points > 0 ? "+" : ""}{bet.runner_points}
+            </span>
+          )}
+        </div>
+      )}
 
-      {/* Answers List (collapsible) */}
+      {/* Expand/Collapse Toggle */}
+      {betDetails.length > 0 && (
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="w-full mt-3 py-2 text-sm text-gray-400 hover:text-gray-300 flex items-center justify-center gap-1 transition-colors"
+        >
+          {isExpanded ? (
+            <>
+              <span>Hide details</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+              </svg>
+            </>
+          ) : (
+            <>
+              <span>Show details ({betDetails.length})</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </>
+          )}
+        </button>
+      )}
+
+      {/* Details List (collapsible) */}
       {isExpanded && (
         <div className="mt-3 pt-3 border-t border-gray-800/50 space-y-2">
-          {Object.entries(answers).map(([questionId, answerId]) => {
-            const question = questionMap.get(questionId);
-            const questionText = question?.text || `Question ${questionId}`;
-            const answerDisplay = getAnswerDisplay(questionId, answerId);
-
-            return (
-              <div
-                key={questionId}
-                className="flex items-start justify-between gap-4 py-2 border-b border-gray-800/50 last:border-0"
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-400">{questionText}</p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-sm font-medium text-gray-200">{answerDisplay}</span>
-                </div>
+          {betDetails.map((detail, i) => (
+            <div
+              key={i}
+              className="flex items-start justify-between gap-4 py-2 border-b border-gray-800/50 last:border-0"
+            >
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-gray-400">{detail.label}</p>
               </div>
-            );
-          })}
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-sm font-medium text-gray-200">{detail.value}</span>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
       {/* Footer */}
       <div className="mt-3 pt-3 border-t border-gray-800/50 flex items-center justify-between">
         <p className="text-xs text-gray-600">
-          Submitted {new Date(submittedAt).toLocaleDateString(undefined, {
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
+          {submitted_at && (
+            <>Submitted {new Date(submitted_at).toLocaleDateString(undefined, {
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}</>
+          )}
         </p>
-        {match && (
-          <Link
-            to={`/match/${bet.matchId}`}
-            className="text-xs text-brand-400 hover:text-brand-300"
-          >
-            View Match &rarr;
-          </Link>
-        )}
+        <Link
+          to={`/match/${bet.match_id}`}
+          className="text-xs text-brand-400 hover:text-brand-300"
+        >
+          View Match &rarr;
+        </Link>
       </div>
     </div>
   );
