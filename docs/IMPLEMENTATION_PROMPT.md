@@ -55,18 +55,22 @@ All match IDs use prefix `wc_m` followed by number: `wc_m1`, `wc_m2`, ..., `wc_m
 ### Current State
 - **8 users:** Arvind (9200pts), Tanay (8050), Sukant (7000), Shashank (5100), Unknown (4000), Vatsal (3350), Siddharth (2350), Aditi (2000)
 - **7 matches scored:** wc_m1 through wc_m7
-- **All 55 matches OPEN** (or LOCKED/SCORED if past). Frontend auto-locks via `lock_time` check (line 117 of MatchBetting.js: `new Date(lockTime) <= new Date()`)
-- **All 55 matches have 4 default side bets** from template bank
+- **Rolling 3-day window:** Only today + next 2 days are OPEN. All other future matches are DRAFT. Past unscored matches are LOCKED.
+- **Frontend auto-locks** via `lock_time` check (line 117 of MatchBetting.js: `new Date(lockTime) <= new Date()`)
+- **Each match has exactly 1 side bet** (+1000/-1000 points), rotating through 25 templates with no repeats in a 25-match window. Mix of Yes/No, 2-5 option questions.
 - **Admin can customize side bets** per match via MatchConfig → Side Bets tab → "Pick from Template Bank" or edit existing
 
-### How Locking Works
-The frontend checks `lock_time` directly — if `new Date(lockTime) <= new Date()`, betting is blocked. The DB `status` column is secondary/cosmetic. All future matches are set to OPEN so they appear for betting; they auto-lock on the frontend when `lock_time` arrives (= match start time in IST). No cron job needed for locking.
+### How Match Opening Works
+Only matches within today + 2 days are OPEN for betting. All others are DRAFT.
+- `scripts/open-matches.js` manages this: DRAFT→OPEN (within window), OPEN→LOCKED (past lock_time), OPEN→DRAFT (beyond window)
+- Run daily: `node scripts/open-matches.js`
+- Frontend also checks `lock_time` directly as a safety net — even if the DB status is OPEN, the frontend blocks betting once lock_time passes
 
 ### How Side Bets Work
-All 55 matches have 4 default side bets auto-populated from `data/side-bet-templates.json`. Admin can:
+Each match has exactly **1 side bet** pre-assigned from `data/side-bet-templates.json` (25 templates). Points are **+1000 correct / -1000 wrong**. Templates rotate sequentially so no question repeats within 25 matches. Admin can:
 - Swap/add/remove via MatchConfig → Side Bets tab
 - Use "Pick from Template Bank" to browse 25 templates by category
-- `scripts/rotate-side-bets.js` can rotate templates for upcoming matches (only if no users have answered yet)
+- Adjust points per match if desired
 
 ### Scoring Flow (working end-to-end)
 1. Users place bets before lock_time (match start)
@@ -223,7 +227,11 @@ Review on mobile devices:
 
 7. **Frontend locking** — MatchBetting.js checks `new Date(lockTime) <= new Date()` to block betting. Don't rely solely on DB status column.
 
-8. **Side bets are pre-populated** — All 55 matches have 4 default side bets. Admin customizes via MatchConfig. Template bank at `data/side-bet-templates.json` has 25 templates across 8 categories.
+8. **Side bets are pre-populated** — Each match has exactly 1 side bet (+1000/-1000 pts), rotating through 25 templates. Admin can swap/customize via MatchConfig. Template bank at `data/side-bet-templates.json`.
+
+9. **Match opening is a rolling 3-day window** — Only today + next 2 days are OPEN. All other future matches are DRAFT. Run `node scripts/open-matches.js` daily to manage this. NEVER open all matches at once.
+
+10. **App uses Google OAuth via GIS, NOT Supabase Auth** — The Supabase client connects with the anon key. RLS policies must include `anon` role for any table the frontend writes to (bets, long_term_bets, etc.).
 
 ---
 
