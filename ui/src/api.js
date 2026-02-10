@@ -989,6 +989,115 @@ export async function apiGetMatchResults(matchId) {
   };
 }
 
+// ── Match Report & Bet Viewing ──────────────────────────────────────────────
+
+/**
+ * Fetch everything needed for the admin match report.
+ * Returns { config, results, bets[], playerStats[], sideBets[], slots[], userNames{} }
+ */
+export async function apiGetMatchReport(matchId) {
+  if (!supabase || !isSupabaseConfigured()) return null;
+
+  const [configRes, resultsRes, betsRes, statsRes, sideBetsRes, slotsRes, lbRes] = await Promise.all([
+    supabase.from('match_config').select('*').eq('match_id', matchId).maybeSingle(),
+    supabase.from('match_results').select('*').eq('match_id', matchId).maybeSingle(),
+    supabase.from('bets').select('*').eq('match_id', matchId),
+    supabase.from('player_match_stats')
+      .select('*, players!inner(player_name, squads!inner(team_code))')
+      .eq('match_id', matchId)
+      .order('total_fantasy_points', { ascending: false }),
+    supabase.from('side_bets').select('*').eq('match_id', matchId).order('display_order', { ascending: true }),
+    supabase.from('player_slots').select('*').eq('match_id', matchId).order('slot_number', { ascending: true }),
+    supabase.from('leaderboard').select('user_id, display_name'),
+  ]);
+
+  if (configRes.error) throw new Error(configRes.error.message);
+
+  // Build user display name map
+  const userNames = {};
+  (lbRes.data || []).forEach(u => { userNames[u.user_id] = u.display_name; });
+
+  return {
+    config: configRes.data,
+    results: resultsRes.data,
+    bets: (betsRes.data || []).sort((a, b) => (b.score || 0) - (a.score || 0)),
+    playerStats: (statsRes.data || []).map(s => ({
+      ...s,
+      player_name: s.players?.player_name,
+      team_code: s.players?.squads?.team_code,
+    })),
+    sideBets: (sideBetsRes.data || []).map(sb => ({
+      sideBetId: sb.side_bet_id,
+      matchId: sb.match_id,
+      questionText: sb.question_text,
+      options: sb.options || [],
+      correctAnswer: sb.correct_answer,
+      pointsCorrect: sb.points_correct,
+      pointsWrong: sb.points_wrong,
+      displayOrder: sb.display_order,
+      status: sb.status,
+    })),
+    slots: (slotsRes.data || []).map(s => ({
+      slotId: s.slot_id,
+      slotNumber: s.slot_number,
+      multiplier: parseFloat(s.multiplier),
+    })),
+    userNames,
+  };
+}
+
+/**
+ * Fetch a single user's bet details for a match (only if LOCKED or SCORED).
+ */
+export async function apiGetUserMatchBet(matchId, userId) {
+  if (!supabase || !isSupabaseConfigured()) return null;
+
+  // Check match status
+  const { data: cfg } = await supabase
+    .from('match_config')
+    .select('status, team_a, team_b, winner_base_points, total_runs_base_points')
+    .eq('match_id', matchId)
+    .maybeSingle();
+
+  if (!cfg || (cfg.status !== 'LOCKED' && cfg.status !== 'SCORED')) return null;
+
+  const [betRes, resultsRes, statsRes, sideBetsRes, slotsRes] = await Promise.all([
+    supabase.from('bets').select('*').eq('match_id', matchId).eq('user_id', userId).maybeSingle(),
+    supabase.from('match_results').select('*').eq('match_id', matchId).maybeSingle(),
+    supabase.from('player_match_stats')
+      .select('*, players!inner(player_name, squads!inner(team_code))')
+      .eq('match_id', matchId)
+      .order('total_fantasy_points', { ascending: false }),
+    supabase.from('side_bets').select('*').eq('match_id', matchId).order('display_order', { ascending: true }),
+    supabase.from('player_slots').select('*').eq('match_id', matchId).order('slot_number', { ascending: true }),
+  ]);
+
+  if (!betRes.data) return null;
+
+  return {
+    config: cfg,
+    results: resultsRes.data,
+    bet: betRes.data,
+    playerStats: (statsRes.data || []).map(s => ({
+      ...s,
+      player_name: s.players?.player_name,
+      team_code: s.players?.squads?.team_code,
+    })),
+    sideBets: (sideBetsRes.data || []).map(sb => ({
+      sideBetId: sb.side_bet_id,
+      questionText: sb.question_text,
+      options: sb.options || [],
+      correctAnswer: sb.correct_answer,
+      pointsCorrect: sb.points_correct,
+      pointsWrong: sb.points_wrong,
+    })),
+    slots: (slotsRes.data || []).map(s => ({
+      slotNumber: s.slot_number,
+      multiplier: parseFloat(s.multiplier),
+    })),
+  };
+}
+
 export async function apiLockMatchBets(matchId) {
   if (!supabase || !isSupabaseConfigured()) {
     throw new Error("Supabase not configured.");

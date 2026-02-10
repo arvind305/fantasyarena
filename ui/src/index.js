@@ -32,6 +32,7 @@ import MatchList from "./pages/admin/MatchList";
 import MatchConfig from "./pages/admin/MatchConfig";
 import LongTermConfig from "./pages/admin/LongTermConfig";
 import ScoreMatch from "./pages/admin/ScoreMatch";
+import MatchReport from "./pages/admin/MatchReport";
 import InAppBrowserWarning from "./components/InAppBrowserWarning";
 import { isSupabaseConfigured } from "./lib/supabase";
 
@@ -106,6 +107,7 @@ function App() {
                 <Route path="/admin/matches" element={<MatchList />} />
                 <Route path="/admin/long-term" element={<LongTermConfig />} />
                 <Route path="/admin/score/:matchId" element={<ScoreMatch />} />
+                <Route path="/admin/match/:matchId/report" element={<MatchReport />} />
               </Routes>
             </main>
             <footer className="border-t border-gray-800 py-6 text-center text-xs text-gray-600">

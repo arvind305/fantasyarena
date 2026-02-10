@@ -90,34 +90,45 @@ export default function MatchList() {
           const isPast = scheduledTime <= new Date();
 
           return (
-            <Link
+            <div
               key={matchId}
-              to={`/admin/match/${matchId}`}
-              className={`card flex items-center gap-4 p-4 hover:bg-gray-800/50 transition-colors ${isPast ? "opacity-60" : ""}`}
+              className={`card flex items-center gap-4 p-4 ${isPast ? "opacity-60" : ""}`}
             >
-              <span className={`w-3 h-3 rounded-full shrink-0 ${statusColors[status] || "bg-gray-500"}`} />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-gray-200">{match.teams[0]} vs {match.teams[1]}</span>
-                  <span className="text-xs text-gray-600">#{matchId}</span>
+              <Link
+                to={`/admin/match/${matchId}`}
+                className="flex items-center gap-4 flex-1 min-w-0 hover:bg-gray-800/50 transition-colors -m-4 p-4 rounded-xl"
+              >
+                <span className={`w-3 h-3 rounded-full shrink-0 ${statusColors[status] || "bg-gray-500"}`} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-gray-200">{match.teams[0]} vs {match.teams[1]}</span>
+                    <span className="text-xs text-gray-600">#{matchId}</span>
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {scheduledTime.toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    {" - "}{match.venue}
+                  </div>
                 </div>
-                <div className="text-xs text-gray-500">
-                  {scheduledTime.toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                  {" - "}{match.venue}
-                </div>
-              </div>
-              <span className={`px-2 py-1 rounded text-xs font-medium ${
-                status === "SCORED" ? "bg-purple-900/50 text-purple-300" :
-                status === "LOCKED" ? "bg-orange-900/50 text-orange-300" :
-                status === "OPEN" ? "bg-green-900/50 text-green-300" :
-                "bg-gray-800 text-gray-400"
-              }`}>
-                {status}
-              </span>
-              <svg className="w-5 h-5 text-gray-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </Link>
+                <span className={`px-2 py-1 rounded text-xs font-medium ${
+                  status === "SCORED" ? "bg-purple-900/50 text-purple-300" :
+                  status === "LOCKED" ? "bg-orange-900/50 text-orange-300" :
+                  status === "OPEN" ? "bg-green-900/50 text-green-300" :
+                  "bg-gray-800 text-gray-400"
+                }`}>
+                  {status}
+                </span>
+              </Link>
+              {status === "SCORED" && (
+                <Link
+                  to={`/admin/match/${matchId}/report`}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium bg-purple-900/30 text-purple-300 hover:bg-purple-900/50 transition-colors shrink-0"
+                  title="View Match Report"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Report
+                </Link>
+              )}
+            </div>
           );
         })}
       </div>

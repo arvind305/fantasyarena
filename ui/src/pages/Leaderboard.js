@@ -8,6 +8,7 @@ import { SkeletonCard } from "../components/Spinner";
 import Tabs, { useTabsWithUrl, useUrlSync } from "../components/Tabs";
 import { formatMatchDate, formatMatchTime, isToday } from "../utils/date";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
+import BetViewModal from "../components/BetViewModal";
 
 const RANK_STYLE = {
   1: { badge: "bg-gradient-to-br from-yellow-400 to-amber-600 text-gray-900", ring: "ring-2 ring-yellow-500/40", label: "\u{1F947}" },
@@ -398,6 +399,8 @@ export default function Leaderboard() {
 function MatchLeaderboard({ matchId }) {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [matchStatus, setMatchStatus] = useState(null);
+  const [viewingUser, setViewingUser] = useState(null);
 
   useEffect(() => {
     if (!matchId || !isSupabaseConfigured() || !supabase) {
@@ -408,14 +411,21 @@ function MatchLeaderboard({ matchId }) {
     setLoading(true);
     (async () => {
       try {
-        // Fetch bets for this match that have been scored
-        const { data: bets, error } = await supabase
-          .from('bets')
-          .select('user_id, score, winner_points, total_runs_points, player_pick_points, side_bet_points, runner_points')
-          .eq('match_id', matchId)
-          .order('score', { ascending: false });
+        // Fetch match config status + bets in parallel
+        const [configRes, betsRes] = await Promise.all([
+          supabase.from('match_config').select('status').eq('match_id', matchId).maybeSingle(),
+          supabase.from('bets')
+            .select('user_id, score, winner_points, total_runs_points, player_pick_points, side_bet_points, runner_points')
+            .eq('match_id', matchId)
+            .order('score', { ascending: false }),
+        ]);
 
-        if (error) throw error;
+        if (configRes.data) {
+          setMatchStatus(configRes.data.status);
+        }
+
+        const bets = betsRes.data;
+        if (betsRes.error) throw betsRes.error;
         if (!bets || bets.length === 0) { setEntries([]); return; }
 
         // Get display names from leaderboard table
@@ -448,6 +458,8 @@ function MatchLeaderboard({ matchId }) {
     })();
   }, [matchId]);
 
+  const canViewBets = matchStatus === 'LOCKED' || matchStatus === 'SCORED';
+
   if (loading) {
     return <div className="space-y-3">{[1, 2, 3].map(i => <SkeletonCard key={i} />)}</div>;
   }
@@ -461,37 +473,64 @@ function MatchLeaderboard({ matchId }) {
   }
 
   return (
-    <div className="card p-0 overflow-hidden">
-      <table className="w-full">
-        <thead className="bg-gray-900">
-          <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wider">
-            <th className="text-left px-4 py-3">#</th>
-            <th className="text-left px-4 py-3">Player</th>
-            <th className="text-right px-4 py-3">Score</th>
-          </tr>
-        </thead>
-        <tbody>
-          {entries.map((e) => {
-            const style = RANK_STYLE[e.rank];
-            return (
-              <tr key={e.userId} className="border-b border-gray-800/50 last:border-0 hover:bg-gray-800/20">
-                <td className="px-4 py-3">
-                  {style ? (
-                    <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${style.badge}`}>{e.rank}</span>
-                  ) : (
-                    <span className="text-gray-500 text-sm pl-1.5">{e.rank}</span>
+    <>
+      <div className="card p-0 overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-gray-900">
+            <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wider">
+              <th className="text-left px-4 py-3">#</th>
+              <th className="text-left px-4 py-3">Player</th>
+              <th className="text-right px-4 py-3">Score</th>
+              {canViewBets && <th className="text-right px-3 py-3 w-12"></th>}
+            </tr>
+          </thead>
+          <tbody>
+            {entries.map((e) => {
+              const style = RANK_STYLE[e.rank];
+              return (
+                <tr key={e.userId} className="border-b border-gray-800/50 last:border-0 hover:bg-gray-800/20">
+                  <td className="px-4 py-3">
+                    {style ? (
+                      <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${style.badge}`}>{e.rank}</span>
+                    ) : (
+                      <span className="text-gray-500 text-sm pl-1.5">{e.rank}</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 font-semibold text-gray-200">{e.displayName}</td>
+                  <td className="px-4 py-3 text-right">
+                    <span className={`font-bold text-lg ${e.rank <= 3 ? "text-amber-400" : "text-gray-300"}`}>{e.score}</span>
+                  </td>
+                  {canViewBets && (
+                    <td className="px-3 py-3 text-right">
+                      <button
+                        onClick={() => setViewingUser(e)}
+                        className="p-1.5 rounded-lg hover:bg-gray-700/50 text-gray-500 hover:text-gray-300 transition-colors"
+                        title={`View ${e.displayName}'s bet`}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      </button>
+                    </td>
                   )}
-                </td>
-                <td className="px-4 py-3 font-semibold text-gray-200">{e.displayName}</td>
-                <td className="px-4 py-3 text-right">
-                  <span className={`font-bold text-lg ${e.rank <= 3 ? "text-amber-400" : "text-gray-300"}`}>{e.score}</span>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {viewingUser && (
+        <BetViewModal
+          open={!!viewingUser}
+          onClose={() => setViewingUser(null)}
+          matchId={matchId}
+          userId={viewingUser.userId}
+          userName={viewingUser.displayName}
+        />
+      )}
+    </>
   );
 }
 

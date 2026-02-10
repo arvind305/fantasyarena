@@ -8,6 +8,7 @@ import AdminNav from "../../components/admin/AdminNav";
 import { useMatchConfig } from "../../hooks/useMatchConfig";
 import { useAdmin } from "../../hooks/useAdmin";
 import { apiGetMatchResults } from "../../api";
+import { supabase, isSupabaseConfigured } from "../../lib/supabase";
 
 export default function ScoreMatch() {
   const { matchId } = useParams();
@@ -30,6 +31,11 @@ export default function ScoreMatch() {
   const [manOfMatch, setManOfMatch] = useState("");
   const [scored, setScored] = useState(false);
   const [scoreResult, setScoreResult] = useState(null);
+
+  // Player stats status
+  const [playerStatsCount, setPlayerStatsCount] = useState(0);
+  const [playerStatsLoading, setPlayerStatsLoading] = useState(true);
+  const [betCount, setBetCount] = useState(0);
 
   useEffect(() => {
     Promise.all([
@@ -54,16 +60,47 @@ export default function ScoreMatch() {
       .finally(() => setLoading(false));
   }, [matchId]);
 
+  // Check player stats and bet counts
+  useEffect(() => {
+    if (!isSupabaseConfigured() || !supabase) return;
+    setPlayerStatsLoading(true);
+    Promise.all([
+      supabase.from('player_match_stats').select('stat_id', { count: 'exact', head: true }).eq('match_id', matchId),
+      supabase.from('bets').select('bet_id', { count: 'exact', head: true }).eq('match_id', matchId),
+    ])
+      .then(([statsRes, betsRes]) => {
+        setPlayerStatsCount(statsRes.count || 0);
+        setBetCount(betsRes.count || 0);
+      })
+      .finally(() => setPlayerStatsLoading(false));
+  }, [matchId, scored]);
+
   async function handleSaveResults() {
     if (!winner) return toast.error("Please set the winner");
     if (!totalRuns) return toast.error("Please set total runs");
+    if (!manOfMatch.trim()) return toast.error("Man of the Match is required");
+
+    // Check side bets are answered
+    if (sideBets && sideBets.length > 0) {
+      const unanswered = sideBets.filter(sb => !sideBetAnswers[sb.sideBetId]);
+      if (unanswered.length > 0) {
+        return toast.error(`Please answer all side bets (${unanswered.length} unanswered)`);
+      }
+    }
 
     try {
       await admin.setMatchCorrectAnswers(matchId, {
         winner,
         totalRuns: parseInt(totalRuns),
         sideBetAnswers,
-        manOfMatch: manOfMatch || null,
+        manOfMatch: manOfMatch.trim(),
+      });
+      setExistingResults({
+        winner,
+        totalRuns: parseInt(totalRuns),
+        manOfMatch: manOfMatch.trim(),
+        sideBetAnswers,
+        completedAt: new Date().toISOString(),
       });
       toast.success("Match results saved!");
     } catch (err) {
@@ -72,6 +109,19 @@ export default function ScoreMatch() {
   }
 
   async function handleTriggerScoring() {
+    // Final validation before scoring
+    const issues = [];
+    if (!winner && !existingResults?.winner) issues.push("Winner not set");
+    if (!totalRuns && !existingResults?.totalRuns) issues.push("Total runs not set");
+    if (!manOfMatch.trim() && !existingResults?.manOfMatch) issues.push("Man of the Match not set");
+    if (playerStatsCount === 0) issues.push("No player stats entered (0 rows in player_match_stats)");
+    if (betCount === 0) issues.push("No bets to score");
+
+    if (issues.length > 0) {
+      toast.error("Cannot score: " + issues.join(", "));
+      return;
+    }
+
     try {
       const result = await admin.triggerScoring(matchId);
       setScoreResult(result);
@@ -89,6 +139,20 @@ export default function ScoreMatch() {
 
   const teamA = config?.teamA || match?.teams?.[0] || "Team A";
   const teamB = config?.teamB || match?.teams?.[1] || "Team B";
+
+  // Pre-scoring checklist
+  const checks = {
+    winner: { label: "Winner", ok: !!(winner || existingResults?.winner) },
+    totalRuns: { label: "Total Runs", ok: !!(totalRuns || existingResults?.totalRuns) },
+    manOfMatch: { label: "Man of the Match", ok: !!(manOfMatch.trim() || existingResults?.manOfMatch) },
+    sideBets: {
+      label: "Side Bet Answers",
+      ok: !sideBets || sideBets.length === 0 || sideBets.every(sb => sideBetAnswers[sb.sideBetId]),
+    },
+    playerStats: { label: `Player Stats (${playerStatsCount} rows)`, ok: playerStatsCount > 0 },
+    bets: { label: `Bets to Score (${betCount})`, ok: betCount > 0 },
+  };
+  const allChecksOk = Object.values(checks).every(c => c.ok);
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-10">
@@ -118,7 +182,9 @@ export default function ScoreMatch() {
         <div className="space-y-4">
           {/* Winner */}
           <div>
-            <label className="text-sm font-medium text-gray-300 block mb-2">Match Winner</label>
+            <label className="text-sm font-medium text-gray-300 block mb-2">
+              Match Winner <span className="text-red-400">*</span>
+            </label>
             <div className="flex flex-wrap gap-3">
               {[teamA, teamB, "TIE", "NO_RESULT"].map((opt) => (
                 <label
@@ -138,7 +204,9 @@ export default function ScoreMatch() {
 
           {/* Total Runs */}
           <div>
-            <label className="text-sm font-medium text-gray-300 block mb-1">Total Runs (both teams combined)</label>
+            <label className="text-sm font-medium text-gray-300 block mb-1">
+              Total Runs (both teams combined) <span className="text-red-400">*</span>
+            </label>
             <input
               type="number"
               value={totalRuns}
@@ -148,25 +216,36 @@ export default function ScoreMatch() {
             />
           </div>
 
-          {/* Man of Match */}
+          {/* Man of Match — REQUIRED */}
           <div>
-            <label className="text-sm font-medium text-gray-300 block mb-1">Man of the Match (optional)</label>
+            <label className="text-sm font-medium text-gray-300 block mb-1">
+              Man of the Match <span className="text-red-400">*</span>
+            </label>
             <input
               type="text"
               value={manOfMatch}
               onChange={(e) => setManOfMatch(e.target.value)}
-              placeholder="Player name..."
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-brand-600"
+              placeholder="Player name (required)..."
+              className={`w-full bg-gray-800 border rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-brand-600 ${
+                !manOfMatch.trim() && (winner || existingResults) ? "border-red-700" : "border-gray-700"
+              }`}
             />
+            {!manOfMatch.trim() && (winner || existingResults) && (
+              <p className="text-xs text-red-400 mt-1">MoM is required — it affects player scoring (+200 bonus)</p>
+            )}
           </div>
 
           {/* Side Bet Answers */}
           {sideBets && sideBets.length > 0 && (
             <div>
-              <label className="text-sm font-medium text-gray-300 block mb-3">Side Bet Correct Answers</label>
+              <label className="text-sm font-medium text-gray-300 block mb-3">
+                Side Bet Correct Answers <span className="text-red-400">*</span>
+              </label>
               <div className="space-y-3">
                 {sideBets.map((sb) => (
-                  <div key={sb.sideBetId} className="p-3 rounded-lg bg-gray-800/50 border border-gray-700/50">
+                  <div key={sb.sideBetId} className={`p-3 rounded-lg border ${
+                    sideBetAnswers[sb.sideBetId] ? "bg-gray-800/50 border-gray-700/50" : "bg-red-950/10 border-red-800/30"
+                  }`}>
                     <p className="text-sm text-gray-300 mb-2">{sb.questionText}</p>
                     <div className="flex flex-wrap gap-2">
                       {(sb.options || []).map((opt, i) => {
@@ -206,13 +285,67 @@ export default function ScoreMatch() {
         </div>
       </div>
 
-      {/* Step 2: Trigger Scoring */}
-      <div className="card">
-        <h2 className="text-lg font-semibold text-gray-200 mb-4">Step 2: Calculate Scores</h2>
+      {/* Step 2: Player Stats Status */}
+      <div className="card mb-6">
+        <h2 className="text-lg font-semibold text-gray-200 mb-4">Step 2: Player Stats</h2>
         <p className="text-sm text-gray-500 mb-4">
-          This will calculate scores for all bets on this match using the results above,
-          player fantasy points, side bet answers, and runner picks.
+          Player match stats must be entered before scoring. These determine the fantasy points
+          for each player, which are multiplied by slot multipliers for user scores.
         </p>
+
+        {playerStatsLoading ? (
+          <div className="flex items-center gap-2 text-gray-500 text-sm">
+            <Spinner size="sm" /> Checking player stats...
+          </div>
+        ) : playerStatsCount > 0 ? (
+          <div className="p-3 rounded-lg bg-emerald-950/20 border border-emerald-800/30">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <span className="text-emerald-400 font-semibold">{playerStatsCount} player stats loaded</span>
+            </div>
+          </div>
+        ) : (
+          <div className="p-3 rounded-lg bg-red-950/20 border border-red-800/30">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+              <span className="text-red-400 font-semibold">No player stats entered</span>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              Run the scoring script (e.g. <code className="text-gray-400">node scripts/score-m{matchId?.replace('wc_m','')}.js</code>) to
+              insert player stats from the scorecard before calculating scores.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Step 3: Pre-Scoring Checklist & Trigger */}
+      <div className="card">
+        <h2 className="text-lg font-semibold text-gray-200 mb-4">Step 3: Calculate Scores</h2>
+
+        {/* Checklist */}
+        <div className="mb-6 p-4 rounded-lg bg-gray-800/30 border border-gray-700/50">
+          <h3 className="text-sm font-semibold text-gray-300 mb-3 uppercase tracking-wider">Pre-Scoring Checklist</h3>
+          <div className="space-y-2">
+            {Object.entries(checks).map(([key, { label, ok }]) => (
+              <div key={key} className="flex items-center gap-2 text-sm">
+                {ok ? (
+                  <svg className="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4 text-red-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                )}
+                <span className={ok ? "text-gray-300" : "text-red-400 font-medium"}>{label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
 
         {scored && scoreResult && (
           <div className="mb-4 p-4 rounded-lg bg-emerald-950/20 border border-emerald-800/30">
@@ -221,20 +354,28 @@ export default function ScoreMatch() {
               <p>Bets scored: {scoreResult.betsScored}</p>
               <p>Total points awarded: {scoreResult.totalPoints}</p>
             </div>
+            <Link
+              to={`/admin/match/${matchId}/report`}
+              className="inline-block mt-3 px-4 py-2 rounded-lg text-sm font-medium bg-purple-600 hover:bg-purple-700 text-white transition-colors"
+            >
+              View Match Report
+            </Link>
           </div>
         )}
 
         <button
           onClick={handleTriggerScoring}
-          disabled={admin.saving || (!existingResults && !winner)}
+          disabled={admin.saving || !allChecksOk}
           className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-50"
         >
           {admin.saving ? <Spinner size="sm" className="inline mr-2" /> : null}
           Calculate All Scores
         </button>
 
-        {!existingResults && !winner && (
-          <p className="text-xs text-red-400 mt-2">Save results first before scoring</p>
+        {!allChecksOk && (
+          <p className="text-xs text-red-400 mt-2">
+            Resolve all checklist items above before scoring
+          </p>
         )}
       </div>
     </div>
