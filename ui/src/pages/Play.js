@@ -5,6 +5,7 @@ import { loadLongTermConfig } from "../mock/LongTermStore";
 import { useAuth } from "../auth/AuthProvider";
 import Spinner, { SkeletonCard } from "../components/Spinner";
 import { formatDateRange, formatMatchDate, formatMatchTime, isToday, getRelativeDayLabel } from "../utils/date";
+import { supabase, isSupabaseConfigured } from "../lib/supabase";
 
 const STATUS_BADGE = {
   UPCOMING: "bg-blue-900/50 text-blue-400 border-blue-800",
@@ -24,6 +25,7 @@ export default function Play() {
   const [matches, setMatches] = useState([]);
   const [event, setEvent] = useState(null);
   const [tournamentQuestionCount, setTournamentQuestionCount] = useState(null); // null = not loaded yet
+  const [lockTimes, setLockTimes] = useState({}); // { matchId: lock_time ISO string }
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -53,6 +55,20 @@ export default function Play() {
         // If config fails, leave count as null (will show generic text)
       })
       .finally(() => setLoading(false));
+
+    // Fetch lock times from match_config
+    if (supabase && isSupabaseConfigured()) {
+      supabase
+        .from("match_config")
+        .select("match_id, lock_time")
+        .then(({ data }) => {
+          if (data) {
+            const map = {};
+            data.forEach((r) => { map[r.match_id] = r.lock_time; });
+            setLockTimes(map);
+          }
+        });
+    }
   }, []);
 
   // Filter matches - today only (local date)
@@ -165,7 +181,7 @@ export default function Play() {
           </div>
           <div className="grid sm:grid-cols-2 gap-4">
             {liveMatches.map((m) => (
-              <MatchCard key={m.matchId} match={m} />
+              <MatchCard key={m.matchId} match={m} lockTime={lockTimes[m.matchId]} />
             ))}
           </div>
         </div>
@@ -208,7 +224,7 @@ export default function Play() {
                   <p className="text-gray-500 text-sm mb-4">Click a match to place your bets</p>
                   <div className="grid sm:grid-cols-2 gap-4">
                     {todayMatches.map((m, i) => (
-                      <MatchCard key={m.matchId} match={m} delay={i * 50} />
+                      <MatchCard key={m.matchId} match={m} lockTime={lockTimes[m.matchId]} delay={i * 50} />
                     ))}
                   </div>
                 </>
@@ -246,7 +262,7 @@ export default function Play() {
                         </h3>
                         <div className="grid sm:grid-cols-2 gap-4">
                           {group.matches.map((m, i) => (
-                            <MatchCard key={m.matchId} match={m} delay={(gi * 3 + i) * 50} />
+                            <MatchCard key={m.matchId} match={m} lockTime={lockTimes[m.matchId]} delay={(gi * 3 + i) * 50} />
                           ))}
                         </div>
                       </div>
@@ -300,12 +316,56 @@ export default function Play() {
   );
 }
 
-function MatchCard({ match: m, delay = 0 }) {
+function useLockCountdown(lockTime) {
+  const [diff, setDiff] = useState(() => lockTime ? new Date(lockTime) - Date.now() : null);
+  useEffect(() => {
+    if (!lockTime) return;
+    setDiff(new Date(lockTime) - Date.now());
+    const id = setInterval(() => setDiff(new Date(lockTime) - Date.now()), 60000);
+    return () => clearInterval(id);
+  }, [lockTime]);
+  return diff;
+}
+
+function LockIndicator({ lockTime }) {
+  const diff = useLockCountdown(lockTime);
+  if (diff === null) return null;
+
+  if (diff <= 0) {
+    return (
+      <div className="flex items-center gap-1.5 text-xs text-red-400/90 mt-2">
+        <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+        </svg>
+        Betting closed
+      </div>
+    );
+  }
+
+  const totalMins = Math.floor(diff / 60000);
+  const h = Math.floor(totalMins / 60);
+  const mins = totalMins % 60;
+  const timeStr = h > 0 ? `${h}h ${mins}m` : `${mins}m`;
+  const isUrgent = totalMins <= 30;
+
+  return (
+    <div className={`flex items-center gap-1.5 text-xs mt-2 ${isUrgent ? "text-amber-400" : "text-gray-400"}`}>
+      <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      Closes in {timeStr}
+      {isUrgent && <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />}
+    </div>
+  );
+}
+
+function MatchCard({ match: m, lockTime, delay = 0 }) {
   const navigate = useNavigate();
   const statusLabel = m.status.charAt(0) + m.status.slice(1).toLowerCase();
   const isLive = m.status === "LIVE";
   const isUpcoming = m.status === "UPCOMING";
   const dayLabel = getRelativeDayLabel(m.scheduledTime);
+  const isClosed = lockTime && new Date(lockTime) <= Date.now();
 
   return (
     <div
@@ -336,12 +396,19 @@ function MatchCard({ match: m, delay = 0 }) {
         </div>
       </div>
 
+      {/* Lock countdown / closed indicator */}
+      {(isUpcoming || isLive) && <LockIndicator lockTime={lockTime} />}
+
       {/* Result or CTA */}
       {m.result ? (
         <div className="text-xs text-emerald-400">{m.result}</div>
       ) : isUpcoming || isLive ? (
-        <button className="w-full mt-3 py-2 px-3 rounded-lg bg-brand-600/20 border border-brand-700/50 text-brand-300 text-sm font-medium group-hover:bg-brand-600/30 group-hover:border-brand-600 transition-all">
-          Place Bets →
+        <button className={`w-full mt-3 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+          isClosed
+            ? "bg-gray-800/50 border border-gray-700 text-gray-500 cursor-default"
+            : "bg-brand-600/20 border border-brand-700/50 text-brand-300 group-hover:bg-brand-600/30 group-hover:border-brand-600"
+        }`}>
+          {isClosed ? "View Match" : "Place Bets →"}
         </button>
       ) : null}
     </div>
