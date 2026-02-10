@@ -18,12 +18,13 @@ export function useBet(config, slots, sideBets) {
     if (existingBet) {
       // Restore from existing bet
       if (existingBet.answers) {
-        // Find winner answer from answers
-        const winnerKey = Object.keys(existingBet.answers).find(k => k.includes('winner'));
+        // Find winner answer from answers (use exact key pattern)
+        const matchId = cfg.matchId;
+        const winnerKey = Object.keys(existingBet.answers).find(k => k === `${matchId}_winner`);
         if (winnerKey) setWinner(existingBet.answers[winnerKey]);
 
         // Find total runs answer
-        const runsKey = Object.keys(existingBet.answers).find(k => k.includes('total_runs'));
+        const runsKey = Object.keys(existingBet.answers).find(k => k === `${matchId}_total_runs`);
         if (runsKey) setTotalRuns(existingBet.answers[runsKey] || "");
       }
 

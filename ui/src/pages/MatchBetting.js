@@ -15,10 +15,11 @@ import RunnerPicksSection from "../components/betting/RunnerPicksSection";
 import BetSummary from "../components/betting/BetSummary";
 
 function formatDate(iso) {
-  return new Date(iso).toLocaleString(undefined, {
+  return new Date(iso).toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
     weekday: "short", month: "short", day: "numeric",
     hour: "2-digit", minute: "2-digit",
-  });
+  }) + " IST";
 }
 
 function Countdown({ target }) {
@@ -71,8 +72,7 @@ export default function MatchBetting() {
 
         if (bets) {
           setExisting(bets);
-          // Initialize V2 bet form from existing bet
-          bet.initializeFromConfig(config, bets);
+          // V2 initialization happens via the config-dependent useEffect below
           // Also set legacy answers
           setAnswers(bets.answers || {});
         }
@@ -461,7 +461,7 @@ function V2BettingForm({ config, slots, sideBets, match, bet, user, isEditable, 
           <button
             onClick={handleSubmit}
             disabled={submitting || !bet.isComplete}
-            className="btn-primary text-lg px-10 py-4 min-w-[200px]"
+            className="btn-primary text-lg px-10 py-4 w-full sm:w-auto sm:min-w-[200px]"
           >
             {submitting ? <Spinner size="sm" className="text-white inline mr-2" /> : null}
             {existing ? "Update Predictions" : "Submit Predictions"}
@@ -574,7 +574,7 @@ function V1LegacyForm({ questions, players, answers, setAnswers, numericInputs, 
             </svg>
             <h3 className="font-semibold text-gray-200">Bet Summary</h3>
           </div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="text-center p-3 rounded-lg bg-gray-800/50">
               <div className="text-2xl font-bold text-gray-200">{answeredCount}<span className="text-gray-500 text-lg">/{totalQuestions}</span></div>
               <div className="text-xs text-gray-500 mt-1">Answered</div>
@@ -709,7 +709,7 @@ function QuestionCard({ question, index, players, answers, setAnswers, numericIn
           {q.options.map((opt) => (
             <label
               key={opt.optionId}
-              className={`px-5 py-3 sm:px-4 sm:py-2 rounded-lg text-sm cursor-pointer border-2 transition-all min-w-[80px] text-center select-none active:scale-95 ${
+              className={`px-3 py-2.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm cursor-pointer border-2 transition-all sm:min-w-[80px] text-center select-none active:scale-95 ${
                 answers[q.questionId] === opt.optionId
                   ? isSideBet
                     ? "bg-purple-600/30 border-purple-500 text-purple-200 shadow-lg shadow-purple-900/30"

@@ -157,7 +157,7 @@ function TeamCard({ squad, delay = 0 }) {
       style={{ animationDelay: `${delay}ms` }}
     >
       <div
-        className="w-14 h-14 rounded-xl flex items-center justify-center font-bold text-xl mb-3"
+        className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center font-bold text-base sm:text-xl mb-3"
         style={{ backgroundColor: color + "25", color: color }}
       >
         {squad.teamCode}

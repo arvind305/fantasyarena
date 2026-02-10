@@ -3,6 +3,51 @@
  * No external libraries needed
  */
 
+// IST is UTC+5:30 = 330 minutes
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+
+/**
+ * Convert a UTC ISO string (from DB) to a datetime-local input value in IST.
+ * e.g., "2026-06-15T05:30:00Z" → "2026-06-15T11:00:00"
+ */
+export function utcToIST(isoString) {
+  if (!isoString) return "";
+  const date = new Date(isoString);
+  if (isNaN(date.getTime())) return "";
+  const istDate = new Date(date.getTime() + IST_OFFSET_MS);
+  return istDate.toISOString().replace("Z", "").split(".")[0];
+}
+
+/**
+ * Convert a datetime-local input value (assumed IST) to a UTC ISO string for DB.
+ * e.g., "2026-06-15T11:00" → "2026-06-15T05:30:00.000Z"
+ */
+export function istToUTC(localString) {
+  if (!localString) return null;
+  // datetime-local gives us "YYYY-MM-DDTHH:mm" or "YYYY-MM-DDTHH:mm:ss"
+  // Treat this as IST, so subtract 5:30 to get UTC
+  const asUTC = new Date(localString + "Z"); // parse as UTC first
+  const utcDate = new Date(asUTC.getTime() - IST_OFFSET_MS);
+  return utcDate.toISOString();
+}
+
+/**
+ * Format a date in IST for display.
+ * e.g., "Sat, 15 Jun, 11:00 AM IST"
+ */
+export function formatDateIST(isoString) {
+  if (!isoString) return "";
+  const date = new Date(isoString);
+  return date.toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }) + " IST";
+}
+
 /**
  * Format a tournament date range in human-readable format
  * e.g., "7 Feb – 8 Mar 2026"

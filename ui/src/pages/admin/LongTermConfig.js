@@ -8,6 +8,7 @@ import AdminNav from "../../components/admin/AdminNav";
 import PointsInput from "../../components/admin/PointsInput";
 import { useAdmin } from "../../hooks/useAdmin";
 import { apiGetLongTermConfig } from "../../api";
+import { utcToIST, istToUTC } from "../../utils/date";
 
 export default function LongTermConfig() {
   const { user } = useAuth();
@@ -41,7 +42,7 @@ export default function LongTermConfig() {
             finalFourPoints: cfg.finalFourPoints,
             orangeCapPoints: cfg.orangeCapPoints,
             purpleCapPoints: cfg.purpleCapPoints,
-            lockTime: cfg.lockTime ? cfg.lockTime.replace("Z", "").split(".")[0] : "",
+            lockTime: cfg.lockTime ? utcToIST(cfg.lockTime) : "",
             isLocked: cfg.isLocked,
             changeCostPercent: cfg.changeCostPercent,
             allowChanges: cfg.allowChanges,
@@ -53,7 +54,10 @@ export default function LongTermConfig() {
 
   async function handleSave() {
     try {
-      await admin.saveLongTermConfig(form);
+      await admin.saveLongTermConfig({
+        ...form,
+        lockTime: istToUTC(form.lockTime),
+      });
       toast.success("Long-term config saved!");
     } catch (err) {
       toast.error(err.message);
@@ -86,14 +90,14 @@ export default function LongTermConfig() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="text-sm font-medium text-gray-300 block mb-1">Lock Time</label>
+            <label className="text-sm font-medium text-gray-300 block mb-1">Lock Time (IST)</label>
             <input
               type="datetime-local"
               value={form.lockTime}
               onChange={(e) => setForm({ ...form, lockTime: e.target.value })}
               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-brand-600"
             />
-            <p className="text-xs text-gray-500 mt-1">When predictions lock (usually first match start)</p>
+            <p className="text-xs text-gray-500 mt-1">When predictions lock (Indian Standard Time)</p>
           </div>
 
           <div className="space-y-3">

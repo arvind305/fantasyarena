@@ -11,6 +11,7 @@ import { useMatchConfig } from "../../hooks/useMatchConfig";
 import { useAdmin } from "../../hooks/useAdmin";
 import { apiGetSquadPlayers } from "../../api";
 import { supabase, isSupabaseConfigured } from "../../lib/supabase";
+import { utcToIST, istToUTC } from "../../utils/date";
 
 export default function MatchConfig() {
   const { matchId } = useParams();
@@ -67,7 +68,7 @@ export default function MatchConfig() {
             ...prev,
             teamA: m.teams[0],
             teamB: m.teams[1],
-            lockTime: `${m.date}T${m.time_gmt}`,
+            lockTime: utcToIST(`${m.date}T${m.time_gmt}:00Z`),
           }));
         }
       })
@@ -86,7 +87,7 @@ export default function MatchConfig() {
         playerSlotCount: config.playerSlotCount,
         runnersEnabled: config.runnersEnabled,
         runnerCount: config.runnerCount,
-        lockTime: config.lockTime ? config.lockTime.replace("Z", "").split(".")[0] : "",
+        lockTime: config.lockTime ? utcToIST(config.lockTime) : "",
         teamA: config.teamA || form.teamA,
         teamB: config.teamB || form.teamB,
         status: config.status,
@@ -165,7 +166,11 @@ export default function MatchConfig() {
   // Handlers
   async function handleSaveBasic() {
     try {
-      await admin.saveMatchConfig(matchId, { ...form, eventId: "t20wc_2026" });
+      await admin.saveMatchConfig(matchId, {
+        ...form,
+        eventId: "t20wc_2026",
+        lockTime: istToUTC(form.lockTime),
+      });
       toast.success("Match config saved!");
       refetch();
     } catch (err) {
@@ -205,7 +210,11 @@ export default function MatchConfig() {
 
   async function handleSaveRunners() {
     try {
-      await admin.saveMatchConfig(matchId, { ...form, eventId: "t20wc_2026" });
+      await admin.saveMatchConfig(matchId, {
+        ...form,
+        eventId: "t20wc_2026",
+        lockTime: istToUTC(form.lockTime),
+      });
       toast.success("Runner settings saved!");
       refetch();
     } catch (err) {
@@ -283,7 +292,7 @@ export default function MatchConfig() {
           </h1>
           <p className="text-sm text-gray-500">
             Match #{matchId}
-            {match && ` - ${new Date(`${match.date}T${match.time_gmt}:00Z`).toLocaleString()}`}
+            {match && ` - ${new Date(`${match.date}T${match.time_gmt}:00Z`).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST`}
           </p>
         </div>
         <Link to="/admin/matches" className="text-sm text-gray-400 hover:text-gray-200">Back to Matches</Link>
@@ -317,14 +326,14 @@ export default function MatchConfig() {
               <PointsInput label="Super Over Multiplier" value={form.superOverMultiplier} onChange={(v) => setForm({ ...form, superOverMultiplier: v })} step={0.5} description="Multiplier applied if Super Over predicted correctly" />
               <PointsInput label="Total Runs Base Points" value={form.totalRunsBasePoints} onChange={(v) => setForm({ ...form, totalRunsBasePoints: v })} description="Base points for total runs (multiplied by tier)" />
               <div>
-                <label className="text-sm font-medium text-gray-300 block mb-1">Lock Time</label>
+                <label className="text-sm font-medium text-gray-300 block mb-1">Lock Time (IST)</label>
                 <input
                   type="datetime-local"
                   value={form.lockTime}
                   onChange={(e) => setForm({ ...form, lockTime: e.target.value })}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-brand-600"
                 />
-                <p className="text-xs text-gray-500 mt-1">When betting closes for this match</p>
+                <p className="text-xs text-gray-500 mt-1">When betting closes for this match (Indian Standard Time)</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-300 block mb-1">Status</label>

@@ -208,7 +208,7 @@ export default function Leaderboard() {
 
           {/* Top 3 Podium */}
           {!loading && filteredData.length >= 3 && !searchQuery && (
-            <div className="grid grid-cols-3 gap-3 mb-8">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-8">
               {[filteredData[1], filteredData[0], filteredData[2]].map((e, i) => {
                 const rank = [2, 1, 3][i];
                 const style = RANK_STYLE[rank];
@@ -217,18 +217,18 @@ export default function Leaderboard() {
                 return (
                   <div
                     key={e.userId}
-                    className={`card text-center animate-slide-up ${style.ring} ${isFirst ? "sm:-mt-4" : ""} ${isCurrentUser ? "border-blue-500/50" : ""}`}
+                    className={`card text-center animate-slide-up px-2 sm:px-4 ${style.ring} ${isFirst ? "sm:-mt-4" : ""} ${isCurrentUser ? "border-blue-500/50" : ""}`}
                     style={{ animationDelay: `${i * 120}ms` }}
                   >
-                    <div className="text-3xl mb-2">{style.label}</div>
-                    <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold mb-2 ${style.badge}`}>#{rank}</div>
+                    <div className="text-xl sm:text-3xl mb-2">{style.label}</div>
+                    <div className={`inline-block px-2 sm:px-3 py-1 rounded-full text-xs font-bold mb-2 ${style.badge}`}>#{rank}</div>
                     <div className="flex items-center justify-center gap-1.5">
-                      <h3 className={`font-bold truncate ${isFirst ? "text-lg text-yellow-300" : "text-sm text-gray-200"}`}>{e.displayName}</h3>
+                      <h3 className={`font-bold truncate ${isFirst ? "text-sm sm:text-lg text-yellow-300" : "text-xs sm:text-sm text-gray-200"}`}>{e.displayName}</h3>
                       {isCurrentUser && (
                         <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-blue-600 text-white rounded">You</span>
                       )}
                     </div>
-                    <p className={`font-extrabold mt-1 ${isFirst ? "text-3xl text-yellow-400" : "text-xl text-gray-300"}`}>{e.totalScore ?? e.score}</p>
+                    <p className={`font-extrabold mt-1 ${isFirst ? "text-2xl sm:text-3xl text-yellow-400" : "text-lg sm:text-xl text-gray-300"}`}>{e.totalScore ?? e.score}</p>
                     <p className="text-[10px] text-gray-500 mt-0.5">points</p>
                   </div>
                 );
@@ -502,10 +502,10 @@ function LeaderboardTable({ data, currentUserId }) {
         <table className="w-full">
           <thead className="sticky top-0 z-10 bg-gray-900">
             <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wider">
-              <th className="text-left px-5 py-3">Rank</th>
-              <th className="text-left px-5 py-3">Player</th>
-              <th className="text-center px-3 py-3">Matches</th>
-              <th className="text-right px-5 py-3">Points</th>
+              <th className="text-left px-3 sm:px-5 py-3">Rank</th>
+              <th className="text-left px-3 sm:px-5 py-3">Player</th>
+              <th className="text-center px-3 py-3 hidden sm:table-cell">Matches</th>
+              <th className="text-right px-3 sm:px-5 py-3">Points</th>
             </tr>
           </thead>
           <tbody>
@@ -528,8 +528,8 @@ function LeaderboardTable({ data, currentUserId }) {
                   }`}
                   style={{ animationDelay: `${Math.min(i * 60, 600)}ms` }}
                 >
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-2">
+                  <td className="px-3 sm:px-5 py-3.5">
+                    <div className="flex items-center gap-1 sm:gap-2">
                       {style ? (
                         <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${style.badge}`}>{rank}</span>
                       ) : (
@@ -551,20 +551,20 @@ function LeaderboardTable({ data, currentUserId }) {
                       )}
                     </div>
                   </td>
-                  <td className="px-5 py-3.5">
+                  <td className="px-3 sm:px-5 py-3.5">
                     <div className="flex items-center gap-2">
-                      <span className={`font-semibold ${isCurrentUser ? "text-blue-300" : rank <= 3 ? "text-gray-100" : "text-gray-300"}`}>
+                      <span className={`font-semibold truncate ${isCurrentUser ? "text-blue-300" : rank <= 3 ? "text-gray-100" : "text-gray-300"}`}>
                         {e.displayName}
                       </span>
                       {isCurrentUser && (
-                        <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-blue-600 text-white rounded">You</span>
+                        <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-blue-600 text-white rounded shrink-0">You</span>
                       )}
                     </div>
                   </td>
-                  <td className="px-3 py-3.5 text-center">
+                  <td className="px-3 py-3.5 text-center hidden sm:table-cell">
                     <span className="text-xs text-gray-500">{e.matches_played ?? e.matchesPlayed ?? 0}</span>
                   </td>
-                  <td className="px-5 py-3.5 text-right">
+                  <td className="px-3 sm:px-5 py-3.5 text-right">
                     <div className="flex flex-col items-end">
                       <span className={`font-bold text-lg ${rank === 1 ? "text-yellow-400" : rank === 2 ? "text-gray-300" : rank === 3 ? "text-amber-500" : "text-gray-400"}`}>
                         {e.totalScore ?? e.total_score ?? e.score}

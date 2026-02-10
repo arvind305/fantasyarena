@@ -239,7 +239,7 @@ export default function Profile() {
           <div className="flex-1 min-w-0">
             {/* Editable display name */}
             {editingName ? (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
                 <input
                   type="text"
                   value={nameInput}
@@ -247,7 +247,7 @@ export default function Profile() {
                   onKeyDown={handleNameKeyDown}
                   maxLength={30}
                   autoFocus
-                  className="bg-gray-800 border border-gray-600 rounded-lg px-3 py-1.5 text-gray-100 text-lg font-bold focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 w-full max-w-[220px]"
+                  className="bg-gray-800 border border-gray-600 rounded-lg px-3 py-1.5 text-gray-100 text-lg font-bold focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 w-full sm:max-w-[220px]"
                 />
                 <button
                   onClick={saveName}
@@ -271,7 +271,7 @@ export default function Profile() {
                   className="text-gray-500 hover:text-brand-400 transition-colors shrink-0"
                   title="Edit display name"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                     <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
                   </svg>
                 </button>
@@ -302,18 +302,18 @@ export default function Profile() {
             <div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : rank !== null ? (
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4">
             <div className="text-center">
-              <div className="text-3xl font-extrabold text-brand-300">#{rank}</div>
+              <div className="text-2xl sm:text-3xl font-extrabold text-brand-300">#{rank}</div>
               <div className="text-xs text-gray-500 mt-1">Rank</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-extrabold text-emerald-400">{(totalScore || 0).toLocaleString()}</div>
-              <div className="text-xs text-gray-500 mt-1">Total Points</div>
+              <div className="text-2xl sm:text-3xl font-extrabold text-emerald-400">{(totalScore || 0).toLocaleString()}</div>
+              <div className="text-xs text-gray-500 mt-1">Points</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-extrabold text-purple-400">{matchesPlayed || 0}</div>
-              <div className="text-xs text-gray-500 mt-1">Matches Played</div>
+              <div className="text-2xl sm:text-3xl font-extrabold text-purple-400">{matchesPlayed || 0}</div>
+              <div className="text-xs text-gray-500 mt-1">Matches</div>
             </div>
           </div>
         ) : (

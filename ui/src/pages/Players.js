@@ -92,7 +92,7 @@ export default function Players() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by name..."
-          className="input w-auto text-sm min-w-[200px]"
+          className="input w-full sm:w-auto text-sm sm:min-w-[200px]"
         />
         <select
           value={teamFilter}
