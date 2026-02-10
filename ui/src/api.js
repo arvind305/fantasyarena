@@ -1,191 +1,291 @@
 /**
- * api.js — Centralised API layer with mode-based routing.
+ * api.js — Centralised API layer.
  *
- * Modes (see config.js for full documentation):
- *   simulation — in-browser mock engine, full read/write
- *   shadow     — in-browser mock engine for reads, writes BLOCKED
- *   live       — real backend API for all operations
+ * All data comes from Supabase. Match schedule data (venue, time, stage) is loaded
+ * from static JSON files and merged with Supabase match_config for live status.
  *
- * Supabase Integration:
- *   When Supabase is configured (env vars set), live mode uses Supabase.
- *   When Supabase is not configured, falls back to mock engine.
- *
- * The shadow guard is enforced here at the API boundary so that
- * no UI component needs to know about modes. Components call
- * apiSubmitBets() and get either a result or a clear error.
+ * Shadow mode guard is enforced here at the API boundary so that
+ * no UI component needs to know about modes.
  */
 
-import * as engine from "./mock/engine";
-import { USE_LOCAL_ENGINE, IS_SHADOW_MODE, API_BASE_URL } from "./config";
+import { IS_SHADOW_MODE } from "./config";
 import { supabase, isSupabaseConfigured } from "./lib/supabase";
-
-// ── Transport helpers ──────────────────────────────────────────────────────
-
-function apiUrl(path) {
-  return `${API_BASE_URL}${path}`;
-}
-
-async function realPost(path, body) {
-  const res = await fetch(apiUrl(path), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
-  return data;
-}
-
-async function realGet(path) {
-  const res = await fetch(apiUrl(path));
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
-  return data;
-}
-
-function mock(fn) {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      try { resolve(fn()); } catch (err) { reject(err); }
-    }, 150 + Math.random() * 200);
-  });
-}
+import { buildTeamObject, TEAM_NAMES, TEAM_CODE_TO_ID } from "./data/teams";
 
 // ── Shadow guard ───────────────────────────────────────────────────────────
 
-/**
- * Rejects mutation calls in shadow mode with a clear, user-facing message.
- * This is the single safeguard: if IS_SHADOW_MODE is true, no bet or
- * long-term prediction submission will succeed, regardless of engine state.
- */
 function shadowGuard(operationName) {
   if (IS_SHADOW_MODE) {
     return Promise.reject(
       new Error(`[SHADOW MODE] ${operationName} is disabled. The platform is running in observation mode — no predictions are accepted.`)
     );
   }
-  return null; // not blocked
+  return null;
+}
+
+// ── Static match schedule cache ────────────────────────────────────────────
+// Venue, scheduledTime, stage etc. come from the static JSON. This data never
+// changes — it's the tournament fixture list.
+
+let _scheduleCache = null;
+let _schedulePromise = null;
+
+async function getMatchSchedule() {
+  if (_scheduleCache) return _scheduleCache;
+  if (_schedulePromise) return _schedulePromise;
+
+  _schedulePromise = (async () => {
+    try {
+      const res = await fetch("/data/t20wc_2026.json");
+      if (!res.ok) throw new Error(`Failed to load schedule: ${res.status}`);
+      const data = await res.json();
+
+      const map = {};
+      const super8 = data.super8_seeding || {};
+
+      data.matches.forEach((m) => {
+        const matchId = `wc_m${m.match_id}`;
+        let teamA = m.teams[0];
+        let teamB = m.teams[1];
+        if (super8[teamA]) teamA = super8[teamA];
+        if (super8[teamB]) teamB = super8[teamB];
+
+        map[matchId] = {
+          matchId,
+          teamA,
+          teamB,
+          scheduledTime: new Date(`${m.date}T${m.time_gmt}:00Z`).toISOString(),
+          venue: `${m.venue}, ${m.city}`,
+          stage: m.stage,
+          group: m.group,
+          isTbc: m.is_tbc,
+        };
+      });
+
+      _scheduleCache = { map, tournament: data.tournament };
+      return _scheduleCache;
+    } catch (err) {
+      console.warn("[api] Failed to load match schedule:", err);
+      _schedulePromise = null;
+      return { map: {}, tournament: null };
+    }
+  })();
+
+  return _schedulePromise;
 }
 
 // ── Events / Matches ───────────────────────────────────────────────────────
-// These always use the mock engine (static data from JSON files, not in Supabase)
 
-export function apiGetEvents() {
-  return mock(() => engine.getEvents());
-}
-
-export function apiGetMatches(filters) {
-  return mock(() => engine.getMatches(filters));
+export async function apiGetEvents() {
+  const schedule = await getMatchSchedule();
+  const t = schedule.tournament;
+  return [{
+    eventId: t?.id || "t20wc_2026",
+    name: t?.name || "T20 World Cup 2026",
+    sport: "cricket",
+    format: "t20",
+    status: "UPCOMING",
+    startDate: "2026-02-07T00:00:00Z",
+    endDate: "2026-03-08T00:00:00Z",
+  }];
 }
 
 /**
- * Returns a match with teamA, teamB (full objects) and squads array.
+ * Returns all matches with schedule + live status from Supabase.
+ */
+export async function apiGetMatches() {
+  const schedule = await getMatchSchedule();
+  const matchMap = schedule.map;
+
+  // Get live status + results from Supabase
+  let statusMap = {};
+  let resultMap = {};
+
+  if (supabase && isSupabaseConfigured()) {
+    const [configRes, resultsRes] = await Promise.all([
+      supabase.from("match_config").select("match_id, team_a, team_b, status"),
+      supabase.from("match_results").select("match_id, winner"),
+    ]);
+    if (configRes.data) {
+      configRes.data.forEach((c) => {
+        statusMap[c.match_id] = { status: c.status, teamA: c.team_a, teamB: c.team_b };
+      });
+    }
+    if (resultsRes.data) {
+      resultsRes.data.forEach((r) => { resultMap[r.match_id] = r.winner; });
+    }
+  }
+
+  // Merge schedule + live data
+  return Object.values(matchMap).map((m) => {
+    const live = statusMap[m.matchId];
+    const winner = resultMap[m.matchId];
+    const teamA = live?.teamA || m.teamA;
+    const teamB = live?.teamB || m.teamB;
+
+    // Derive display status
+    let status = live?.status || "UPCOMING";
+    if (status === "DRAFT") status = "UPCOMING";
+    if (status === "SCORED") status = "COMPLETED";
+
+    // Build result text
+    let result = null;
+    if (winner && winner !== "NO_RESULT") {
+      if (winner === "TIE") {
+        result = "Match Tied";
+      } else {
+        const winnerName = TEAM_NAMES[TEAM_CODE_TO_ID[winner]] || winner;
+        result = `${winnerName} won`;
+      }
+    } else if (winner === "NO_RESULT") {
+      result = "No Result";
+    }
+
+    return {
+      matchId: m.matchId,
+      eventId: "t20wc_2026",
+      teamA,
+      teamB,
+      scheduledTime: m.scheduledTime,
+      venue: m.venue,
+      status,
+      result,
+      stage: m.stage,
+      group: m.group,
+      isTbc: m.isTbc,
+    };
+  });
+}
+
+/**
+ * Returns a single match with full teamA/teamB objects and squads.
  * Contract: teamA and teamB are never null. squads is always an array.
  */
-export function apiGetMatch(matchId) {
-  return mock(() => engine.getMatch(matchId));
+export async function apiGetMatch(matchId) {
+  const schedule = await getMatchSchedule();
+  const sched = schedule.map[matchId];
+  if (!sched) throw new Error("Match not found");
+
+  // Get live data from Supabase
+  let teamACode = sched.teamA;
+  let teamBCode = sched.teamB;
+  let status = "UPCOMING";
+  let result = null;
+
+  if (supabase && isSupabaseConfigured()) {
+    const [configRes, resultRes] = await Promise.all([
+      supabase.from("match_config").select("team_a, team_b, status").eq("match_id", matchId).maybeSingle(),
+      supabase.from("match_results").select("winner").eq("match_id", matchId).maybeSingle(),
+    ]);
+    if (configRes.data) {
+      teamACode = configRes.data.team_a || teamACode;
+      teamBCode = configRes.data.team_b || teamBCode;
+      status = configRes.data.status || status;
+      if (status === "DRAFT") status = "UPCOMING";
+      if (status === "SCORED") status = "COMPLETED";
+    }
+    if (resultRes.data?.winner) {
+      const w = resultRes.data.winner;
+      if (w === "TIE") result = "Match Tied";
+      else if (w === "NO_RESULT") result = "No Result";
+      else result = `${TEAM_NAMES[TEAM_CODE_TO_ID[w]] || w} won`;
+    }
+  }
+
+  return {
+    matchId: sched.matchId,
+    eventId: "t20wc_2026",
+    teamA: buildTeamObject(teamACode),
+    teamB: buildTeamObject(teamBCode),
+    scheduledTime: sched.scheduledTime,
+    venue: sched.venue,
+    status,
+    result,
+    stage: sched.stage,
+    group: sched.group,
+    squads: [],
+  };
 }
 
 // ── Betting ────────────────────────────────────────────────────────────────
 
 export async function apiGetBettingQuestions(matchId) {
-  if (supabase && isSupabaseConfigured()) {
-    try {
-      const { data, error } = await supabase
-        .from('match_questions')
-        .select('*')
-        .eq('match_id', matchId)
-        .order('sort_order', { ascending: true });
+  if (!supabase || !isSupabaseConfigured()) return [];
 
-      if (error) {
-        console.warn('[api] Supabase error fetching questions, falling back to mock:', error.message);
-        return mock(() => engine.getBettingQuestions(matchId));
-      }
+  try {
+    const { data, error } = await supabase
+      .from('match_questions')
+      .select('*')
+      .eq('match_id', matchId)
+      .order('sort_order', { ascending: true });
 
-      // If no questions in Supabase, fall back to mock engine
-      if (!data || data.length === 0) {
-        return mock(() => engine.getBettingQuestions(matchId));
-      }
-
-      // Transform to match expected format
-      return data.map(q => ({
-        questionId: q.question_id,
-        matchId: q.match_id,
-        section: q.section,
-        kind: q.kind,
-        type: q.type,
-        text: q.text,
-        points: q.points,
-        pointsWrong: q.points_wrong,
-        options: q.options || [],
-        slot: q.slot,
-        status: q.status,
-        disabled: q.disabled
-      }));
-    } catch (err) {
-      console.warn('[api] Error fetching questions from Supabase:', err);
-      return mock(() => engine.getBettingQuestions(matchId));
+    if (error) {
+      console.warn('[api] Error fetching questions:', error.message);
+      return [];
     }
+
+    return (data || []).map(q => ({
+      questionId: q.question_id,
+      matchId: q.match_id,
+      section: q.section,
+      kind: q.kind,
+      type: q.type,
+      text: q.text,
+      points: q.points,
+      pointsWrong: q.points_wrong,
+      options: q.options || [],
+      slot: q.slot,
+      status: q.status,
+      disabled: q.disabled
+    }));
+  } catch (err) {
+    console.warn('[api] Error fetching questions:', err);
+    return [];
   }
-  return mock(() => engine.getBettingQuestions(matchId));
 }
 
 export async function apiSubmitBets(matchId, userId, answers) {
   const blocked = shadowGuard("Bet submission");
   if (blocked) return blocked;
 
-  if (supabase && isSupabaseConfigured()) {
-    console.log("[api] Submitting bet to Supabase:", matchId, userId);
-    const now = new Date().toISOString();
-    const betId = `bet_${userId}_${matchId}`;
-    const { data, error } = await supabase
-      .from('bets')
-      .upsert({
-        bet_id: betId,
-        user_id: userId,
-        match_id: matchId,
-        answers: answers,
-        submitted_at: now,
-        is_locked: false,
-        score: null
-      }, { onConflict: 'bet_id' })
-      .select()
-      .single();
-    if (error) {
-      console.error("[api] Supabase bet submission failed:", error.message);
-      throw new Error(error.message);
-    }
-    console.log("[api] Bet saved to Supabase successfully");
-    return data;
+  if (!supabase || !isSupabaseConfigured()) {
+    throw new Error("Supabase not configured. Cannot submit bets.");
   }
 
-  // WARNING: Supabase not configured - bets go to localStorage only!
-  console.warn("[api] WARNING: Supabase not configured! Bet going to localStorage only - may be lost!");
-  if (USE_LOCAL_ENGINE) return mock(() => engine.submitBets(matchId, userId, answers));
-  return realPost(`/match/${matchId}/bets`, { userId, answers });
+  const now = new Date().toISOString();
+  const betId = `bet_${userId}_${matchId}`;
+  const { data, error } = await supabase
+    .from('bets')
+    .upsert({
+      bet_id: betId,
+      user_id: userId,
+      match_id: matchId,
+      answers: answers,
+      submitted_at: now,
+      is_locked: false,
+      score: null
+    }, { onConflict: 'bet_id' })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
 }
 
 export async function apiGetUserBets(matchId, userId) {
-  if (supabase && isSupabaseConfigured()) {
-    const { data, error } = await supabase
-      .from('bets')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('match_id', matchId)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    return data;
-  }
-  if (USE_LOCAL_ENGINE) return mock(() => engine.getUserBets(matchId, userId));
-  return realGet(`/match/${matchId}/bets/${userId}`);
+  if (!supabase || !isSupabaseConfigured()) return null;
+
+  const { data, error } = await supabase
+    .from('bets')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('match_id', matchId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data;
 }
 
 // ── V2 Betting (match_config-based) ─────────────────────────────────────────
 
-/**
- * Fetch match_config, player_slots, and side_bets for a match.
- * Returns { config, slots, sideBets } or null if no config exists.
- */
 export async function apiGetMatchConfig(matchId) {
   if (!supabase || !isSupabaseConfigured()) return null;
 
@@ -241,15 +341,10 @@ export async function apiGetMatchConfig(matchId) {
   }
 }
 
-/**
- * Fetch players for a team by team_code and event_id.
- * Returns array of { playerId, playerName, playerRole, isCaptain }.
- */
 export async function apiGetSquadPlayers(teamCode, eventId = 't20wc_2026') {
   if (!supabase || !isSupabaseConfigured()) return [];
 
   try {
-    // First get squad_id for this team
     const { data: squad, error: squadError } = await supabase
       .from('squads')
       .select('squad_id')
@@ -280,10 +375,6 @@ export async function apiGetSquadPlayers(teamCode, eventId = 't20wc_2026') {
   }
 }
 
-/**
- * Search users for runner selection. Searches leaderboard and user_profiles.
- * Returns array of { userId, displayName }.
- */
 export async function apiSearchUsers(query) {
   if (!supabase || !isSupabaseConfigured()) return [];
 
@@ -306,9 +397,6 @@ export async function apiSearchUsers(query) {
   }
 }
 
-/**
- * Submit a V2 bet (with player_picks, side_bet_answers, runner_picks).
- */
 export async function apiSubmitBetV2(matchId, userId, betData) {
   const blocked = shadowGuard("Bet submission");
   if (blocked) return blocked;
@@ -337,55 +425,44 @@ export async function apiSubmitBetV2(matchId, userId, betData) {
     .select()
     .single();
 
-  if (error) {
-    console.error("[api] V2 bet submission failed:", error.message);
-    throw new Error(error.message);
-  }
-
+  if (error) throw new Error(error.message);
   return data;
 }
 
 // ── Long-term Bets ─────────────────────────────────────────────────────────
 
-/**
- * Fetch long_term_bets_config from Supabase. Falls back to mock engine.
- */
 export async function apiGetLongTermConfig(eventId = 't20wc_2026') {
-  if (supabase && isSupabaseConfigured()) {
-    try {
-      const { data, error } = await supabase
-        .from('long_term_bets_config')
-        .select('*')
-        .eq('event_id', eventId)
-        .maybeSingle();
+  if (!supabase || !isSupabaseConfigured()) return null;
 
-      if (error) throw error;
-      if (!data) return null;
+  try {
+    const { data, error } = await supabase
+      .from('long_term_bets_config')
+      .select('*')
+      .eq('event_id', eventId)
+      .maybeSingle();
 
-      return {
-        configId: data.config_id,
-        eventId: data.event_id,
-        winnerPoints: data.winner_points,
-        finalistPoints: data.finalist_points,
-        finalFourPoints: data.final_four_points,
-        orangeCapPoints: data.orange_cap_points,
-        purpleCapPoints: data.purple_cap_points,
-        lockTime: data.lock_time,
-        isLocked: data.is_locked,
-        changeCostPercent: parseFloat(data.change_cost_percent),
-        allowChanges: data.allow_changes,
-      };
-    } catch (err) {
-      console.warn('[api] Error fetching long-term config:', err);
-      return null;
-    }
+    if (error) throw error;
+    if (!data) return null;
+
+    return {
+      configId: data.config_id,
+      eventId: data.event_id,
+      winnerPoints: data.winner_points,
+      finalistPoints: data.finalist_points,
+      finalFourPoints: data.final_four_points,
+      orangeCapPoints: data.orange_cap_points,
+      purpleCapPoints: data.purple_cap_points,
+      lockTime: data.lock_time,
+      isLocked: data.is_locked,
+      changeCostPercent: parseFloat(data.change_cost_percent),
+      allowChanges: data.allow_changes,
+    };
+  } catch (err) {
+    console.warn('[api] Error fetching long-term config:', err);
+    return null;
   }
-  return null;
 }
 
-/**
- * Submit or update long-term bets to Supabase.
- */
 export async function apiSubmitLongTermBet(eventId, userId, predictions) {
   const blocked = shadowGuard("Long-term prediction submission");
   if (blocked) return blocked;
@@ -412,13 +489,9 @@ export async function apiSubmitLongTermBet(eventId, userId, predictions) {
     .single();
 
   if (error) throw new Error(error.message);
-
   return { success: true, submittedAt: data.updated_at };
 }
 
-/**
- * Fetch user's existing long-term bet.
- */
 export async function apiGetUserLongTermBet(eventId, userId) {
   if (!supabase || !isSupabaseConfigured()) return null;
 
@@ -452,10 +525,8 @@ export async function apiGetUserLongTermBet(eventId, userId) {
   }
 }
 
-/**
- * Fetch all squads (teams) from Supabase.
- * Returns array of { squadId, teamCode, teamName }.
- */
+// ── Teams / Squads ──────────────────────────────────────────────────────────
+
 export async function apiGetSquads(eventId = 't20wc_2026') {
   if (!supabase || !isSupabaseConfigured()) return [];
 
@@ -479,10 +550,8 @@ export async function apiGetSquads(eventId = 't20wc_2026') {
   }
 }
 
-/**
- * Fetch all players across all squads for a given event.
- * Returns array of { playerId, playerName, playerRole, teamCode }.
- */
+// ── Players ────────────────────────────────────────────────────────────────
+
 export async function apiGetAllPlayers(eventId = 't20wc_2026') {
   if (!supabase || !isSupabaseConfigured()) return [];
 
@@ -509,466 +578,420 @@ export async function apiGetAllPlayers(eventId = 't20wc_2026') {
   }
 }
 
-// Legacy long-term bets (mock engine, kept for backward compatibility)
-
-export function apiGetLongTermBets(eventId) {
-  return mock(() => engine.getLongTermBets(eventId));
+/**
+ * Get all players (used by MatchBetting V1 legacy fallback).
+ * Delegates to apiGetAllPlayers and maps to expected shape.
+ */
+export async function apiGetPlayers() {
+  const all = await apiGetAllPlayers();
+  return all.map(p => ({
+    playerId: p.playerId,
+    name: p.playerName,
+    role: p.playerRole,
+    teamId: TEAM_CODE_TO_ID[p.teamCode] || p.teamCode?.toLowerCase(),
+    nationality: TEAM_NAMES[TEAM_CODE_TO_ID[p.teamCode]] || p.teamCode,
+    isCaptain: p.isCaptain,
+  }));
 }
 
-export function apiSubmitLongTermBets(userId, answers) {
-  const blocked = shadowGuard("Long-term prediction submission");
-  if (blocked) return blocked;
-  return mock(() => engine.submitLongTermBets(userId, answers));
-}
+/**
+ * Get a single player profile from Supabase.
+ * Returns { name, role, nationality, team, playerId }.
+ */
+export async function apiGetPlayerProfile(playerId) {
+  if (!supabase || !isSupabaseConfigured()) {
+    throw new Error("Player not found");
+  }
 
-export function apiGetUserLongTermBets(userId) {
-  return mock(() => engine.getUserLongTermBets(userId));
-}
+  const { data, error } = await supabase
+    .from('players')
+    .select('player_id, player_name, player_role, is_captain, squads!inner(team_code, team_name)')
+    .eq('player_id', playerId)
+    .maybeSingle();
 
-// ── Teams ──────────────────────────────────────────────────────────────────
-// These always use mock engine (static data from JSON files)
+  if (error || !data) throw new Error("Player not found");
 
-export function apiGetTeams() {
-  return mock(() => engine.getTeams());
-}
+  const teamCode = data.squads?.team_code;
+  const teamId = TEAM_CODE_TO_ID[teamCode] || teamCode?.toLowerCase();
 
-export function apiGetTeamDetail(teamId) {
-  return mock(() => engine.getTeamDetail(teamId));
-}
-
-// ── Players ────────────────────────────────────────────────────────────────
-// These always use mock engine (static data from JSON files)
-
-export function apiGetPlayers(filters) {
-  return mock(() => engine.getPlayers(filters));
-}
-
-export function apiGetPlayerProfile(playerId) {
-  return mock(() => engine.getPlayerProfile(playerId));
+  return {
+    playerId: data.player_id,
+    name: data.player_name,
+    role: data.player_role,
+    isCaptain: data.is_captain,
+    nationality: data.squads?.team_name || teamCode,
+    teamId,
+    team: buildTeamObject(teamCode),
+  };
 }
 
 // ── Leaderboard ────────────────────────────────────────────────────────────
 
 export async function apiGetLeaderboard(scope, scopeId) {
-  if (supabase && isSupabaseConfigured()) {
-    try {
-      if (scope === 'group') {
-        // Get group leaderboard - members with their scores
-        const { data, error } = await supabase
-          .from('group_members')
-          .select('user_id, display_name, score')
-          .eq('group_id', scopeId)
-          .order('score', { ascending: false });
-        if (error) throw error;
-        return data.map((m, i) => ({
-          userId: m.user_id,
-          displayName: m.display_name,
-          score: m.score || 0,
-          totalScore: m.score || 0,
-          rank: i + 1,
-          matchesPlayed: 0
-        }));
-      } else {
-        // Global leaderboard from leaderboard table
-        const { data, error } = await supabase
-          .from('leaderboard')
-          .select('user_id, display_name, total_score, matches_played, rank, previous_rank, last_match_score')
-          .order('rank', { ascending: true })
-          .limit(100);
+  if (!supabase || !isSupabaseConfigured()) return [];
 
-        // If empty or error, return empty leaderboard (no users yet)
-        if (error || !data || data.length === 0) {
-          return [];
-        }
+  try {
+    if (scope === 'group') {
+      const { data, error } = await supabase
+        .from('group_members')
+        .select('user_id, display_name, score')
+        .eq('group_id', scopeId)
+        .order('score', { ascending: false });
+      if (error) throw error;
+      return data.map((m, i) => ({
+        userId: m.user_id,
+        displayName: m.display_name,
+        score: m.score || 0,
+        totalScore: m.score || 0,
+        rank: i + 1,
+        matchesPlayed: 0
+      }));
+    } else {
+      const { data, error } = await supabase
+        .from('leaderboard')
+        .select('user_id, display_name, total_score, matches_played, rank, previous_rank, last_match_score')
+        .order('rank', { ascending: true })
+        .limit(100);
 
-        return data.map((u, i) => ({
-          userId: u.user_id,
-          displayName: u.display_name,
-          score: u.total_score || 0,
-          totalScore: u.total_score || 0,
-          total_score: u.total_score || 0,
-          rank: u.rank || i + 1,
-          previous_rank: u.previous_rank,
-          last_match_score: u.last_match_score,
-          matchesPlayed: u.matches_played || 0,
-          matches_played: u.matches_played || 0
-        }));
-      }
-    } catch (err) {
-      console.warn('[api] Error fetching leaderboard from Supabase:', err);
-      return mock(() => engine.getLeaderboard(scope, scopeId));
+      if (error || !data || data.length === 0) return [];
+
+      return data.map((u, i) => ({
+        userId: u.user_id,
+        displayName: u.display_name,
+        score: u.total_score || 0,
+        totalScore: u.total_score || 0,
+        total_score: u.total_score || 0,
+        rank: u.rank || i + 1,
+        previous_rank: u.previous_rank,
+        last_match_score: u.last_match_score,
+        matchesPlayed: u.matches_played || 0,
+        matches_played: u.matches_played || 0
+      }));
     }
+  } catch (err) {
+    console.warn('[api] Error fetching leaderboard:', err);
+    return [];
   }
-  return mock(() => engine.getLeaderboard(scope, scopeId));
 }
 
 // ── Groups ─────────────────────────────────────────────────────────────────
 
 export async function apiGetGroups(userId) {
-  if (supabase && isSupabaseConfigured()) {
-    try {
-      // First get group_ids where user is a member
-      const { data: memberships, error: memberError } = await supabase
-        .from('group_members')
-        .select('group_id')
-        .eq('user_id', userId);
-      if (memberError) throw memberError;
+  if (!supabase || !isSupabaseConfigured()) return [];
 
-      if (!memberships || memberships.length === 0) {
-        return [];
-      }
+  try {
+    const { data: memberships, error: memberError } = await supabase
+      .from('group_members')
+      .select('group_id')
+      .eq('user_id', userId);
+    if (memberError) throw memberError;
+    if (!memberships || memberships.length === 0) return [];
 
-      const groupIds = memberships.map(m => m.group_id);
+    const groupIds = memberships.map(m => m.group_id);
+    const { data: groups, error: groupError } = await supabase
+      .from('groups')
+      .select('*, group_members(user_id, display_name, score)')
+      .in('group_id', groupIds);
+    if (groupError) throw groupError;
 
-      // Then get those groups with all their members
-      const { data: groups, error: groupError } = await supabase
-        .from('groups')
-        .select('*, group_members(user_id, display_name, score)')
-        .in('group_id', groupIds);
-      if (groupError) throw groupError;
-
-      // Transform to expected format
-      return groups.map(g => ({
-        groupId: g.group_id,
-        name: g.name,
-        joinCode: g.join_code,
-        createdBy: g.created_by,
-        eventId: g.event_id,
-        createdAt: g.created_at,
-        memberIds: g.group_members?.map(m => m.user_id) || [],
-        members: g.group_members?.map(m => ({
-          userId: m.user_id,
-          displayName: m.display_name,
-          score: m.score || 0
-        })) || []
-      }));
-    } catch (err) {
-      console.warn('[api] Error fetching groups from Supabase, falling back to mock:', err);
-      return mock(() => engine.getGroups(userId));
-    }
+    return groups.map(g => ({
+      groupId: g.group_id,
+      name: g.name,
+      joinCode: g.join_code,
+      createdBy: g.created_by,
+      eventId: g.event_id,
+      createdAt: g.created_at,
+      memberIds: g.group_members?.map(m => m.user_id) || [],
+      members: g.group_members?.map(m => ({
+        userId: m.user_id,
+        displayName: m.display_name,
+        score: m.score || 0
+      })) || []
+    }));
+  } catch (err) {
+    console.warn('[api] Error fetching groups:', err);
+    return [];
   }
-  return mock(() => engine.getGroups(userId));
 }
 
 export async function apiCreateGroup(name, userId, displayName) {
-  if (supabase && isSupabaseConfigured()) {
-    try {
-      const groupId = "g" + Date.now(); // Generate unique group_id
-      const joinCode = name.slice(0, 3).toUpperCase() + "-" + Math.random().toString(36).slice(2, 6).toUpperCase();
-      const now = new Date().toISOString();
-
-      // Create the group
-      const { data: group, error: groupError } = await supabase
-        .from('groups')
-        .insert({
-          group_id: groupId,
-          name,
-          join_code: joinCode,
-          created_by: userId,
-          event_id: 't20wc_2026',
-          created_at: now
-        })
-        .select()
-        .single();
-      if (groupError) throw groupError;
-
-      // Add creator as first member (use group_id TEXT, not id UUID)
-      const { error: memberError } = await supabase
-        .from('group_members')
-        .insert({
-          group_id: groupId,
-          user_id: userId,
-          display_name: displayName,
-          score: 0,
-          joined_at: now
-        });
-      if (memberError) throw memberError;
-
-      return {
-        groupId: groupId,
-        name: group.name,
-        joinCode: group.join_code,
-        createdBy: group.created_by,
-        createdAt: group.created_at,
-        memberIds: [userId],
-        members: [{ userId, displayName, score: 0 }]
-      };
-    } catch (err) {
-      console.error('[api] Error creating group in Supabase:', err);
-      throw new Error(err.message || 'Failed to create group');
-    }
+  if (!supabase || !isSupabaseConfigured()) {
+    throw new Error("Supabase not configured.");
   }
-  return mock(() => engine.createGroup(name, userId, displayName));
+
+  const groupId = "g" + Date.now();
+  const joinCode = name.slice(0, 3).toUpperCase() + "-" + Math.random().toString(36).slice(2, 6).toUpperCase();
+  const now = new Date().toISOString();
+
+  const { data: group, error: groupError } = await supabase
+    .from('groups')
+    .insert({
+      group_id: groupId,
+      name,
+      join_code: joinCode,
+      created_by: userId,
+      event_id: 't20wc_2026',
+      created_at: now
+    })
+    .select()
+    .single();
+  if (groupError) throw new Error(groupError.message);
+
+  const { error: memberError } = await supabase
+    .from('group_members')
+    .insert({
+      group_id: groupId,
+      user_id: userId,
+      display_name: displayName,
+      score: 0,
+      joined_at: now
+    });
+  if (memberError) throw new Error(memberError.message);
+
+  return {
+    groupId,
+    name: group.name,
+    joinCode: group.join_code,
+    createdBy: group.created_by,
+    createdAt: group.created_at,
+    memberIds: [userId],
+    members: [{ userId, displayName, score: 0 }]
+  };
 }
 
 export async function apiJoinGroup(joinCode, userId, displayName) {
-  if (supabase && isSupabaseConfigured()) {
-    // Find group by join code
-    const { data: group, error: findError } = await supabase
-      .from('groups')
-      .select('*')
-      .eq('join_code', joinCode)
-      .single();
-    if (findError) throw new Error('INVALID_GROUP_CODE');
-
-    // Check if already a member (use group_id TEXT)
-    const { data: existingMember } = await supabase
-      .from('group_members')
-      .select('id')
-      .eq('group_id', group.group_id)
-      .eq('user_id', userId)
-      .maybeSingle();
-    if (existingMember) throw new Error('ALREADY_A_MEMBER');
-
-    // Add user to group (use group_id TEXT)
-    const { error: joinError } = await supabase
-      .from('group_members')
-      .insert({
-        group_id: group.group_id,
-        user_id: userId,
-        display_name: displayName,
-        score: 0,
-        joined_at: new Date().toISOString()
-      });
-    if (joinError) throw new Error(joinError.message);
-
-    // Return group with updated members
-    const { data: members } = await supabase
-      .from('group_members')
-      .select('user_id, display_name, score')
-      .eq('group_id', group.group_id);
-
-    return {
-      groupId: group.group_id,
-      name: group.name,
-      joinCode: group.join_code,
-      createdBy: group.created_by,
-      createdAt: group.created_at,
-      memberIds: members.map(m => m.user_id),
-      members: members.map(m => ({ userId: m.user_id, displayName: m.display_name, score: m.score }))
-    };
+  if (!supabase || !isSupabaseConfigured()) {
+    throw new Error("Supabase not configured.");
   }
-  if (USE_LOCAL_ENGINE) return mock(() => engine.joinGroup(joinCode, userId, displayName));
-  return realPost("/groups/join", { joinCode, userId, displayName });
+
+  const { data: group, error: findError } = await supabase
+    .from('groups')
+    .select('*')
+    .eq('join_code', joinCode)
+    .single();
+  if (findError) throw new Error('INVALID_GROUP_CODE');
+
+  const { data: existingMember } = await supabase
+    .from('group_members')
+    .select('id')
+    .eq('group_id', group.group_id)
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (existingMember) throw new Error('ALREADY_A_MEMBER');
+
+  const { error: joinError } = await supabase
+    .from('group_members')
+    .insert({
+      group_id: group.group_id,
+      user_id: userId,
+      display_name: displayName,
+      score: 0,
+      joined_at: new Date().toISOString()
+    });
+  if (joinError) throw new Error(joinError.message);
+
+  const { data: members } = await supabase
+    .from('group_members')
+    .select('user_id, display_name, score')
+    .eq('group_id', group.group_id);
+
+  return {
+    groupId: group.group_id,
+    name: group.name,
+    joinCode: group.join_code,
+    createdBy: group.created_by,
+    createdAt: group.created_at,
+    memberIds: members.map(m => m.user_id),
+    members: members.map(m => ({ userId: m.user_id, displayName: m.display_name, score: m.score }))
+  };
 }
 
 export async function apiGetGroupDetail(groupId) {
-  if (supabase && isSupabaseConfigured()) {
-    // Query by group_id (TEXT), not id (UUID)
-    const { data: group, error: groupError } = await supabase
-      .from('groups')
-      .select('*')
-      .eq('group_id', groupId)
-      .single();
-    if (groupError) throw new Error('Group not found');
-
-    const { data: members, error: membersError } = await supabase
-      .from('group_members')
-      .select('user_id, display_name, score')
-      .eq('group_id', groupId)
-      .order('score', { ascending: false });
-    if (membersError) throw new Error(membersError.message);
-
-    return {
-      groupId: group.group_id,
-      name: group.name,
-      joinCode: group.join_code,
-      createdBy: group.created_by,
-      createdAt: group.created_at,
-      memberIds: members.map(m => m.user_id),
-      members: members.map(m => ({ userId: m.user_id, displayName: m.display_name, score: m.score })),
-      leaderboard: members.map((m, i) => ({
-        userId: m.user_id,
-        displayName: m.display_name,
-        score: m.score || 0,
-        rank: i + 1
-      }))
-    };
+  if (!supabase || !isSupabaseConfigured()) {
+    throw new Error("Supabase not configured.");
   }
-  if (USE_LOCAL_ENGINE) return mock(() => engine.getGroupDetail(groupId));
-  return realGet(`/groups/${groupId}`);
-}
 
-// ── Profile ────────────────────────────────────────────────────────────────
-// Uses mock engine for now (can migrate to Supabase later)
+  const { data: group, error: groupError } = await supabase
+    .from('groups')
+    .select('*')
+    .eq('group_id', groupId)
+    .single();
+  if (groupError) throw new Error('Group not found');
 
-export function apiGetProfile(userId) {
-  return mock(() => engine.getProfile(userId));
+  const { data: members, error: membersError } = await supabase
+    .from('group_members')
+    .select('user_id, display_name, score')
+    .eq('group_id', groupId)
+    .order('score', { ascending: false });
+  if (membersError) throw new Error(membersError.message);
+
+  return {
+    groupId: group.group_id,
+    name: group.name,
+    joinCode: group.join_code,
+    createdBy: group.created_by,
+    createdAt: group.created_at,
+    memberIds: members.map(m => m.user_id),
+    members: members.map(m => ({ userId: m.user_id, displayName: m.display_name, score: m.score })),
+    leaderboard: members.map((m, i) => ({
+      userId: m.user_id,
+      displayName: m.display_name,
+      score: m.score || 0,
+      rank: i + 1
+    }))
+  };
 }
 
 // ── Admin: Question Management ─────────────────────────────────────────────
 
 export async function apiSaveMatchQuestions(matchId, questions) {
-  if (supabase && isSupabaseConfigured()) {
-    // Delete existing questions for this match
-    const { error: deleteError } = await supabase
-      .from('match_questions')
-      .delete()
-      .eq('match_id', matchId);
-    if (deleteError) throw new Error(deleteError.message);
-
-    // Insert new questions
-    if (questions.length > 0) {
-      const questionsToInsert = questions.map((q, idx) => ({
-        question_id: q.questionId,
-        match_id: matchId,
-        section: q.section,
-        kind: q.kind,
-        type: q.type,
-        text: q.text,
-        points: q.points || 10,
-        points_wrong: q.pointsWrong || 0,
-        options: q.options || [],
-        slot: q.slot || null,
-        status: 'OPEN',
-        sort_order: idx,
-        disabled: q.disabled || false
-      }));
-
-      const { error: insertError } = await supabase
-        .from('match_questions')
-        .insert(questionsToInsert);
-      if (insertError) throw new Error(insertError.message);
-    }
-
-    return { success: true, count: questions.length };
+  if (!supabase || !isSupabaseConfigured()) {
+    throw new Error("Supabase not configured.");
   }
-  if (USE_LOCAL_ENGINE) return mock(() => engine.saveMatchQuestions(matchId, questions));
-  return realPost(`/admin/${matchId}/questions`, { questions });
+
+  const { error: deleteError } = await supabase
+    .from('match_questions')
+    .delete()
+    .eq('match_id', matchId);
+  if (deleteError) throw new Error(deleteError.message);
+
+  if (questions.length > 0) {
+    const questionsToInsert = questions.map((q, idx) => ({
+      question_id: q.questionId,
+      match_id: matchId,
+      section: q.section,
+      kind: q.kind,
+      type: q.type,
+      text: q.text,
+      points: q.points || 10,
+      points_wrong: q.pointsWrong || 0,
+      options: q.options || [],
+      slot: q.slot || null,
+      status: 'OPEN',
+      sort_order: idx,
+      disabled: q.disabled || false
+    }));
+
+    const { error: insertError } = await supabase
+      .from('match_questions')
+      .insert(questionsToInsert);
+    if (insertError) throw new Error(insertError.message);
+  }
+
+  return { success: true, count: questions.length };
 }
 
 // ── Admin: Match Results & Scoring ──────────────────────────────────────────
 
-/**
- * Save match results including winner, runs, player stats, and side bet answers.
- */
 export async function apiSaveMatchResults(matchId, resultsPayload) {
-  if (supabase && isSupabaseConfigured()) {
-    // Determine winner from result
-    let winner = null;
-    if (resultsPayload.result === 'TEAM_A') {
-      winner = resultsPayload.teamA?.id || resultsPayload.teamAId;
-    } else if (resultsPayload.result === 'TEAM_B') {
-      winner = resultsPayload.teamB?.id || resultsPayload.teamBId;
-    } else if (resultsPayload.result === 'TIE') {
-      winner = 'TIE';
-    } else if (resultsPayload.result === 'NO_RESULT') {
-      winner = 'NO_RESULT';
-    }
-
-    const { error } = await supabase
-      .from('match_results')
-      .upsert({
-        match_id: matchId,
-        winner: winner,
-        total_runs: resultsPayload.totalRuns,
-        player_stats: resultsPayload.playerStats,
-        side_bet_answers: resultsPayload.sideBetAnswers,
-        man_of_match: resultsPayload.manOfMatch,
-        completed_at: new Date().toISOString()
-      }, { onConflict: 'match_id' });
-
-    if (error) throw new Error(error.message);
-    return { success: true, matchId };
+  if (!supabase || !isSupabaseConfigured()) {
+    throw new Error("Supabase not configured.");
   }
 
-  return realPost(`/admin/${matchId}/results`, resultsPayload);
+  let winner = null;
+  if (resultsPayload.result === 'TEAM_A') {
+    winner = resultsPayload.teamA?.id || resultsPayload.teamAId;
+  } else if (resultsPayload.result === 'TEAM_B') {
+    winner = resultsPayload.teamB?.id || resultsPayload.teamBId;
+  } else if (resultsPayload.result === 'TIE') {
+    winner = 'TIE';
+  } else if (resultsPayload.result === 'NO_RESULT') {
+    winner = 'NO_RESULT';
+  }
+
+  const { error } = await supabase
+    .from('match_results')
+    .upsert({
+      match_id: matchId,
+      winner,
+      total_runs: resultsPayload.totalRuns,
+      player_stats: resultsPayload.playerStats,
+      side_bet_answers: resultsPayload.sideBetAnswers,
+      man_of_match: resultsPayload.manOfMatch,
+      completed_at: new Date().toISOString()
+    }, { onConflict: 'match_id' });
+
+  if (error) throw new Error(error.message);
+  return { success: true, matchId };
 }
 
-/**
- * Calculate scores for a match using Supabase RPC (no backend required).
- * @param {string} matchId - The match ID to score
- * @param {string} eventId - The event ID for leaderboard update (defaults to 't20wc_2026')
- */
 export async function apiCalculateMatchScores(matchId, eventId = 't20wc_2026') {
-  if (supabase && isSupabaseConfigured()) {
-    // First, lock all bets for this match
-    const { error: lockError } = await supabase
-      .from('bets')
-      .update({ is_locked: true })
-      .eq('match_id', matchId);
-
-    if (lockError) {
-      console.warn('[api] Failed to lock bets:', lockError.message);
-    }
-
-    // Use Supabase RPC function directly (no backend needed)
-    const { data, error } = await supabase.rpc('calculate_match_scores', {
-      p_match_id: matchId,
-      p_event_id: eventId
-    });
-
-    if (error) {
-      // If RPC doesn't exist, provide helpful error message
-      if (error.message.includes('function') && error.message.includes('does not exist')) {
-        throw new Error(
-          'Scoring function not installed. Go to Supabase Dashboard > SQL Editor and run the SQL from src/db/admin-scoring-function.sql'
-        );
-      }
-      throw new Error(error.message);
-    }
-
-    if (data && data.success === false) {
-      throw new Error(data.error || 'Scoring failed');
-    }
-
-    return {
-      success: true,
-      message: `Scored ${data?.betsScored || 0} bets for match ${matchId}`,
-      ...data
-    };
+  if (!supabase || !isSupabaseConfigured()) {
+    throw new Error('Supabase not configured.');
   }
 
-  throw new Error('Supabase not configured. Please set REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_ANON_KEY');
+  const { error: lockError } = await supabase
+    .from('bets')
+    .update({ is_locked: true })
+    .eq('match_id', matchId);
+
+  if (lockError) {
+    console.warn('[api] Failed to lock bets:', lockError.message);
+  }
+
+  const { data, error } = await supabase.rpc('calculate_match_scores', {
+    p_match_id: matchId,
+    p_event_id: eventId
+  });
+
+  if (error) {
+    if (error.message.includes('function') && error.message.includes('does not exist')) {
+      throw new Error(
+        'Scoring function not installed. Go to Supabase Dashboard > SQL Editor and run the SQL from src/db/admin-scoring-function.sql'
+      );
+    }
+    throw new Error(error.message);
+  }
+
+  if (data && data.success === false) {
+    throw new Error(data.error || 'Scoring failed');
+  }
+
+  return {
+    success: true,
+    message: `Scored ${data?.betsScored || 0} bets for match ${matchId}`,
+    ...data
+  };
 }
 
-/**
- * Get match results by match ID.
- */
 export async function apiGetMatchResults(matchId) {
-  if (supabase && isSupabaseConfigured()) {
-    const { data, error } = await supabase
-      .from('match_results')
-      .select('*')
-      .eq('match_id', matchId)
-      .maybeSingle();
+  if (!supabase || !isSupabaseConfigured()) return null;
 
-    if (error) throw new Error(error.message);
-    if (!data) return null;
+  const { data, error } = await supabase
+    .from('match_results')
+    .select('*')
+    .eq('match_id', matchId)
+    .maybeSingle();
 
-    // Transform to camelCase
-    return {
-      matchId: data.match_id,
-      winner: data.winner,
-      totalRuns: data.total_runs,
-      playerStats: data.player_stats,
-      sideBetAnswers: data.side_bet_answers,
-      manOfMatch: data.man_of_match,
-      completedAt: data.completed_at
-    };
-  }
+  if (error) throw new Error(error.message);
+  if (!data) return null;
 
-  return realGet(`/admin/${matchId}/results`);
+  return {
+    matchId: data.match_id,
+    winner: data.winner,
+    totalRuns: data.total_runs,
+    playerStats: data.player_stats,
+    sideBetAnswers: data.side_bet_answers,
+    manOfMatch: data.man_of_match,
+    completedAt: data.completed_at
+  };
 }
 
-/**
- * Lock all bets for a specific match.
- */
 export async function apiLockMatchBets(matchId) {
-  if (supabase && isSupabaseConfigured()) {
-    const { data, error } = await supabase
-      .from('bets')
-      .update({ is_locked: true })
-      .eq('match_id', matchId)
-      .select('bet_id');
-
-    if (error) throw new Error(error.message);
-
-    return {
-      success: true,
-      lockedCount: data ? data.length : 0
-    };
+  if (!supabase || !isSupabaseConfigured()) {
+    throw new Error("Supabase not configured.");
   }
 
-  return realPost(`/admin/${matchId}/lock-bets`, {});
+  const { data, error } = await supabase
+    .from('bets')
+    .update({ is_locked: true })
+    .eq('match_id', matchId)
+    .select('bet_id');
+
+  if (error) throw new Error(error.message);
+
+  return {
+    success: true,
+    lockedCount: data ? data.length : 0
+  };
 }

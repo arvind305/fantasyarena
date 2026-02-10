@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { apiGetMatches, apiGetEvents } from "../api";
-import { loadLongTermConfig } from "../mock/LongTermStore";
+import { apiGetMatches, apiGetEvents, apiGetLongTermConfig } from "../api";
 import { useAuth } from "../auth/AuthProvider";
 import Spinner, { SkeletonCard } from "../components/Spinner";
 import { formatDateRange, formatMatchDate, formatMatchTime, isToday, getRelativeDayLabel } from "../utils/date";
@@ -41,15 +40,15 @@ export default function Play() {
   };
 
   useEffect(() => {
-    Promise.all([apiGetMatches(), apiGetEvents(), loadLongTermConfig()])
+    Promise.all([apiGetMatches(), apiGetEvents(), apiGetLongTermConfig()])
       .then(([m, events, ltConfig]) => {
         setMatches(m);
         if (events?.length) {
           setEvent(events[0]);
         }
-        // Get tournament question count from local config (UI-only, no API call)
-        const questionCount = ltConfig?.questions?.length || 0;
-        setTournamentQuestionCount(questionCount);
+        // Count non-null point fields as "questions available"
+        const count = ltConfig ? [ltConfig.winnerPoints, ltConfig.finalistPoints, ltConfig.finalFourPoints, ltConfig.orangeCapPoints, ltConfig.purpleCapPoints].filter(Boolean).length : 0;
+        setTournamentQuestionCount(count);
       })
       .catch(() => {
         // If config fails, leave count as null (will show generic text)

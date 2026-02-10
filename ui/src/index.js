@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import "./index.css";
@@ -23,13 +23,9 @@ import Rules from "./pages/Rules";
 import FAQ from "./pages/FAQ";
 import About from "./pages/About";
 import { trackAppOpen } from "./analytics";
-import { ENGINE_MODE, IS_SHADOW_MODE, USE_LOCAL_ENGINE } from "./config";
+import { ENGINE_MODE, IS_SHADOW_MODE } from "./config";
 import { startPolling } from "./shadow/poll";
-import { initializeAdapter } from "./mock/ExternalDataAdapter";
-import { initializeQuestionStore } from "./mock/QuestionStore";
 import Spinner from "./components/Spinner";
-import AdminMatchBuilder from "./pages/AdminMatchBuilder";
-import AdminDashboard from "./pages/AdminDashboard";
 import AdminMatchResults from "./pages/AdminMatchResults";
 import AdminDashboardV2 from "./pages/admin/AdminDashboardV2";
 import MatchList from "./pages/admin/MatchList";
@@ -78,45 +74,6 @@ async function loadAdminConfig() {
 }
 
 function App() {
-  const [ready, setReady] = useState(false);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    // Always initialize the adapter - we use it for static data (events, matches, teams, players)
-    // even in live mode where Supabase handles user data (groups, bets, leaderboard)
-    Promise.all([initializeAdapter(), initializeQuestionStore()])
-      .then(() => setReady(true))
-      .catch((err) => {
-        console.error("[app] Failed to load static data:", err);
-        setError(err.message);
-      });
-  }, []);
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-950">
-        <div className="card text-center max-w-md">
-          <h1 className="text-xl font-bold text-red-400 mb-2">Failed to Load Data</h1>
-          <p className="text-gray-400 text-sm">{error}</p>
-          <button onClick={() => window.location.reload()} className="btn-primary mt-4">
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!ready) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-950">
-        <div className="text-center">
-          <Spinner size="lg" />
-          <p className="text-gray-500 mt-4">Loading tournament data...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <BrowserRouter>
       <AuthProvider>
@@ -149,8 +106,6 @@ function App() {
                 <Route path="/admin/matches" element={<MatchList />} />
                 <Route path="/admin/long-term" element={<LongTermConfig />} />
                 <Route path="/admin/score/:matchId" element={<ScoreMatch />} />
-                <Route path="/admin/legacy/dashboard" element={<AdminDashboard />} />
-                <Route path="/admin/legacy/match/:matchId" element={<AdminMatchBuilder />} />
               </Routes>
             </main>
             <footer className="border-t border-gray-800 py-6 text-center text-xs text-gray-600">
