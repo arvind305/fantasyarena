@@ -48,10 +48,23 @@ export async function saveUserProfile(user) {
 
     console.log('[userProfile] Profile saved for', user.email || user.userId.substring(0, 12));
 
-    // Also update any existing leaderboard entries with the display name
+    // Ensure new users have a leaderboard entry (insert only, never overwrite scores)
+    const displayName = user.name || `User ${user.userId.substring(0, 8)}`;
     await supabase
       .from('leaderboard')
-      .update({ display_name: user.name || `User ${user.userId.substring(0, 8)}` })
+      .upsert({
+        event_id: 't20wc_2026',
+        user_id: user.userId,
+        display_name: displayName,
+        total_score: 0,
+        matches_played: 0,
+        last_match_score: 0
+      }, { onConflict: 'event_id,user_id', ignoreDuplicates: true });
+
+    // Always update display name for existing entries (without touching scores)
+    await supabase
+      .from('leaderboard')
+      .update({ display_name: displayName })
       .eq('user_id', user.userId);
 
     return { success: true };

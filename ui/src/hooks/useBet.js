@@ -18,13 +18,23 @@ export function useBet(config, slots, sideBets) {
     if (existingBet) {
       // Restore from existing bet
       if (existingBet.answers) {
-        // Find winner answer from answers (use exact key pattern)
         const matchId = cfg.matchId;
-        const winnerKey = Object.keys(existingBet.answers).find(k => k === `${matchId}_winner`);
-        if (winnerKey) setWinner(existingBet.answers[winnerKey]);
+        // Support both V1 (q_ prefix + option IDs) and V2 (no prefix + team codes) keys
+        const winnerKey = Object.keys(existingBet.answers).find(k =>
+          k === `q_${matchId}_winner` || k === `${matchId}_winner`
+        );
+        if (winnerKey) {
+          let val = existingBet.answers[winnerKey];
+          // Convert V1 option IDs back to team codes for UI display
+          if (val === `opt_${matchId}_winner_teamA`) val = cfg.teamA;
+          else if (val === `opt_${matchId}_winner_teamB`) val = cfg.teamB;
+          else if (val === `opt_${matchId}_winner_super_over`) val = "SUPER_OVER";
+          setWinner(val);
+        }
 
-        // Find total runs answer
-        const runsKey = Object.keys(existingBet.answers).find(k => k === `${matchId}_total_runs`);
+        const runsKey = Object.keys(existingBet.answers).find(k =>
+          k === `q_${matchId}_total_runs` || k === `${matchId}_total_runs`
+        );
         if (runsKey) setTotalRuns(existingBet.answers[runsKey] || "");
       }
 
@@ -74,12 +84,22 @@ export function useBet(config, slots, sideBets) {
     const matchId = config?.matchId || "";
     const answers = {};
 
-    // Store winner in answers using a standard key
+    // Store winner in V1 format (q_ prefix + option IDs) for scoring RPC compatibility
     if (winner) {
-      answers[`${matchId}_winner`] = winner;
+      let winnerValue;
+      if (winner === config?.teamA) {
+        winnerValue = `opt_${matchId}_winner_teamA`;
+      } else if (winner === config?.teamB) {
+        winnerValue = `opt_${matchId}_winner_teamB`;
+      } else if (winner === "SUPER_OVER") {
+        winnerValue = `opt_${matchId}_winner_super_over`;
+      } else {
+        winnerValue = winner;
+      }
+      answers[`q_${matchId}_winner`] = winnerValue;
     }
     if (totalRuns) {
-      answers[`${matchId}_total_runs`] = totalRuns;
+      answers[`q_${matchId}_total_runs`] = totalRuns;
     }
 
     return {
