@@ -123,10 +123,17 @@ export async function apiGetMatches() {
     const teamA = live?.teamA || m.teamA;
     const teamB = live?.teamB || m.teamB;
 
-    // Derive display status
-    let status = live?.status || "UPCOMING";
-    if (status === "DRAFT") status = "UPCOMING";
-    if (status === "SCORED") status = "COMPLETED";
+    // Map DB betting status → UI display status
+    // DB: DRAFT, OPEN, LOCKED, SCORED → UI: UPCOMING, LIVE, COMPLETED
+    const dbStatus = live?.status;
+    let status;
+    if (!dbStatus || dbStatus === "DRAFT" || dbStatus === "OPEN" || dbStatus === "LOCKED") {
+      status = "UPCOMING";
+    } else if (dbStatus === "SCORED") {
+      status = "COMPLETED";
+    } else {
+      status = dbStatus; // LIVE, COMPLETED, ABANDONED, NO_RESULT pass through
+    }
 
     // Build result text
     let result = null;
@@ -180,9 +187,14 @@ export async function apiGetMatch(matchId) {
     if (configRes.data) {
       teamACode = configRes.data.team_a || teamACode;
       teamBCode = configRes.data.team_b || teamBCode;
-      status = configRes.data.status || status;
-      if (status === "DRAFT") status = "UPCOMING";
-      if (status === "SCORED") status = "COMPLETED";
+      const dbSt = configRes.data.status;
+      if (!dbSt || dbSt === "DRAFT" || dbSt === "OPEN" || dbSt === "LOCKED") {
+        status = "UPCOMING";
+      } else if (dbSt === "SCORED") {
+        status = "COMPLETED";
+      } else {
+        status = dbSt;
+      }
     }
     if (resultRes.data?.winner) {
       const w = resultRes.data.winner;
