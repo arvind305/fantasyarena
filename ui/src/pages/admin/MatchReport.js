@@ -56,7 +56,20 @@ export default function MatchReport() {
   const teamB = config.team_b;
   const teamAName = TEAM_NAMES[TEAM_CODE_TO_ID[teamA]] || teamA;
   const teamBName = TEAM_NAMES[TEAM_CODE_TO_ID[teamB]] || teamB;
-  const winnerName = results?.winner ? (TEAM_NAMES[TEAM_CODE_TO_ID[results.winner]] || results.winner) : null;
+  // Resolve winner — could be a team code ("RSA") or option ID ("opt_wc_m13_winner_teamA")
+  let winnerName = null;
+  if (results?.winner) {
+    const w = results.winner;
+    const optMatch = w.match(/^opt_[^_]+_[^_]+_winner_(.+)$/);
+    if (optMatch) {
+      if (optMatch[1] === "teamA") winnerName = teamAName;
+      else if (optMatch[1] === "teamB") winnerName = teamBName;
+      else if (optMatch[1] === "super_over") winnerName = "Super Over";
+      else winnerName = w;
+    } else {
+      winnerName = TEAM_NAMES[TEAM_CODE_TO_ID[w]] || w;
+    }
+  }
   const isScored = config.status === "SCORED";
 
   return (

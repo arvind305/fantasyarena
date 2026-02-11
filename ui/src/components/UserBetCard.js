@@ -29,14 +29,28 @@ export default function UserBetCard({ userName, bet, config, matchResults, playe
   const slotMap = {};
   (slots || []).forEach(s => { slotMap[s.slotNumber] = s.multiplier; });
 
-  // Winner pick
-  const winnerPick = answers.winner;
+  // Winner pick — extract from answers JSONB (key like "q_wc_m13_winner")
+  const winnerKey = Object.keys(answers).find(k => k.includes("winner"));
+  const rawWinnerPick = winnerKey ? answers[winnerKey] : null;
+  // Resolve option IDs (e.g. "opt_wc_m13_winner_teamA") to team codes
+  let winnerDisplay = rawWinnerPick;
+  if (rawWinnerPick) {
+    const optMatch = rawWinnerPick.match(/^opt_[^_]+_[^_]+_winner_(.+)$/);
+    if (optMatch) {
+      if (optMatch[1] === "teamA") winnerDisplay = config?.team_a || "Team A";
+      else if (optMatch[1] === "teamB") winnerDisplay = config?.team_b || "Team B";
+      else if (optMatch[1] === "super_over") winnerDisplay = "Super Over";
+    }
+  }
   const actualWinner = matchResults?.winner;
-  const winnerCorrect = isScored && winnerPick && actualWinner && winnerPick === actualWinner;
-  const winnerWrong = isScored && winnerPick && actualWinner && winnerPick !== actualWinner;
+  // Compare raw values for correct/wrong (both stored as option IDs or team codes)
+  const winnerCorrect = isScored && rawWinnerPick && actualWinner && rawWinnerPick === actualWinner;
+  const winnerWrong = isScored && rawWinnerPick && actualWinner && rawWinnerPick !== actualWinner;
 
-  // Total runs
-  const totalRunsGuess = answers.totalRuns != null ? Number(answers.totalRuns) : null;
+  // Total runs — extract from answers JSONB (key like "q_wc_m13_total_runs")
+  const runsKey = Object.keys(answers).find(k => k.includes("total_runs"));
+  const runsVal = runsKey ? answers[runsKey] : null;
+  const totalRunsGuess = runsVal != null ? Number(runsVal) : null;
   const actualTotalRuns = matchResults?.total_runs;
   const runsDiff = (totalRunsGuess != null && actualTotalRuns != null)
     ? Math.abs(totalRunsGuess - actualTotalRuns) : null;
@@ -101,9 +115,9 @@ export default function UserBetCard({ userName, bet, config, matchResults, playe
         title="Winner Pick"
         points={isScored ? (bet.winner_points || 0) : null}
       >
-        {winnerPick ? (
+        {rawWinnerPick ? (
           <div className="flex items-center gap-2">
-            <span className="text-gray-200">Picked: <strong>{winnerPick}</strong></span>
+            <span className="text-gray-200">Picked: <strong>{winnerDisplay}</strong></span>
             {isScored && (
               winnerCorrect
                 ? <CorrectBadge />
@@ -147,9 +161,9 @@ export default function UserBetCard({ userName, bet, config, matchResults, playe
         {playerPicks.length > 0 ? (
           <div className="space-y-2">
             {playerPicks.map((pick, idx) => {
-              const slotNum = idx + 1;
+              const slotNum = pick.slot || idx + 1;
               const multiplier = slotMap[slotNum] || 1;
-              const breakdown = getPlayerBreakdown(pick.playerId);
+              const breakdown = getPlayerBreakdown(pick.player_id);
               const slotPts = breakdown ? Math.round(breakdown.fp * multiplier) : null;
 
               return (
@@ -158,7 +172,7 @@ export default function UserBetCard({ userName, bet, config, matchResults, playe
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-medium text-gray-500">Slot {slotNum} ({multiplier}x)</span>
                       <span className="font-semibold text-gray-100">
-                        {breakdown?.playerName || pick.playerName || pick.playerId}
+                        {breakdown?.playerName || pick.player_name || pick.player_id}
                       </span>
                       {breakdown?.isMoM && <Badge text="MoM" color="yellow" />}
                       {breakdown?.hasCentury && <Badge text="100" color="green" />}
@@ -254,10 +268,10 @@ export default function UserBetCard({ userName, bet, config, matchResults, playe
         {runnerPicks.length > 0 ? (
           <div className="space-y-1">
             {runnerPicks.map((pick, idx) => {
-              const breakdown = getPlayerBreakdown(pick.playerId);
+              const breakdown = getPlayerBreakdown(pick.player_id);
               return (
                 <div key={idx} className="text-sm text-gray-300">
-                  {breakdown?.playerName || pick.playerName || pick.playerId}
+                  {breakdown?.playerName || pick.player_name || pick.display_name || pick.player_id}
                   {isScored && breakdown && (
                     <span className="text-gray-500 ml-2">({breakdown.fp} fp)</span>
                   )}
