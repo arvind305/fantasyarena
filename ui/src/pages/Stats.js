@@ -612,16 +612,24 @@ function BetHistoryTab({ betHistory, matches, loading, historyFilter, setHistory
 
 /**
  * Extract readable bet details from Supabase bet data.
- * Answers JSONB has keys like "wc_m1_winner" and "wc_m1_total_runs".
+ * Answers JSONB has keys like "q_wc_m1_winner" and "q_wc_m1_total_runs".
  */
-function extractBetDetails(bet) {
+function extractBetDetails(bet, match) {
   const details = [];
   const answers = bet.answers || {};
 
   // Extract winner pick from answers
   const winnerKey = Object.keys(answers).find((k) => k.includes("winner"));
   if (winnerKey) {
-    details.push({ label: "Winner Pick", value: answers[winnerKey] });
+    let displayValue = answers[winnerKey];
+    // Convert V1 option IDs (e.g. "opt_wc_m13_winner_teamA") to team codes
+    const optMatch = displayValue.match(/^opt_[^_]+_[^_]+_winner_(.+)$/);
+    if (optMatch) {
+      if (optMatch[1] === "teamA" && match?.teamA) displayValue = match.teamA;
+      else if (optMatch[1] === "teamB" && match?.teamB) displayValue = match.teamB;
+      else if (optMatch[1] === "super_over") displayValue = "Super Over";
+    }
+    details.push({ label: "Winner Pick", value: displayValue });
   }
 
   // Extract total runs from answers
@@ -673,7 +681,7 @@ function BetHistoryCard({ bet, matches, index }) {
   const statusLabel = matchStatus.charAt(0) + matchStatus.slice(1).toLowerCase();
 
   const isScored = score !== null && score !== undefined;
-  const betDetails = extractBetDetails(bet);
+  const betDetails = extractBetDetails(bet, match);
 
   // Score badge display
   const renderScoreBadge = () => {
@@ -715,36 +723,29 @@ function BetHistoryCard({ bet, matches, index }) {
         </div>
       </div>
 
-      {/* Point breakdown (for scored bets) */}
-      {isScored && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {bet.winner_points != null && bet.winner_points !== 0 && (
-            <span className={`text-xs px-2 py-0.5 rounded ${bet.winner_points > 0 ? "bg-blue-900/40 text-blue-400" : "bg-red-900/40 text-red-400"}`}>
-              Winner {bet.winner_points > 0 ? "+" : ""}{bet.winner_points}
-            </span>
-          )}
-          {bet.total_runs_points != null && bet.total_runs_points !== 0 && (
-            <span className={`text-xs px-2 py-0.5 rounded ${bet.total_runs_points > 0 ? "bg-emerald-900/40 text-emerald-400" : "bg-red-900/40 text-red-400"}`}>
-              Runs {bet.total_runs_points > 0 ? "+" : ""}{bet.total_runs_points}
-            </span>
-          )}
-          {bet.player_pick_points != null && bet.player_pick_points !== 0 && (
-            <span className={`text-xs px-2 py-0.5 rounded ${bet.player_pick_points > 0 ? "bg-purple-900/40 text-purple-400" : "bg-red-900/40 text-red-400"}`}>
-              Players {bet.player_pick_points > 0 ? "+" : ""}{bet.player_pick_points}
-            </span>
-          )}
-          {bet.side_bet_points != null && bet.side_bet_points !== 0 && (
-            <span className={`text-xs px-2 py-0.5 rounded ${bet.side_bet_points > 0 ? "bg-amber-900/40 text-amber-400" : "bg-red-900/40 text-red-400"}`}>
-              Side Bet {bet.side_bet_points > 0 ? "+" : ""}{bet.side_bet_points}
-            </span>
-          )}
-          {bet.runner_points != null && bet.runner_points !== 0 && (
-            <span className={`text-xs px-2 py-0.5 rounded ${bet.runner_points > 0 ? "bg-pink-900/40 text-pink-400" : "bg-red-900/40 text-red-400"}`}>
-              Runner {bet.runner_points > 0 ? "+" : ""}{bet.runner_points}
-            </span>
-          )}
-        </div>
-      )}
+      {/* Point breakdown (for scored bets) — only show categories the user actually bet on */}
+      {isScored && (() => {
+        const answers = bet.answers || {};
+        const hasWinner = Object.keys(answers).some(k => k.includes("winner"));
+        const hasRuns = Object.keys(answers).some(k => k.includes("total_runs"));
+        const hasPlayers = bet.player_picks && bet.player_picks.length > 0;
+        const hasSideBet = bet.side_bet_answers && Object.keys(bet.side_bet_answers).length > 0;
+        const hasRunner = bet.runner_picks && bet.runner_picks.length > 0;
+        const pointBadge = (show, pts, label, colors) => {
+          if (!show || pts == null) return null;
+          const style = pts > 0 ? colors[0] : pts < 0 ? colors[1] : "bg-gray-800/60 text-gray-500";
+          return <span key={label} className={`text-xs px-2 py-0.5 rounded ${style}`}>{label} {pts > 0 ? "+" : ""}{pts}</span>;
+        };
+        return (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {pointBadge(hasWinner, bet.winner_points, "Winner", ["bg-blue-900/40 text-blue-400", "bg-red-900/40 text-red-400"])}
+            {pointBadge(hasRuns, bet.total_runs_points, "Runs", ["bg-emerald-900/40 text-emerald-400", "bg-red-900/40 text-red-400"])}
+            {pointBadge(hasPlayers, bet.player_pick_points, "Players", ["bg-purple-900/40 text-purple-400", "bg-red-900/40 text-red-400"])}
+            {pointBadge(hasSideBet, bet.side_bet_points, "Side Bet", ["bg-amber-900/40 text-amber-400", "bg-red-900/40 text-red-400"])}
+            {pointBadge(hasRunner, bet.runner_points, "Runner", ["bg-pink-900/40 text-pink-400", "bg-red-900/40 text-red-400"])}
+          </div>
+        );
+      })()}
 
       {/* Expand/Collapse Toggle */}
       {betDetails.length > 0 && (
