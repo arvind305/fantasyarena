@@ -553,8 +553,9 @@ function LeaderboardTable({ data, currentUserId }) {
               const style = RANK_STYLE[rank];
               const isCurrentUser = e.userId === currentUserId;
               // Calculate rank change (positive = moved up)
-              const rankChange = e.previous_rank ? e.previous_rank - rank : 0;
-              const isNew = e.is_new || (e.matches_played === 1 && !e.previous_rank);
+              const hasPrevRank = e.previous_rank && e.previous_rank > 0;
+              const rankChange = hasPrevRank ? e.previous_rank - rank : 0;
+              const isNew = !hasPrevRank && (e.matches_played ?? e.matchesPlayed ?? 0) <= 1;
               return (
                 <tr
                   key={e.userId}
@@ -584,6 +585,9 @@ function LeaderboardTable({ data, currentUserId }) {
                         <span className="text-xs text-red-400 flex items-center">
                           <span className="mr-0.5">▼</span>{Math.abs(rankChange)}
                         </span>
+                      )}
+                      {rankChange === 0 && hasPrevRank && (
+                        <span className="text-xs text-gray-500 flex items-center">&lt;&gt;</span>
                       )}
                       {isNew && (
                         <span className="px-1 py-0.5 text-[9px] font-semibold bg-purple-600/50 text-purple-300 rounded">NEW</span>

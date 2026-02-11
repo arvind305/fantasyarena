@@ -62,6 +62,11 @@ export default async function handler(req, res) {
             .from("match_questions")
             .update({ status: "CLOSED" })
             .eq("match_id", m.match_id);
+          // Also lock all bets for this match
+          await sb
+            .from("bets")
+            .update({ is_locked: true })
+            .eq("match_id", m.match_id);
           locked++;
         }
       } else if (lockDate <= endWindow) {
