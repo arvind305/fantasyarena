@@ -76,20 +76,36 @@ export default function Play() {
     }
   }, []);
 
-  // Re-opened matches: DB status is OPEN but match date is in the past
+  // Client-side lock enforcement: if lock_time has passed, treat as COMPLETED
+  // This covers the gap between match start and next cron run
+  const effectiveMatches = useMemo(() => {
+    const now = new Date();
+    return matches.map((m) => {
+      const lt = lockTimes[m.matchId];
+      const dbStatus = dbStatuses[m.matchId];
+      if (lt && new Date(lt) <= now && dbStatus === "OPEN") {
+        return { ...m, status: "UPCOMING" }; // lock_time passed but cron hasn't run yet
+      }
+      return m;
+    });
+  }, [matches, lockTimes, dbStatuses]);
+
+  // Re-opened matches: DB status is OPEN, match date is in the past, AND lock_time is still in the future
+  // (deliberately re-opened matches have far-future lock_times)
   const reopenedMatches = useMemo(() => {
     const now = new Date();
-    return matches
+    return effectiveMatches
       .filter((m) => {
         const dbStatus = dbStatuses[m.matchId];
-        return dbStatus === "OPEN" && new Date(m.scheduledTime) < now;
+        const lt = lockTimes[m.matchId];
+        return dbStatus === "OPEN" && new Date(m.scheduledTime) < now && lt && new Date(lt) > now;
       })
       .sort((a, b) => new Date(a.scheduledTime) - new Date(b.scheduledTime));
-  }, [matches, dbStatuses]);
+  }, [effectiveMatches, dbStatuses, lockTimes]);
 
   // Filter matches - today only (local date), excluding re-opened past matches
-  const liveMatches = matches.filter((m) => m.status === "LIVE");
-  const todayMatches = matches.filter(
+  const liveMatches = effectiveMatches.filter((m) => m.status === "LIVE");
+  const todayMatches = effectiveMatches.filter(
     (m) => isToday(m.scheduledTime) && m.status !== "COMPLETED" && !reopenedMatches.includes(m)
   );
 
@@ -106,7 +122,7 @@ export default function Play() {
     const windowEnd = new Date(todayStart);
     windowEnd.setDate(windowEnd.getDate() + 3); // Start of day 3 (exclusive)
 
-    const upcoming = matches
+    const upcoming = effectiveMatches
       .filter((m) => {
         const matchTime = new Date(m.scheduledTime);
         // Match must be >= tomorrow AND < day after tomorrow + 1 day (i.e., within next 2 days)
@@ -129,7 +145,7 @@ export default function Play() {
       currentGroup.matches.push(match);
     }
     return groups;
-  }, [matches]);
+  }, [effectiveMatches]);
 
   const tournamentDateRange = event
     ? formatDateRange(event.startDate, event.endDate)
