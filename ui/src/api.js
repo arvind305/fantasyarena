@@ -127,8 +127,10 @@ export async function apiGetMatches() {
     // DB: DRAFT, OPEN, LOCKED, SCORED → UI: UPCOMING, LIVE, COMPLETED
     const dbStatus = live?.status;
     let status;
-    if (!dbStatus || dbStatus === "DRAFT" || dbStatus === "OPEN" || dbStatus === "LOCKED") {
+    if (!dbStatus || dbStatus === "DRAFT" || dbStatus === "OPEN") {
       status = "UPCOMING";
+    } else if (dbStatus === "LOCKED") {
+      status = "LIVE"; // match started, betting closed, awaiting scoring
     } else if (dbStatus === "SCORED") {
       status = "COMPLETED";
     } else {
@@ -194,8 +196,10 @@ export async function apiGetMatch(matchId) {
       teamACode = configRes.data.team_a || teamACode;
       teamBCode = configRes.data.team_b || teamBCode;
       const dbSt = configRes.data.status;
-      if (!dbSt || dbSt === "DRAFT" || dbSt === "OPEN" || dbSt === "LOCKED") {
+      if (!dbSt || dbSt === "DRAFT" || dbSt === "OPEN") {
         status = "UPCOMING";
+      } else if (dbSt === "LOCKED") {
+        status = "LIVE";
       } else if (dbSt === "SCORED") {
         status = "COMPLETED";
       } else {

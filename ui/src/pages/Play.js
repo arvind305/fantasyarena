@@ -76,7 +76,7 @@ export default function Play() {
     }
   }, []);
 
-  // Client-side lock enforcement: if lock_time has passed, treat as COMPLETED
+  // Client-side lock enforcement: if lock_time has passed, treat as LIVE
   // This covers the gap between match start and next cron run
   const effectiveMatches = useMemo(() => {
     const now = new Date();
@@ -84,7 +84,7 @@ export default function Play() {
       const lt = lockTimes[m.matchId];
       const dbStatus = dbStatuses[m.matchId];
       if (lt && new Date(lt) <= now && dbStatus === "OPEN") {
-        return { ...m, status: "UPCOMING" }; // lock_time passed but cron hasn't run yet
+        return { ...m, status: "LIVE" }; // lock_time passed but cron hasn't run yet
       }
       return m;
     });
