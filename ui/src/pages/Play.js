@@ -25,6 +25,7 @@ export default function Play() {
   const [event, setEvent] = useState(null);
   const [tournamentQuestionCount, setTournamentQuestionCount] = useState(null); // null = not loaded yet
   const [lockTimes, setLockTimes] = useState({}); // { matchId: lock_time ISO string }
+  const [dbStatuses, setDbStatuses] = useState({}); // { matchId: DB status string }
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -55,25 +56,41 @@ export default function Play() {
       })
       .finally(() => setLoading(false));
 
-    // Fetch lock times from match_config
+    // Fetch lock times and DB statuses from match_config
     if (supabase && isSupabaseConfigured()) {
       supabase
         .from("match_config")
-        .select("match_id, lock_time")
+        .select("match_id, lock_time, status")
         .then(({ data }) => {
           if (data) {
-            const map = {};
-            data.forEach((r) => { map[r.match_id] = r.lock_time; });
-            setLockTimes(map);
+            const lockMap = {};
+            const statusMap = {};
+            data.forEach((r) => {
+              lockMap[r.match_id] = r.lock_time;
+              statusMap[r.match_id] = r.status;
+            });
+            setLockTimes(lockMap);
+            setDbStatuses(statusMap);
           }
         });
     }
   }, []);
 
-  // Filter matches - today only (local date)
+  // Re-opened matches: DB status is OPEN but match date is in the past
+  const reopenedMatches = useMemo(() => {
+    const now = new Date();
+    return matches
+      .filter((m) => {
+        const dbStatus = dbStatuses[m.matchId];
+        return dbStatus === "OPEN" && new Date(m.scheduledTime) < now;
+      })
+      .sort((a, b) => new Date(a.scheduledTime) - new Date(b.scheduledTime));
+  }, [matches, dbStatuses]);
+
+  // Filter matches - today only (local date), excluding re-opened past matches
   const liveMatches = matches.filter((m) => m.status === "LIVE");
   const todayMatches = matches.filter(
-    (m) => isToday(m.scheduledTime) && m.status !== "COMPLETED"
+    (m) => isToday(m.scheduledTime) && m.status !== "COMPLETED" && !reopenedMatches.includes(m)
   );
 
   // Upcoming matches: next 2 calendar days (excluding today), grouped by date
@@ -181,6 +198,23 @@ export default function Play() {
           <div className="grid sm:grid-cols-2 gap-4">
             {liveMatches.map((m) => (
               <MatchCard key={m.matchId} match={m} lockTime={lockTimes[m.matchId]} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Re-opened Matches Banner */}
+      {reopenedMatches.length > 0 && (
+        <div className="mb-6 animate-slide-up">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="inline-block w-2 h-2 rounded-full bg-amber-400" />
+            <h2 className="text-lg font-bold text-amber-400">Open for Editing</h2>
+            <span className="text-xs text-gray-500">({reopenedMatches.length} matches)</span>
+          </div>
+          <p className="text-gray-500 text-sm mb-3">These past matches have been re-opened — update your bets before they lock again</p>
+          <div className="grid sm:grid-cols-2 gap-4">
+            {reopenedMatches.map((m, i) => (
+              <MatchCard key={m.matchId} match={m} lockTime={lockTimes[m.matchId]} delay={i * 50} reopened />
             ))}
           </div>
         </div>
@@ -358,9 +392,9 @@ function LockIndicator({ lockTime }) {
   );
 }
 
-function MatchCard({ match: m, lockTime, delay = 0 }) {
+function MatchCard({ match: m, lockTime, delay = 0, reopened = false }) {
   const navigate = useNavigate();
-  const statusLabel = m.status.charAt(0) + m.status.slice(1).toLowerCase();
+  const statusLabel = reopened ? "Open" : m.status.charAt(0) + m.status.slice(1).toLowerCase();
   const isLive = m.status === "LIVE";
   const isUpcoming = m.status === "UPCOMING";
   const dayLabel = getRelativeDayLabel(m.scheduledTime);
@@ -369,7 +403,9 @@ function MatchCard({ match: m, lockTime, delay = 0 }) {
   return (
     <div
       onClick={() => navigate(`/match/${m.matchId}`)}
-      className="card hover:border-brand-600 hover:shadow-lg hover:shadow-brand-900/20 transition-all duration-300 cursor-pointer group animate-slide-up"
+      className={`card hover:border-brand-600 hover:shadow-lg hover:shadow-brand-900/20 transition-all duration-300 cursor-pointer group animate-slide-up ${
+        reopened ? "border-amber-800/40" : ""
+      }`}
       style={{ animationDelay: `${delay}ms` }}
     >
       {/* Header row */}
@@ -379,8 +415,10 @@ function MatchCard({ match: m, lockTime, delay = 0 }) {
           <span className="text-gray-600 text-xs">vs</span>
           <span className="font-bold text-gray-200 group-hover:text-white transition-colors">{m.teamB}</span>
         </div>
-        <span className={`text-xs px-2.5 py-1 rounded-full border ${STATUS_BADGE[m.status] || ""}`}>
-          {isLive && (
+        <span className={`text-xs px-2.5 py-1 rounded-full border ${
+          reopened ? "bg-amber-900/50 text-amber-400 border-amber-800" : STATUS_BADGE[m.status] || ""
+        }`}>
+          {isLive && !reopened && (
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mr-1.5 align-middle" />
           )}
           {statusLabel}
@@ -395,11 +433,15 @@ function MatchCard({ match: m, lockTime, delay = 0 }) {
         </div>
       </div>
 
-      {/* Lock countdown / closed indicator */}
-      {(isUpcoming || isLive) && <LockIndicator lockTime={lockTime} />}
+      {/* Lock countdown / closed indicator — skip for reopened (lock is far future) */}
+      {!reopened && (isUpcoming || isLive) && <LockIndicator lockTime={lockTime} />}
 
       {/* Result or CTA */}
-      {m.result ? (
+      {reopened ? (
+        <button className="w-full mt-3 py-2 px-3 rounded-lg text-sm font-medium transition-all bg-amber-600/20 border border-amber-700/50 text-amber-300 group-hover:bg-amber-600/30 group-hover:border-amber-600">
+          Edit Bets →
+        </button>
+      ) : m.result ? (
         <div className="text-xs text-emerald-400">{m.result}</div>
       ) : isUpcoming || isLive ? (
         <button className={`w-full mt-3 py-2 px-3 rounded-lg text-sm font-medium transition-all ${

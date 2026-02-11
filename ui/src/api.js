@@ -135,16 +135,22 @@ export async function apiGetMatches() {
       status = dbStatus; // LIVE, COMPLETED, ABANDONED, NO_RESULT pass through
     }
 
-    // Build result text
+    // Build result text (suppress for OPEN matches — they've been re-opened for editing)
     let result = null;
-    if (winner && winner !== "NO_RESULT") {
+    if (dbStatus !== "OPEN" && winner && winner !== "NO_RESULT") {
       if (winner === "TIE") {
         result = "Match Tied";
       } else {
-        const winnerName = TEAM_NAMES[TEAM_CODE_TO_ID[winner]] || winner;
+        // Handle both team codes (e.g. "PAK") and option IDs (e.g. "opt_wc_m1_winner_teamA")
+        let winnerCode = winner;
+        const optMatch = winner.match(/^opt_[^_]+_[^_]+_winner_(.+)$/);
+        if (optMatch) {
+          winnerCode = optMatch[1] === "teamA" ? teamA : optMatch[1] === "teamB" ? teamB : winner;
+        }
+        const winnerName = TEAM_NAMES[TEAM_CODE_TO_ID[winnerCode]] || winnerCode;
         result = `${winnerName} won`;
       }
-    } else if (winner === "NO_RESULT") {
+    } else if (dbStatus !== "OPEN" && winner === "NO_RESULT") {
       result = "No Result";
     }
 
