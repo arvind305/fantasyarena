@@ -486,6 +486,11 @@ export async function apiGetLongTermConfig(eventId = 't20wc_2026') {
       isLocked: data.is_locked,
       changeCostPercent: parseFloat(data.change_cost_percent),
       allowChanges: data.allow_changes,
+      actualWinner: data.actual_winner || null,
+      actualFinalists: data.actual_finalists || [],
+      actualFinalFour: data.actual_final_four || [],
+      actualOrangeCap: data.actual_orange_cap || null,
+      actualPurpleCap: data.actual_purple_cap || null,
     };
   } catch (err) {
     console.warn('[api] Error fetching long-term config:', err);
@@ -707,6 +712,7 @@ export async function apiGetLeaderboard(scope, scopeId) {
 // ── Groups ─────────────────────────────────────────────────────────────────
 
 export async function apiGetGroups(userId) {
+  if (!userId) return [];
   if (!supabase || !isSupabaseConfigured()) return [];
 
   try {

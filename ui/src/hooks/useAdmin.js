@@ -163,20 +163,28 @@ export function useAdmin() {
     setSaving(true);
     setError(null);
     try {
+      const payload = {
+        event_id: configData.eventId || "t20wc_2026",
+        winner_points: configData.winnerPoints,
+        finalist_points: configData.finalistPoints,
+        final_four_points: configData.finalFourPoints,
+        orange_cap_points: configData.orangeCapPoints,
+        purple_cap_points: configData.purpleCapPoints,
+        lock_time: configData.lockTime || null,
+        is_locked: configData.isLocked || false,
+        change_cost_percent: configData.changeCostPercent || 10,
+        allow_changes: configData.allowChanges || false,
+      };
+      // Include actual_* fields if present
+      if (configData.actualWinner !== undefined) payload.actual_winner = configData.actualWinner || null;
+      if (configData.actualFinalists !== undefined) payload.actual_finalists = configData.actualFinalists || [];
+      if (configData.actualFinalFour !== undefined) payload.actual_final_four = configData.actualFinalFour || [];
+      if (configData.actualOrangeCap !== undefined) payload.actual_orange_cap = configData.actualOrangeCap || null;
+      if (configData.actualPurpleCap !== undefined) payload.actual_purple_cap = configData.actualPurpleCap || null;
+
       const { error: err } = await supabase
         .from("long_term_bets_config")
-        .upsert({
-          event_id: configData.eventId || "t20wc_2026",
-          winner_points: configData.winnerPoints,
-          finalist_points: configData.finalistPoints,
-          final_four_points: configData.finalFourPoints,
-          orange_cap_points: configData.orangeCapPoints,
-          purple_cap_points: configData.purpleCapPoints,
-          lock_time: configData.lockTime || null,
-          is_locked: configData.isLocked || false,
-          change_cost_percent: configData.changeCostPercent || 10,
-          allow_changes: configData.allowChanges || false,
-        }, { onConflict: "event_id" });
+        .upsert(payload, { onConflict: "event_id" });
       if (err) throw err;
       return true;
     } catch (err) {
@@ -253,6 +261,24 @@ export function useAdmin() {
     }
   }, []);
 
+  const triggerLongTermScoring = useCallback(async (eventId = "t20wc_2026") => {
+    if (!supabase || !isSupabaseConfigured()) throw new Error("Supabase not configured");
+    setSaving(true);
+    setError(null);
+    try {
+      const { data, error: err } = await supabase.rpc("calculate_long_term_scores", {
+        p_event_id: eventId,
+      });
+      if (err) throw err;
+      return data;
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setSaving(false);
+    }
+  }, []);
+
   return {
     saving,
     error,
@@ -264,5 +290,6 @@ export function useAdmin() {
     saveLongTermConfig,
     setMatchCorrectAnswers,
     triggerScoring,
+    triggerLongTermScoring,
   };
 }

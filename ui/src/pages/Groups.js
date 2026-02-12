@@ -33,6 +33,7 @@ export default function Groups() {
   useEffect(() => {
     apiGetGroups(user ? identity.userId : null)
       .then(setGroups)
+      .catch((err) => toast.error(err.message))
       .finally(() => setLoading(false));
   }, [user, identity.userId]);
 
