@@ -147,10 +147,18 @@ export async function apiGetMatches() {
         let winnerCode = winner;
         const optMatch = winner.match(/^opt_[^_]+_[^_]+_winner_(.+)$/);
         if (optMatch) {
-          winnerCode = optMatch[1] === "teamA" ? teamA : optMatch[1] === "teamB" ? teamB : winner;
+          const suffix = optMatch[1];
+          if (suffix === "teamA") winnerCode = teamA;
+          else if (suffix === "teamB") winnerCode = teamB;
+          else if (suffix === "tie") { result = "Match Tied"; }
+          else if (suffix === "no_result") { result = "No Result"; }
+          else if (suffix.includes("super") && suffix.includes("over")) { result = "Super Over"; }
+          else winnerCode = winner;
         }
-        const winnerName = TEAM_NAMES[TEAM_CODE_TO_ID[winnerCode]] || winnerCode;
-        result = `${winnerName} won`;
+        if (!result) {
+          const winnerName = TEAM_NAMES[TEAM_CODE_TO_ID[winnerCode]] || winnerCode;
+          result = `${winnerName} won`;
+        }
       }
     } else if (dbStatus !== "OPEN" && winner === "NO_RESULT") {
       result = "No Result";

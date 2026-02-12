@@ -7,7 +7,7 @@ import Spinner from "../../components/Spinner";
 import AdminNav from "../../components/admin/AdminNav";
 import { useMatchConfig } from "../../hooks/useMatchConfig";
 import { useAdmin } from "../../hooks/useAdmin";
-import { apiGetMatchResults } from "../../api";
+import { apiGetMatchResults, apiGetBettingQuestions } from "../../api";
 import { supabase, isSupabaseConfigured } from "../../lib/supabase";
 
 export default function ScoreMatch() {
@@ -31,6 +31,8 @@ export default function ScoreMatch() {
   const [manOfMatch, setManOfMatch] = useState("");
   const [scored, setScored] = useState(false);
   const [scoreResult, setScoreResult] = useState(null);
+  const [winnerOptions, setWinnerOptions] = useState([]);
+  const [superOverTeam, setSuperOverTeam] = useState("");
 
   // Player stats status
   const [playerStatsCount, setPlayerStatsCount] = useState(0);
@@ -41,10 +43,45 @@ export default function ScoreMatch() {
     Promise.all([
       fetch("/data/t20wc_2026.json").then((r) => r.json()),
       apiGetMatchResults(matchId),
+      apiGetBettingQuestions(matchId),
     ])
-      .then(([tournament, results]) => {
+      .then(([tournament, results, questions]) => {
         const m = (tournament.matches || []).find((m) => String(m.match_id) === matchId);
         setMatch(m);
+
+        // Build winner options from the WINNER question's options
+        const winnerQ = (questions || []).find(q => q.kind === "WINNER");
+        if (winnerQ && winnerQ.options && winnerQ.options.length > 0) {
+          const opts = winnerQ.options.map(opt => ({
+            value: opt.optionId,
+            label: opt.label || opt.optionId,
+          }));
+          // Add Super Over if not already present (check both "super_over" and "superover")
+          const hasSuperOver = opts.some(o => {
+            const v = o.value.toLowerCase();
+            return v.includes('super_over') || v.includes('superover');
+          });
+          if (!hasSuperOver) {
+            opts.push({
+              value: `opt_${matchId}_winner_super_over`,
+              label: "Super Over",
+            });
+          }
+          setWinnerOptions(opts);
+
+          // When loading existing results, normalize winner to match an option's optionId.
+          // Handle variant: match_results may store "super_over" while options use "superover" or vice versa.
+          if (results && results.winner) {
+            const exactMatch = opts.find(o => o.value === results.winner);
+            if (!exactMatch) {
+              const normalize = (s) => s.toLowerCase().replace(/_/g, '');
+              const fuzzyMatch = opts.find(o => normalize(o.value) === normalize(results.winner));
+              if (fuzzyMatch) {
+                results.winner = fuzzyMatch.value;
+              }
+            }
+          }
+        }
 
         if (results) {
           setExistingResults(results);
@@ -140,6 +177,19 @@ export default function ScoreMatch() {
   const teamA = config?.teamA || match?.teams?.[0] || "Team A";
   const teamB = config?.teamB || match?.teams?.[1] || "Team B";
 
+  // Use match_questions options if available, otherwise build fallback options with proper optionIds
+  const resolvedWinnerOptions = winnerOptions.length > 0
+    ? winnerOptions
+    : [
+        { value: `opt_${matchId}_winner_teamA`, label: teamA },
+        { value: `opt_${matchId}_winner_teamB`, label: teamB },
+        { value: `opt_${matchId}_winner_tie`, label: "TIE" },
+        { value: `opt_${matchId}_winner_no_result`, label: "NO RESULT" },
+        { value: `opt_${matchId}_winner_super_over`, label: "Super Over" },
+      ];
+  const winnerLower = winner.toLowerCase();
+  const isSuperOverSelected = winnerLower.includes('super_over') || winnerLower.includes('superover');
+
   // Pre-scoring checklist
   const checks = {
     winner: { label: "Winner", ok: !!(winner || existingResults?.winner) },
@@ -186,20 +236,46 @@ export default function ScoreMatch() {
               Match Winner <span className="text-red-400">*</span>
             </label>
             <div className="flex flex-wrap gap-3">
-              {[teamA, teamB, "TIE", "NO_RESULT"].map((opt) => (
+              {resolvedWinnerOptions.map((opt) => (
                 <label
-                  key={opt}
+                  key={opt.value}
                   className={`px-5 py-3 rounded-xl cursor-pointer border-2 transition-all text-sm font-medium ${
-                    winner === opt
-                      ? "bg-brand-600/30 border-brand-500 text-brand-200"
+                    winner === opt.value
+                      ? opt.label === "Super Over"
+                        ? "bg-amber-600/30 border-amber-500 text-amber-200"
+                        : "bg-brand-600/30 border-brand-500 text-brand-200"
                       : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600"
                   }`}
                 >
-                  <input type="radio" name="winner" value={opt} checked={winner === opt} onChange={() => setWinner(opt)} className="sr-only" />
-                  {opt}
+                  <input type="radio" name="winner" value={opt.value} checked={winner === opt.value} onChange={() => setWinner(opt.value)} className="sr-only" />
+                  {opt.label}
                 </label>
               ))}
             </div>
+            {/* Super Over: pick which team won */}
+            {isSuperOverSelected && (
+              <div className="mt-3 p-3 rounded-lg bg-amber-950/20 border border-amber-800/30">
+                <label className="text-sm font-medium text-amber-300 block mb-2">
+                  Which team won the Super Over?
+                </label>
+                <div className="flex gap-3">
+                  {[teamA, teamB].map((team) => (
+                    <label
+                      key={team}
+                      className={`px-4 py-2 rounded-lg cursor-pointer border-2 text-sm font-medium transition-all ${
+                        superOverTeam === team
+                          ? "bg-amber-600/30 border-amber-500 text-amber-200"
+                          : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600"
+                      }`}
+                    >
+                      <input type="radio" name="superOverTeam" value={team} checked={superOverTeam === team} onChange={() => setSuperOverTeam(team)} className="sr-only" />
+                      {team}
+                    </label>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-2">For reference only. The winner is saved as "Super Over" for scoring (5x multiplier).</p>
+              </div>
+            )}
           </div>
 
           {/* Total Runs */}
