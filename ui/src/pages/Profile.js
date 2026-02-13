@@ -546,25 +546,25 @@ function PerformanceCard({ perfStats, perfLoading }) {
           {/* Accuracy Grid */}
           <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-3">
             <div className="bg-gray-800/50 rounded-lg p-2.5 sm:p-3 text-center">
-              <div className="text-lg sm:text-xl font-bold text-blue-400">
+              <div className="text-xl sm:text-2xl font-extrabold text-blue-300">
                 {perfStats.total > 0 ? Math.round((perfStats.winnerCorrect / perfStats.total) * 100) : 0}%
               </div>
-              <div className="text-[10px] sm:text-xs text-gray-500 mt-0.5">Winner Picks</div>
-              <div className="text-[10px] sm:text-xs text-gray-600">{perfStats.winnerCorrect}/{perfStats.total}</div>
+              <div className="text-xs text-gray-400 mt-0.5 font-medium">Winner Picks</div>
+              <div className="text-xs text-gray-500">{perfStats.winnerCorrect}/{perfStats.total}</div>
             </div>
             <div className="bg-gray-800/50 rounded-lg p-2.5 sm:p-3 text-center">
-              <div className="text-lg sm:text-xl font-bold text-emerald-400">
+              <div className="text-xl sm:text-2xl font-extrabold text-emerald-300">
                 {perfStats.total > 0 ? Math.round((perfStats.runsCorrect / perfStats.total) * 100) : 0}%
               </div>
-              <div className="text-[10px] sm:text-xs text-gray-500 mt-0.5">Total Runs</div>
-              <div className="text-[10px] sm:text-xs text-gray-600">{perfStats.runsCorrect}/{perfStats.total}</div>
+              <div className="text-xs text-gray-400 mt-0.5 font-medium">Total Runs</div>
+              <div className="text-xs text-gray-500">{perfStats.runsCorrect}/{perfStats.total}</div>
             </div>
             <div className="bg-gray-800/50 rounded-lg p-2.5 sm:p-3 text-center">
-              <div className="text-lg sm:text-xl font-bold text-amber-400">
+              <div className="text-xl sm:text-2xl font-extrabold text-amber-300">
                 {perfStats.sideTotal > 0 ? Math.round((perfStats.sideCorrect / perfStats.sideTotal) * 100) : 0}%
               </div>
-              <div className="text-[10px] sm:text-xs text-gray-500 mt-0.5">Side Bets</div>
-              <div className="text-[10px] sm:text-xs text-gray-600">{perfStats.sideCorrect}/{perfStats.sideTotal}</div>
+              <div className="text-xs text-gray-400 mt-0.5 font-medium">Side Bets</div>
+              <div className="text-xs text-gray-500">{perfStats.sideCorrect}/{perfStats.sideTotal}</div>
             </div>
           </div>
 
@@ -572,16 +572,16 @@ function PerformanceCard({ perfStats, perfLoading }) {
           <div className="bg-gray-800/50 rounded-lg p-3 mb-3">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-[10px] sm:text-xs text-gray-500">Best Player Pick</div>
-                <div className="text-sm font-medium text-purple-300">
+                <div className="text-xs text-gray-400 font-medium">Best Player Pick</div>
+                <div className="text-sm font-semibold text-purple-200">
                   {perfStats.bestPlayer
-                    ? <>{perfStats.bestPlayer.name} <span className="text-purple-400/70">&mdash; {perfStats.bestPlayer.points} pts</span></>
+                    ? <>{perfStats.bestPlayer.name} <span className="text-purple-300">&mdash; {perfStats.bestPlayer.points} pts</span></>
                     : "\u2014"}
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-[10px] sm:text-xs text-gray-500">Avg per Match</div>
-                <div className="text-sm font-bold text-purple-400">{perfStats.avgPlayerPts.toLocaleString()} pts</div>
+                <div className="text-xs text-gray-400 font-medium">Avg per Match</div>
+                <div className="text-sm font-bold text-purple-300">{perfStats.avgPlayerPts.toLocaleString()} pts</div>
               </div>
             </div>
           </div>
@@ -590,12 +590,12 @@ function PerformanceCard({ perfStats, perfLoading }) {
           <div className="bg-gray-800/50 rounded-lg p-3">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-[10px] sm:text-xs text-gray-500">#1 Finishes</div>
-                <div className="text-lg font-bold text-yellow-400">{perfStats.timesFirst}</div>
+                <div className="text-xs text-gray-400 font-medium">#1 Finishes</div>
+                <div className="text-xl font-extrabold text-yellow-300">{perfStats.timesFirst}</div>
               </div>
               <div className="text-right">
-                <div className="text-[10px] sm:text-xs text-gray-500">Top 3 Finishes</div>
-                <div className="text-lg font-bold text-gray-200">{perfStats.timesTopThree}</div>
+                <div className="text-xs text-gray-400 font-medium">Top 3 Finishes</div>
+                <div className="text-xl font-extrabold text-gray-100">{perfStats.timesTopThree}</div>
               </div>
             </div>
           </div>
