@@ -176,14 +176,14 @@ function TeamCard({ squad, delay = 0 }) {
         <img
           src={flagUrl}
           alt={`${squad.teamName} flag`}
-          className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl object-cover mb-3"
+          className="w-16 h-10 sm:w-20 sm:h-12 rounded-lg object-cover mb-3"
           style={{ boxShadow: `0 0 0 2px ${color}50` }}
           onError={() => setImgError(true)}
           loading="lazy"
         />
       ) : (
         <div
-          className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center font-bold text-base sm:text-xl mb-3"
+          className="w-16 h-10 sm:w-20 sm:h-12 rounded-lg flex items-center justify-center font-bold text-base sm:text-xl mb-3"
           style={{ backgroundColor: color + "25", color: color }}
         >
           {squad.teamCode}
