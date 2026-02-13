@@ -192,7 +192,7 @@ export default function Profile() {
         <div className="animate-fade-in mb-8">
           <h1 className="text-3xl font-extrabold mb-1">
             <span className="bg-gradient-to-r from-brand-300 via-brand-400 to-emerald-400 bg-clip-text text-transparent">
-              Profile
+              My Profile
             </span>
           </h1>
           <p className="text-gray-500">Your account and more.</p>
@@ -215,7 +215,7 @@ export default function Profile() {
       <div className="animate-fade-in mb-8">
         <h1 className="text-3xl font-extrabold mb-1">
           <span className="bg-gradient-to-r from-brand-300 via-brand-400 to-emerald-400 bg-clip-text text-transparent">
-            Profile
+            My Profile
           </span>
         </h1>
         <p className="text-gray-500">Your account and more.</p>

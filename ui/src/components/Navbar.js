@@ -9,7 +9,7 @@ const links = [
   { to: "/leaderboard", label: "Leaderboard" },
   { to: "/stats", label: "Stats" },
   { to: "/teams", label: "Teams" },
-  { to: "/profile", label: "Profile" },
+  { to: "/profile", label: "My Profile" },
 ];
 
 // Secondary links accessible from within pages or mobile menu
