@@ -71,6 +71,9 @@ const TEAM_FLAG_BG = {
   CAN: "#FF0000",  // red side stripes
 };
 
+// Flags wider than 5:3 container or non-rectangular — must use object-contain
+const CONTAIN_FLAGS = new Set(["AUS", "NZ", "ZIM", "CAN", "IRE", "UAE", "SL", "USA", "NEP", "OMAN"]);
+
 function getFlagUrl(teamCode) {
   if (teamCode === "WI") return "/images/wi-flag.svg";
   const iso = TEAM_FLAG_ISO[teamCode];
@@ -192,6 +195,8 @@ function TeamCard({ squad, delay = 0 }) {
   const [imgError, setImgError] = useState(false);
   const color = TEAM_COLORS[squad.teamCode] || "#888888";
   const flagUrl = getFlagUrl(squad.teamCode);
+  const flagBg = TEAM_FLAG_BG[squad.teamCode] || "#1f2937";
+  const useContain = CONTAIN_FLAGS.has(squad.teamCode);
 
   return (
     <Link
@@ -202,12 +207,12 @@ function TeamCard({ squad, delay = 0 }) {
       {flagUrl && !imgError ? (
         <div
           className="h-10 sm:h-12 aspect-[5/3] rounded-lg overflow-hidden mb-3"
-          style={{ backgroundColor: TEAM_FLAG_BG[squad.teamCode] || "#1f2937", boxShadow: `0 0 0 2px ${color}50` }}
+          style={{ backgroundColor: flagBg, boxShadow: `0 0 0 2px ${flagBg}80` }}
         >
           <img
             src={flagUrl}
             alt={`${squad.teamName} flag`}
-            className="w-full h-full object-contain"
+            className={`w-full h-full ${useContain ? "object-contain" : "object-cover"}`}
             onError={() => setImgError(true)}
             loading="lazy"
           />
