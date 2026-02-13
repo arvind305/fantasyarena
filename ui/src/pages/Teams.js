@@ -65,17 +65,18 @@ const TEAM_FLAG_BG = {
   SCO: "#005EB8",  // blue field
   WI: "#7B0041",   // maroon field
   ITA: "#009246",  // green left stripe
-  NEP: "#DC143C",  // crimson field
+  NEP: "transparent",  // pennant shape — let card bg show through
   UAE: "#00732F",  // green center band
   AFG: "#000000",  // black left stripe
   CAN: "#FF0000",  // red side stripes
 };
 
-// Flags wider than 5:3 container or non-rectangular — must use object-contain
-const CONTAIN_FLAGS = new Set(["AUS", "NZ", "ZIM", "CAN", "IRE", "UAE", "SL", "USA", "NEP", "OMAN"]);
+// Flags wider than 5:3 container — use object-contain with bg color
+const CONTAIN_FLAGS = new Set(["AUS", "NZ", "ZIM", "CAN", "UAE", "SL", "USA", "OMAN"]);
 
 function getFlagUrl(teamCode) {
   if (teamCode === "WI") return "/images/wi-flag.svg";
+  if (teamCode === "NEP") return "https://flagcdn.com/np.svg"; // SVG preserves pennant shape
   const iso = TEAM_FLAG_ISO[teamCode];
   return iso ? `https://flagcdn.com/w320/${iso}.png` : null;
 }
@@ -197,6 +198,8 @@ function TeamCard({ squad, delay = 0 }) {
   const flagUrl = getFlagUrl(squad.teamCode);
   const flagBg = TEAM_FLAG_BG[squad.teamCode] || "#1f2937";
   const useContain = CONTAIN_FLAGS.has(squad.teamCode);
+  const isNep = squad.teamCode === "NEP";
+  const borderColor = isNep ? color + "50" : flagBg + "80";
 
   return (
     <Link
@@ -207,12 +210,12 @@ function TeamCard({ squad, delay = 0 }) {
       {flagUrl && !imgError ? (
         <div
           className="h-10 sm:h-12 aspect-[5/3] rounded-lg overflow-hidden mb-3"
-          style={{ backgroundColor: flagBg, boxShadow: `0 0 0 2px ${flagBg}80` }}
+          style={{ backgroundColor: flagBg, boxShadow: `0 0 0 2px ${borderColor}` }}
         >
           <img
             src={flagUrl}
             alt={`${squad.teamName} flag`}
-            className={`w-full h-full ${useContain ? "object-contain" : "object-cover"}`}
+            className={`w-full h-full ${useContain || isNep ? "object-contain" : "object-cover"}`}
             onError={() => setImgError(true)}
             loading="lazy"
           />
