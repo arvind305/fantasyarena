@@ -44,10 +44,37 @@ const TEAM_FLAG_ISO = {
   ITA: "it", NEP: "np", UAE: "ae", AFG: "af", CAN: "ca",
 };
 
+// Background colors matching each flag's edge color.
+// Used with object-contain so gap areas blend seamlessly.
+// Ratios: 3:2 → IND,PAK,NL,IT,ZA,NA,AF  2:1 → AUS,NZ,ZIM,CAN,IRE,UAE,SL
+//         5:3 → ENG,SCO  ~1.75 → OMAN  ~1.9 → USA  ~0.82 → NEP
+const TEAM_FLAG_BG = {
+  IND: "#FF9933",  // saffron top stripe
+  PAK: "#01411C",  // dark green field
+  AUS: "#012169",  // dark blue field
+  NZ: "#00247D",   // dark navy field
+  RSA: "#007749",  // green band
+  USA: "#3C3B6E",  // navy canton
+  NED: "#21468B",  // blue bottom stripe
+  NAM: "#003580",  // blue upper triangle
+  SL: "#8D153A",   // maroon border
+  IRE: "#169B62",  // green left stripe
+  ZIM: "#319208",  // green top/bottom stripes
+  OMAN: "#DB161B", // red left bar
+  ENG: "#FFFFFF",  // white field
+  SCO: "#005EB8",  // blue field
+  WI: "#7B0041",   // maroon field
+  ITA: "#009246",  // green left stripe
+  NEP: "#DC143C",  // crimson field
+  UAE: "#00732F",  // green center band
+  AFG: "#000000",  // black left stripe
+  CAN: "#FF0000",  // red side stripes
+};
+
 function getFlagUrl(teamCode) {
   if (teamCode === "WI") return "/images/wi-flag.svg";
   const iso = TEAM_FLAG_ISO[teamCode];
-  return iso ? `https://flagcdn.com/w160/${iso}.png` : null;
+  return iso ? `https://flagcdn.com/w320/${iso}.png` : null;
 }
 
 export default function Teams() {
@@ -173,17 +200,21 @@ function TeamCard({ squad, delay = 0 }) {
       style={{ animationDelay: `${delay}ms` }}
     >
       {flagUrl && !imgError ? (
-        <img
-          src={flagUrl}
-          alt={`${squad.teamName} flag`}
-          className="w-16 h-10 sm:w-20 sm:h-12 rounded-lg object-cover mb-3"
-          style={{ boxShadow: `0 0 0 2px ${color}50` }}
-          onError={() => setImgError(true)}
-          loading="lazy"
-        />
+        <div
+          className="h-10 sm:h-12 aspect-[5/3] rounded-lg overflow-hidden mb-3"
+          style={{ backgroundColor: TEAM_FLAG_BG[squad.teamCode] || "#1f2937", boxShadow: `0 0 0 2px ${color}50` }}
+        >
+          <img
+            src={flagUrl}
+            alt={`${squad.teamName} flag`}
+            className="w-full h-full object-contain"
+            onError={() => setImgError(true)}
+            loading="lazy"
+          />
+        </div>
       ) : (
         <div
-          className="w-16 h-10 sm:w-20 sm:h-12 rounded-lg flex items-center justify-center font-bold text-base sm:text-xl mb-3"
+          className="h-10 sm:h-12 aspect-[5/3] rounded-lg flex items-center justify-center font-bold text-base sm:text-xl mb-3"
           style={{ backgroundColor: color + "25", color: color }}
         >
           {squad.teamCode}
