@@ -3,11 +3,10 @@ import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { getAdminEmail } from "../config";
 
-// Streamlined 5-item navigation
+// Streamlined 4-item navigation
 const links = [
   { to: "/play", label: "Play" },
   { to: "/leaderboard", label: "Leaderboard" },
-  { to: "/stats", label: "Stats" },
   { to: "/teams", label: "Teams" },
   { to: "/profile", label: "My Profile" },
 ];

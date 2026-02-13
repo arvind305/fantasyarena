@@ -9,6 +9,7 @@ const MORE_LINKS = [
   { to: "/schedule", label: "Schedule", icon: "📅", desc: "Full tournament schedule" },
   { to: "/players", label: "Players", icon: "👤", desc: "Browse all players" },
   { to: "/groups", label: "Groups", icon: "👥", desc: "Your private leagues" },
+  { to: "/stats", label: "Stats", icon: "📊", desc: "Detailed breakdowns & history" },
   { to: "/rules", label: "Rules", icon: "📖", desc: "How the game works" },
   { to: "/faq", label: "FAQ", icon: "❓", desc: "Common questions" },
   { to: "/about", label: "About", icon: "ℹ️", desc: "About Fantasy Arena" },
@@ -35,6 +36,10 @@ export default function Profile() {
   // Recent bets
   const [recentBets, setRecentBets] = useState([]);
   const [betsLoading, setBetsLoading] = useState(true);
+
+  // Performance stats
+  const [perfStats, setPerfStats] = useState(null);
+  const [perfLoading, setPerfLoading] = useState(true);
 
   // Fetch leaderboard stats for this user
   const fetchStats = useCallback(async () => {
@@ -92,10 +97,104 @@ export default function Profile() {
     }
   }, [user?.userId]);
 
+  // Fetch performance stats (accuracy, best player pick, leaderboard rank)
+  const fetchPerformance = useCallback(async () => {
+    if (!user?.userId || !supabase || !isSupabaseConfigured()) {
+      setPerfLoading(false);
+      return;
+    }
+    try {
+      const { data: scored } = await supabase
+        .from("bets")
+        .select("match_id, score, winner_points, total_runs_points, player_pick_points, side_bet_points, player_picks")
+        .eq("user_id", user.userId)
+        .not("score", "is", null);
+
+      if (!scored || scored.length === 0) {
+        setPerfLoading(false);
+        return;
+      }
+
+      const total = scored.length;
+      const winnerCorrect = scored.filter(b => (b.winner_points || 0) > 0).length;
+      const runsCorrect = scored.filter(b => (b.total_runs_points || 0) > 0).length;
+      const sidePlaced = scored.filter(b => b.side_bet_points && b.side_bet_points !== 0);
+      const sideCorrect = sidePlaced.filter(b => b.side_bet_points > 0).length;
+
+      const totalPlayerPts = scored.reduce((s, b) => s + (b.player_pick_points || 0), 0);
+      const avgPlayerPts = Math.round(totalPlayerPts / total);
+      const matchIds = [...new Set(scored.map(b => b.match_id))];
+
+      // Best player pick — find the picked player with highest fantasy points
+      let bestPlayer = null;
+      const pickEntries = [];
+      for (const bet of scored) {
+        if (Array.isArray(bet.player_picks)) {
+          for (const pp of bet.player_picks) {
+            if (pp.player_id) {
+              pickEntries.push({ matchId: bet.match_id, playerId: pp.player_id, name: pp.player_name || "Unknown" });
+            }
+          }
+        }
+      }
+      if (pickEntries.length > 0) {
+        const playerIds = [...new Set(pickEntries.map(p => p.playerId))];
+        const { data: pStats } = await supabase
+          .from("player_match_stats")
+          .select("player_id, match_id, fantasy_points")
+          .in("match_id", matchIds)
+          .in("player_id", playerIds);
+        if (pStats) {
+          for (const ps of pStats) {
+            const pick = pickEntries.find(p => p.playerId === ps.player_id && p.matchId === ps.match_id);
+            if (pick && (!bestPlayer || ps.fantasy_points > bestPlayer.points)) {
+              bestPlayer = { name: pick.name, points: ps.fantasy_points };
+            }
+          }
+        }
+      }
+
+      // Per-match rank — how many times #1 and top 3
+      const { data: allBets } = await supabase
+        .from("bets")
+        .select("match_id, user_id, score")
+        .in("match_id", matchIds)
+        .not("score", "is", null);
+
+      let timesFirst = 0;
+      let timesTopThree = 0;
+      if (allBets) {
+        const byMatch = {};
+        for (const b of allBets) {
+          if (!byMatch[b.match_id]) byMatch[b.match_id] = [];
+          byMatch[b.match_id].push(b);
+        }
+        for (const mid of matchIds) {
+          const sorted = (byMatch[mid] || []).sort((a, b) => b.score - a.score);
+          const idx = sorted.findIndex(b => b.user_id === user.userId);
+          if (idx === 0) timesFirst++;
+          if (idx >= 0 && idx < 3) timesTopThree++;
+        }
+      }
+
+      setPerfStats({
+        total, winnerCorrect, runsCorrect,
+        sideCorrect, sideTotal: sidePlaced.length,
+        avgPlayerPts, bestPlayer,
+        timesFirst, timesTopThree,
+      });
+    } catch (err) {
+      console.warn("[Profile] Error fetching performance:", err);
+    } finally {
+      setPerfLoading(false);
+    }
+  }, [user?.userId]);
+
   useEffect(() => {
     fetchStats();
     fetchRecentBets();
-  }, [fetchStats, fetchRecentBets]);
+    fetchPerformance();
+  }, [fetchStats, fetchRecentBets, fetchPerformance]);
 
   // Display name editing handlers
   const startEditing = () => {
@@ -323,8 +422,11 @@ export default function Profile() {
         )}
       </div>
 
+      {/* Your Performance */}
+      <PerformanceCard perfStats={perfStats} perfLoading={perfLoading} />
+
       {/* Quick Actions */}
-      <div className="grid grid-cols-3 gap-3 mb-6 animate-slide-up" style={{ animationDelay: "60ms" }}>
+      <div className="grid grid-cols-3 gap-3 mb-6 animate-slide-up" style={{ animationDelay: "90ms" }}>
         <Link
           to="/groups"
           className="card py-4 text-center hover:border-brand-700 transition-colors group"
@@ -349,7 +451,7 @@ export default function Profile() {
       </div>
 
       {/* Recent Bets */}
-      <div className="card mb-6 animate-slide-up" style={{ animationDelay: "90ms" }}>
+      <div className="card mb-6 animate-slide-up" style={{ animationDelay: "120ms" }}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Recent Bets</h3>
           <Link
@@ -419,26 +521,90 @@ export default function Profile() {
         )}
       </div>
 
-      {/* Stats Link */}
-      <Link
-        to="/stats"
-        className="card mb-8 flex items-center gap-4 hover:border-brand-700 transition-colors group animate-slide-up"
-        style={{ animationDelay: "120ms" }}
-      >
-        <div className="w-10 h-10 rounded-lg bg-cyan-900/30 flex items-center justify-center text-xl shrink-0">
-          📊
-        </div>
-        <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-gray-200 group-hover:text-brand-300">View Full Stats</h3>
-          <p className="text-gray-500 text-sm">Detailed breakdowns, bet history, and performance</p>
-        </div>
-        <span className="text-gray-500 group-hover:text-brand-400 transition-colors text-lg">
-          &rarr;
-        </span>
-      </Link>
-
       {/* More Section */}
       <MoreSection />
+    </div>
+  );
+}
+
+function PerformanceCard({ perfStats, perfLoading }) {
+  return (
+    <div className="card mb-6 animate-slide-up" style={{ animationDelay: "60ms" }}>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Your Performance</h3>
+        <Link to="/stats" className="text-xs text-brand-400 hover:text-brand-300 transition-colors">
+          Detailed stats &rarr;
+        </Link>
+      </div>
+
+      {perfLoading ? (
+        <div className="flex items-center justify-center py-4">
+          <div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : perfStats ? (
+        <>
+          {/* Accuracy Grid */}
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-3">
+            <div className="bg-gray-800/50 rounded-lg p-2.5 sm:p-3 text-center">
+              <div className="text-lg sm:text-xl font-bold text-blue-400">
+                {perfStats.total > 0 ? Math.round((perfStats.winnerCorrect / perfStats.total) * 100) : 0}%
+              </div>
+              <div className="text-[10px] sm:text-xs text-gray-500 mt-0.5">Winner Picks</div>
+              <div className="text-[10px] sm:text-xs text-gray-600">{perfStats.winnerCorrect}/{perfStats.total}</div>
+            </div>
+            <div className="bg-gray-800/50 rounded-lg p-2.5 sm:p-3 text-center">
+              <div className="text-lg sm:text-xl font-bold text-emerald-400">
+                {perfStats.total > 0 ? Math.round((perfStats.runsCorrect / perfStats.total) * 100) : 0}%
+              </div>
+              <div className="text-[10px] sm:text-xs text-gray-500 mt-0.5">Total Runs</div>
+              <div className="text-[10px] sm:text-xs text-gray-600">{perfStats.runsCorrect}/{perfStats.total}</div>
+            </div>
+            <div className="bg-gray-800/50 rounded-lg p-2.5 sm:p-3 text-center">
+              <div className="text-lg sm:text-xl font-bold text-amber-400">
+                {perfStats.sideTotal > 0 ? Math.round((perfStats.sideCorrect / perfStats.sideTotal) * 100) : 0}%
+              </div>
+              <div className="text-[10px] sm:text-xs text-gray-500 mt-0.5">Side Bets</div>
+              <div className="text-[10px] sm:text-xs text-gray-600">{perfStats.sideCorrect}/{perfStats.sideTotal}</div>
+            </div>
+          </div>
+
+          {/* Player Picks */}
+          <div className="bg-gray-800/50 rounded-lg p-3 mb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-[10px] sm:text-xs text-gray-500">Best Player Pick</div>
+                <div className="text-sm font-medium text-purple-300">
+                  {perfStats.bestPlayer
+                    ? <>{perfStats.bestPlayer.name} <span className="text-purple-400/70">&mdash; {perfStats.bestPlayer.points} pts</span></>
+                    : "\u2014"}
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-[10px] sm:text-xs text-gray-500">Avg per Match</div>
+                <div className="text-sm font-bold text-purple-400">{perfStats.avgPlayerPts.toLocaleString()} pts</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Leaderboard Stats */}
+          <div className="bg-gray-800/50 rounded-lg p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-[10px] sm:text-xs text-gray-500">#1 Finishes</div>
+                <div className="text-lg font-bold text-yellow-400">{perfStats.timesFirst}</div>
+              </div>
+              <div className="text-right">
+                <div className="text-[10px] sm:text-xs text-gray-500">Top 3 Finishes</div>
+                <div className="text-lg font-bold text-gray-200">{perfStats.timesTopThree}</div>
+              </div>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="text-center py-3">
+          <p className="text-gray-500 text-sm">Place bets to see your performance stats.</p>
+        </div>
+      )}
     </div>
   );
 }
