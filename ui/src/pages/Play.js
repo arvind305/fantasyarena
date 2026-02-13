@@ -40,6 +40,12 @@ export default function Play() {
     setSearchParams({ tab }, { replace: true });
   };
 
+  // Fire-and-forget: auto-lock any OPEN matches past their lock_time
+  // This supplements the daily cron so matches lock promptly on page load
+  useEffect(() => {
+    fetch("/api/auto-lock").catch(() => {});
+  }, []);
+
   useEffect(() => {
     Promise.all([apiGetMatches(), apiGetEvents(), apiGetLongTermConfig()])
       .then(([m, events, ltConfig]) => {
@@ -76,19 +82,30 @@ export default function Play() {
     }
   }, []);
 
-  // Client-side lock enforcement: if lock_time has passed, treat as LIVE
-  // This covers the gap between match start and next cron run
+  // Derive effective UI status from DB status + lock_time + date:
+  //   - Match scheduled before today + lock_time passed → COMPLETED (match is over)
+  //   - Match scheduled today + lock_time passed → LIVE (match is being played)
+  //   - Everything else: use the api.js mapping (UPCOMING / COMPLETED)
   const effectiveMatches = useMemo(() => {
     const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     return matches.map((m) => {
       const lt = lockTimes[m.matchId];
-      const dbStatus = dbStatuses[m.matchId];
-      if (lt && new Date(lt) <= now && dbStatus === "OPEN") {
-        return { ...m, status: "LIVE" }; // lock_time passed but cron hasn't run yet
+      const lockPassed = lt && new Date(lt) <= now;
+      const matchDate = new Date(m.scheduledTime);
+      const matchDayStart = new Date(matchDate.getFullYear(), matchDate.getMonth(), matchDate.getDate());
+      const isMatchToday = matchDayStart.getTime() === todayStart.getTime();
+      const isMatchPast = matchDayStart < todayStart;
+
+      if (lockPassed && isMatchToday) {
+        return { ...m, status: "LIVE" };
+      }
+      if (lockPassed && isMatchPast && m.status !== "COMPLETED") {
+        return { ...m, status: "COMPLETED" };
       }
       return m;
     });
-  }, [matches, lockTimes, dbStatuses]);
+  }, [matches, lockTimes]);
 
   // Re-opened matches: DB status is OPEN, match date is in the past, AND lock_time is still in the future
   // (deliberately re-opened matches have far-future lock_times)
@@ -103,7 +120,7 @@ export default function Play() {
       .sort((a, b) => new Date(a.scheduledTime) - new Date(b.scheduledTime));
   }, [effectiveMatches, dbStatuses, lockTimes]);
 
-  // Filter matches - today only (local date), excluding re-opened past matches
+  // Filter matches
   const liveMatches = effectiveMatches.filter((m) => m.status === "LIVE");
   const todayMatches = effectiveMatches.filter(
     (m) => isToday(m.scheduledTime) && m.status !== "COMPLETED" && !reopenedMatches.includes(m)

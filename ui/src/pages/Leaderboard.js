@@ -40,6 +40,7 @@ export default function Leaderboard() {
   const [selectedMatch, setSelectedMatch] = useState("");
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [lastScoredMatch, setLastScoredMatch] = useState(null);
 
   // Load matches for "By Match" and "Today" tabs
   useEffect(() => {
@@ -49,6 +50,12 @@ export default function Leaderboard() {
           new Date(a.scheduledTime) - new Date(b.scheduledTime)
         );
         setMatches(sorted);
+
+        // Find the last scored match (COMPLETED = SCORED in DB)
+        const scored = sorted.filter((match) => match.status === "COMPLETED");
+        if (scored.length > 0) {
+          setLastScoredMatch(scored[scored.length - 1]);
+        }
       })
       .catch(() => {});
   }, []);
@@ -130,7 +137,11 @@ export default function Leaderboard() {
             Leaderboard
           </span>
         </h1>
-        <p className="text-gray-500">Overall tournament standings. Updated as matches are scored.</p>
+        <p className="text-gray-500">
+          {lastScoredMatch
+            ? <>Scores updated through <span className="text-gray-400 font-medium">{lastScoredMatch.teamA} vs {lastScoredMatch.teamB}</span> (Match {lastScoredMatch.matchId?.replace("wc_m", "")})</>
+            : "Overall tournament standings"}
+        </p>
       </div>
 
       {/* Main Tabs */}
