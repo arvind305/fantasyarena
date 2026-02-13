@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480">
+  <rect width="640" height="480" fill="#7B3F00"/>
+  <!-- Golden circle border -->
+  <circle cx="320" cy="240" r="120" fill="#8B4513" stroke="#D4A843" stroke-width="6"/>
+  <!-- Three cricket stumps -->
+  <rect x="295" y="185" width="7" height="110" rx="2" fill="#D4A843"/>
+  <rect x="317" y="180" width="7" height="120" rx="2" fill="#D4A843"/>
+  <rect x="339" y="185" width="7" height="110" rx="2" fill="#D4A843"/>
+  <!-- Two bails -->
+  <rect x="293" y="180" width="33" height="6" rx="2" fill="#D4A843" transform="rotate(-4,309,183)"/>
+  <rect x="315" y="177" width="33" height="6" rx="2" fill="#D4A843" transform="rotate(4,331,180)"/>
+  <!-- Cricket ball below stumps -->
+  <circle cx="320" cy="325" r="18" fill="#D4A843"/>
+  <path d="M308,318 Q320,335 332,318" fill="none" stroke="#7B3F00" stroke-width="2.5"/>
+  <path d="M308,332 Q320,315 332,332" fill="none" stroke="#7B3F00" stroke-width="2.5"/>
+</svg>

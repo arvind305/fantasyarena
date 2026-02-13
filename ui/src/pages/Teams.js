@@ -36,6 +36,20 @@ const TEAM_COLORS = {
   UAE: "#00732f",
 };
 
+// ISO 2-letter codes for flagcdn.com
+const TEAM_FLAG_ISO = {
+  IND: "in", PAK: "pk", AUS: "au", NZ: "nz", RSA: "za",
+  USA: "us", NED: "nl", NAM: "na", SL: "lk", IRE: "ie",
+  ZIM: "zw", OMAN: "om", ENG: "gb-eng", SCO: "gb-sct",
+  ITA: "it", NEP: "np", UAE: "ae", AFG: "af", CAN: "ca",
+};
+
+function getFlagUrl(teamCode) {
+  if (teamCode === "WI") return "/images/wi-flag.svg";
+  const iso = TEAM_FLAG_ISO[teamCode];
+  return iso ? `https://flagcdn.com/w160/${iso}.png` : null;
+}
+
 export default function Teams() {
   const [squads, setSquads] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -148,7 +162,9 @@ export default function Teams() {
 }
 
 function TeamCard({ squad, delay = 0 }) {
+  const [imgError, setImgError] = useState(false);
   const color = TEAM_COLORS[squad.teamCode] || "#888888";
+  const flagUrl = getFlagUrl(squad.teamCode);
 
   return (
     <Link
@@ -156,12 +172,23 @@ function TeamCard({ squad, delay = 0 }) {
       className="card hover:border-brand-700 transition-all duration-300 group animate-slide-up"
       style={{ animationDelay: `${delay}ms` }}
     >
-      <div
-        className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center font-bold text-base sm:text-xl mb-3"
-        style={{ backgroundColor: color + "25", color: color }}
-      >
-        {squad.teamCode}
-      </div>
+      {flagUrl && !imgError ? (
+        <img
+          src={flagUrl}
+          alt={`${squad.teamName} flag`}
+          className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl object-cover mb-3"
+          style={{ boxShadow: `0 0 0 2px ${color}50` }}
+          onError={() => setImgError(true)}
+          loading="lazy"
+        />
+      ) : (
+        <div
+          className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center font-bold text-base sm:text-xl mb-3"
+          style={{ backgroundColor: color + "25", color: color }}
+        >
+          {squad.teamCode}
+        </div>
+      )}
       <h3 className="font-semibold text-gray-100 group-hover:text-brand-300 transition-colors">
         {squad.teamName}
       </h3>
