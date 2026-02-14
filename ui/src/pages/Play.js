@@ -9,13 +9,12 @@ import { supabase, isSupabaseConfigured } from "../lib/supabase";
 const STATUS_BADGE = {
   UPCOMING: "bg-blue-900/50 text-blue-400 border-blue-800",
   LIVE: "bg-emerald-900/50 text-emerald-400 border-emerald-800",
-  AWAITING_RESULTS: "bg-amber-900/50 text-amber-400 border-amber-800",
   COMPLETED: "bg-gray-800/80 text-gray-400 border-gray-700",
   ABANDONED: "bg-red-900/50 text-red-400 border-red-800",
   NO_RESULT: "bg-gray-800/80 text-gray-400 border-gray-700",
 };
 
-const MATCH_DURATION_MS = 4 * 60 * 60 * 1000; // 4 hours — estimated T20 match length
+const MATCH_DURATION_MS = 4.5 * 60 * 60 * 1000; // 4.5 hours from match start
 
 const TABS = [
   { id: "today", label: "Today" },
@@ -104,10 +103,9 @@ export default function Play() {
   }, [user?.id]);
 
   // Derive effective UI status from DB status + lock_time + estimated end:
-  //   - lock_time passed + within 4 hours → LIVE
-  //   - lock_time passed + over 4 hours + not yet SCORED → AWAITING_RESULTS
-  //   - SCORED → COMPLETED
-  //   - Everything else: use the api.js mapping (UPCOMING / COMPLETED)
+  //   - lock_time passed + within 4.5 hours → LIVE
+  //   - lock_time passed + over 4.5 hours → COMPLETED (results pending if not scored)
+  //   - Already SCORED → COMPLETED (with result)
   const effectiveMatches = useMemo(() => {
     const now = new Date();
     return matches.map((m) => {
@@ -122,7 +120,7 @@ export default function Play() {
         if (now.getTime() < estimatedEnd) {
           return { ...m, status: "LIVE" };
         }
-        return { ...m, status: "AWAITING_RESULTS" };
+        return { ...m, status: "COMPLETED" };
       }
       return m;
     });
@@ -142,9 +140,9 @@ export default function Play() {
   }, [effectiveMatches, dbStatuses, lockTimes]);
 
   // Filter matches
-  const liveMatches = effectiveMatches.filter((m) => m.status === "LIVE" || m.status === "AWAITING_RESULTS");
+  const liveMatches = effectiveMatches.filter((m) => m.status === "LIVE");
   const todayMatches = effectiveMatches.filter(
-    (m) => isToday(m.scheduledTime) && m.status !== "COMPLETED" && m.status !== "LIVE" && m.status !== "AWAITING_RESULTS" && !reopenedMatches.includes(m)
+    (m) => isToday(m.scheduledTime) && m.status !== "COMPLETED" && m.status !== "LIVE" && !reopenedMatches.includes(m)
   );
 
   // Upcoming matches: next 2 calendar days (excluding today), grouped by date
@@ -449,7 +447,6 @@ function LockIndicator({ lockTime }) {
 const STATUS_LABELS = {
   UPCOMING: "Upcoming",
   LIVE: "Live",
-  AWAITING_RESULTS: "Awaiting Results",
   COMPLETED: "Completed",
   ABANDONED: "Abandoned",
   NO_RESULT: "No Result",
@@ -460,7 +457,7 @@ function MatchCard({ match: m, lockTime, delay = 0, reopened = false, userHasBet
   const statusLabel = reopened ? "Open" : (STATUS_LABELS[m.status] || m.status);
   const isLive = m.status === "LIVE";
   const isUpcoming = m.status === "UPCOMING";
-  const isAwaiting = m.status === "AWAITING_RESULTS";
+  const isCompleted = m.status === "COMPLETED";
   const dayLabel = getRelativeDayLabel(m.scheduledTime);
   const isClosed = lockTime && new Date(lockTime) <= Date.now();
 
@@ -527,7 +524,16 @@ function MatchCard({ match: m, lockTime, delay = 0, reopened = false, userHasBet
         </button>
       ) : m.result ? (
         <div className="text-xs text-emerald-400">{m.result}</div>
-      ) : isUpcoming || isLive || isAwaiting ? (
+      ) : isCompleted ? (
+        <div className="flex items-center justify-between mt-3">
+          <span className="text-xs text-gray-500 italic">Results pending</span>
+          {userHasBet ? (
+            <span className="text-xs text-emerald-400/70">Bets Placed</span>
+          ) : (
+            <span className="text-xs text-gray-600">No Bets Placed</span>
+          )}
+        </div>
+      ) : isUpcoming || isLive ? (
         <button className={`w-full mt-3 py-2 px-3 rounded-lg text-sm font-medium transition-all ${ctaClass}`}>
           {ctaLabel}
         </button>
