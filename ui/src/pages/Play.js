@@ -9,10 +9,13 @@ import { supabase, isSupabaseConfigured } from "../lib/supabase";
 const STATUS_BADGE = {
   UPCOMING: "bg-blue-900/50 text-blue-400 border-blue-800",
   LIVE: "bg-emerald-900/50 text-emerald-400 border-emerald-800",
+  AWAITING_RESULTS: "bg-amber-900/50 text-amber-400 border-amber-800",
   COMPLETED: "bg-gray-800/80 text-gray-400 border-gray-700",
   ABANDONED: "bg-red-900/50 text-red-400 border-red-800",
   NO_RESULT: "bg-gray-800/80 text-gray-400 border-gray-700",
 };
+
+const MATCH_DURATION_MS = 4 * 60 * 60 * 1000; // 4 hours — estimated T20 match length
 
 const TABS = [
   { id: "today", label: "Today" },
@@ -26,6 +29,7 @@ export default function Play() {
   const [tournamentQuestionCount, setTournamentQuestionCount] = useState(null); // null = not loaded yet
   const [lockTimes, setLockTimes] = useState({}); // { matchId: lock_time ISO string }
   const [dbStatuses, setDbStatuses] = useState({}); // { matchId: DB status string }
+  const [userBetMatchIds, setUserBetMatchIds] = useState(new Set()); // match IDs where user has placed bets
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -82,26 +86,43 @@ export default function Play() {
     }
   }, []);
 
-  // Derive effective UI status from DB status + lock_time + date:
-  //   - Match scheduled before today + lock_time passed → COMPLETED (match is over)
-  //   - Match scheduled today + lock_time passed → LIVE (match is being played)
+  // Fetch user's placed bets (just match IDs)
+  useEffect(() => {
+    if (!user?.id || !supabase || !isSupabaseConfigured()) {
+      setUserBetMatchIds(new Set());
+      return;
+    }
+    supabase
+      .from("bets")
+      .select("match_id")
+      .eq("user_id", user.id)
+      .then(({ data }) => {
+        if (data) {
+          setUserBetMatchIds(new Set(data.map((r) => r.match_id)));
+        }
+      });
+  }, [user?.id]);
+
+  // Derive effective UI status from DB status + lock_time + estimated end:
+  //   - lock_time passed + within 4 hours → LIVE
+  //   - lock_time passed + over 4 hours + not yet SCORED → AWAITING_RESULTS
+  //   - SCORED → COMPLETED
   //   - Everything else: use the api.js mapping (UPCOMING / COMPLETED)
   const effectiveMatches = useMemo(() => {
     const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     return matches.map((m) => {
       const lt = lockTimes[m.matchId];
       const lockPassed = lt && new Date(lt) <= now;
-      const matchDate = new Date(m.scheduledTime);
-      const matchDayStart = new Date(matchDate.getFullYear(), matchDate.getMonth(), matchDate.getDate());
-      const isMatchToday = matchDayStart.getTime() === todayStart.getTime();
-      const isMatchPast = matchDayStart < todayStart;
 
-      if (lockPassed && isMatchToday) {
-        return { ...m, status: "LIVE" };
-      }
-      if (lockPassed && isMatchPast && m.status !== "COMPLETED") {
-        return { ...m, status: "COMPLETED" };
+      if (m.status === "COMPLETED") return m; // Already scored
+
+      if (lockPassed) {
+        const lockMs = new Date(lt).getTime();
+        const estimatedEnd = lockMs + MATCH_DURATION_MS;
+        if (now.getTime() < estimatedEnd) {
+          return { ...m, status: "LIVE" };
+        }
+        return { ...m, status: "AWAITING_RESULTS" };
       }
       return m;
     });
@@ -121,9 +142,9 @@ export default function Play() {
   }, [effectiveMatches, dbStatuses, lockTimes]);
 
   // Filter matches
-  const liveMatches = effectiveMatches.filter((m) => m.status === "LIVE");
+  const liveMatches = effectiveMatches.filter((m) => m.status === "LIVE" || m.status === "AWAITING_RESULTS");
   const todayMatches = effectiveMatches.filter(
-    (m) => isToday(m.scheduledTime) && m.status !== "COMPLETED" && !reopenedMatches.includes(m)
+    (m) => isToday(m.scheduledTime) && m.status !== "COMPLETED" && m.status !== "LIVE" && m.status !== "AWAITING_RESULTS" && !reopenedMatches.includes(m)
   );
 
   // Upcoming matches: next 2 calendar days (excluding today), grouped by date
@@ -230,7 +251,7 @@ export default function Play() {
           </div>
           <div className="grid sm:grid-cols-2 gap-4">
             {liveMatches.map((m) => (
-              <MatchCard key={m.matchId} match={m} lockTime={lockTimes[m.matchId]} />
+              <MatchCard key={m.matchId} match={m} lockTime={lockTimes[m.matchId]} userHasBet={userBetMatchIds.has(m.matchId)} />
             ))}
           </div>
         </div>
@@ -247,7 +268,7 @@ export default function Play() {
           <p className="text-gray-500 text-sm mb-3">These past matches have been re-opened — update your bets before they lock again</p>
           <div className="grid sm:grid-cols-2 gap-4">
             {reopenedMatches.map((m, i) => (
-              <MatchCard key={m.matchId} match={m} lockTime={lockTimes[m.matchId]} delay={i * 50} reopened />
+              <MatchCard key={m.matchId} match={m} lockTime={lockTimes[m.matchId]} delay={i * 50} reopened userHasBet={userBetMatchIds.has(m.matchId)} />
             ))}
           </div>
         </div>
@@ -290,7 +311,7 @@ export default function Play() {
                   <p className="text-gray-500 text-sm mb-4">Click a match to place your bets</p>
                   <div className="grid sm:grid-cols-2 gap-4">
                     {todayMatches.map((m, i) => (
-                      <MatchCard key={m.matchId} match={m} lockTime={lockTimes[m.matchId]} delay={i * 50} />
+                      <MatchCard key={m.matchId} match={m} lockTime={lockTimes[m.matchId]} delay={i * 50} userHasBet={userBetMatchIds.has(m.matchId)} />
                     ))}
                   </div>
                 </>
@@ -328,7 +349,7 @@ export default function Play() {
                         </h3>
                         <div className="grid sm:grid-cols-2 gap-4">
                           {group.matches.map((m, i) => (
-                            <MatchCard key={m.matchId} match={m} lockTime={lockTimes[m.matchId]} delay={(gi * 3 + i) * 50} />
+                            <MatchCard key={m.matchId} match={m} lockTime={lockTimes[m.matchId]} delay={(gi * 3 + i) * 50} userHasBet={userBetMatchIds.has(m.matchId)} />
                           ))}
                         </div>
                       </div>
@@ -425,13 +446,43 @@ function LockIndicator({ lockTime }) {
   );
 }
 
-function MatchCard({ match: m, lockTime, delay = 0, reopened = false }) {
+const STATUS_LABELS = {
+  UPCOMING: "Upcoming",
+  LIVE: "Live",
+  AWAITING_RESULTS: "Awaiting Results",
+  COMPLETED: "Completed",
+  ABANDONED: "Abandoned",
+  NO_RESULT: "No Result",
+};
+
+function MatchCard({ match: m, lockTime, delay = 0, reopened = false, userHasBet = false }) {
   const navigate = useNavigate();
-  const statusLabel = reopened ? "Open" : m.status.charAt(0) + m.status.slice(1).toLowerCase();
+  const statusLabel = reopened ? "Open" : (STATUS_LABELS[m.status] || m.status);
   const isLive = m.status === "LIVE";
   const isUpcoming = m.status === "UPCOMING";
+  const isAwaiting = m.status === "AWAITING_RESULTS";
   const dayLabel = getRelativeDayLabel(m.scheduledTime);
   const isClosed = lockTime && new Date(lockTime) <= Date.now();
+
+  // Determine CTA label and style based on bet status
+  let ctaLabel, ctaClass;
+  if (isClosed) {
+    if (userHasBet) {
+      ctaLabel = "Bets Placed";
+      ctaClass = "bg-emerald-900/30 border border-emerald-800/50 text-emerald-400/80 cursor-default";
+    } else {
+      ctaLabel = "No Bets Placed";
+      ctaClass = "bg-gray-800/50 border border-gray-700 text-gray-500 cursor-default";
+    }
+  } else {
+    if (userHasBet) {
+      ctaLabel = "Bets Placed · Edit →";
+      ctaClass = "bg-emerald-900/20 border border-emerald-800/50 text-emerald-400 group-hover:bg-emerald-900/30 group-hover:border-emerald-700";
+    } else {
+      ctaLabel = "Place Bets →";
+      ctaClass = "bg-brand-600/20 border border-brand-700/50 text-brand-300 group-hover:bg-brand-600/30 group-hover:border-brand-600";
+    }
+  }
 
   return (
     <div
@@ -467,7 +518,7 @@ function MatchCard({ match: m, lockTime, delay = 0, reopened = false }) {
       </div>
 
       {/* Lock countdown / closed indicator — skip for reopened (lock is far future) */}
-      {!reopened && (isUpcoming || isLive) && <LockIndicator lockTime={lockTime} />}
+      {!reopened && isUpcoming && <LockIndicator lockTime={lockTime} />}
 
       {/* Result or CTA */}
       {reopened ? (
@@ -476,13 +527,9 @@ function MatchCard({ match: m, lockTime, delay = 0, reopened = false }) {
         </button>
       ) : m.result ? (
         <div className="text-xs text-emerald-400">{m.result}</div>
-      ) : isUpcoming || isLive ? (
-        <button className={`w-full mt-3 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
-          isClosed
-            ? "bg-gray-800/50 border border-gray-700 text-gray-500 cursor-default"
-            : "bg-brand-600/20 border border-brand-700/50 text-brand-300 group-hover:bg-brand-600/30 group-hover:border-brand-600"
-        }`}>
-          {isClosed ? "View Match" : "Place Bets →"}
+      ) : isUpcoming || isLive || isAwaiting ? (
+        <button className={`w-full mt-3 py-2 px-3 rounded-lg text-sm font-medium transition-all ${ctaClass}`}>
+          {ctaLabel}
         </button>
       ) : null}
     </div>
