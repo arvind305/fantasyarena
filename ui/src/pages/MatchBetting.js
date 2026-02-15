@@ -110,7 +110,7 @@ export default function MatchBetting() {
     if (config && existing) {
       bet.initializeFromConfig(config, existing);
     }
-  }, [config]);
+  }, [config, existing]);
 
   // V2: Lock check based on match_config.lock_time
   const lockTime = config?.lockTime;
