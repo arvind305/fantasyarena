@@ -1,37 +1,82 @@
-require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
-const sb = createClient(process.env.REACT_APP_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+require('dotenv').config({ path: require('path').join(__dirname, '..', 'ui', '.env') });
+const sb = createClient(process.env.REACT_APP_SUPABASE_URL, process.env.REACT_APP_SUPABASE_ANON_KEY);
 
 (async () => {
-  // Find unscored bets on scored matches
-  const scoredMatches = ['wc_m1', 'wc_m2', 'wc_m3', 'wc_m4', 'wc_m5', 'wc_m6', 'wc_m7'];
-  
-  const { data: unscored } = await sb.from('bets')
-    .select('bet_id, user_id, match_id, created_at')
-    .in('match_id', scoredMatches)
-    .is('score', null);
+  // Get all non-DRAFT matches
+  const { data: matches } = await sb
+    .from('match_config')
+    .select('match_id, team_a, team_b, status, lock_time')
+    .in('status', ['LOCKED', 'SCORED', 'OPEN'])
+    .order('lock_time', { ascending: true });
 
-  if (!unscored || unscored.length === 0) {
-    console.log('No unscored bets on scored matches. All good!');
-    return;
-  }
+  // Get match results
+  const matchIds = matches.map(m => m.match_id);
+  const { data: results } = await sb
+    .from('match_results')
+    .select('match_id, winner, total_runs')
+    .in('match_id', matchIds);
+  const resultMap = {};
+  (results || []).forEach(r => { resultMap[r.match_id] = r; });
 
-  // Get user names
-  const { data: users } = await sb.from('users').select('user_id, display_name');
-  const nameMap = {};
-  for (const u of (users || [])) nameMap[u.user_id] = u.display_name;
+  // Get bet counts per match
+  const { data: bets } = await sb
+    .from('bets')
+    .select('match_id, score');
+  const betCounts = {};
+  const scoredCounts = {};
+  (bets || []).forEach(b => {
+    betCounts[b.match_id] = (betCounts[b.match_id] || 0) + 1;
+    if (b.score !== null) scoredCounts[b.match_id] = (scoredCounts[b.match_id] || 0) + 1;
+  });
 
-  console.log('=== UNSCORED BETS ON SCORED MATCHES ===');
-  console.log('Count:', unscored.length);
-  for (const b of unscored) {
-    const name = nameMap[b.user_id] || 'Unknown';
-    console.log(' ', b.match_id.padEnd(8), name.padEnd(22), 'created:', b.created_at);
-  }
+  // Get player stats counts
+  const { data: stats } = await sb
+    .from('player_match_stats')
+    .select('match_id');
+  const statCounts = {};
+  (stats || []).forEach(s => { statCounts[s.match_id] = (statCounts[s.match_id] || 0) + 1; });
 
-  // Also check: how many bets on wc_m8 and wc_m9
-  console.log('\n=== UPCOMING MATCH BETS ===');
-  for (const mid of ['wc_m8', 'wc_m9']) {
-    const { data: bets } = await sb.from('bets').select('bet_id').eq('match_id', mid);
-    console.log(mid + ':', (bets || []).length, 'bets');
-  }
+  console.log('=== Matches Needing Action ===\n');
+  console.log('Match'.padEnd(8) + ' | ' + 'Teams'.padEnd(14) + ' | ' + 'Status'.padEnd(7) + ' | ' +
+    'Lock Time (IST)'.padEnd(22) + ' | ' + 'Result'.padEnd(12) + ' | ' + 'Bets'.padEnd(5) + ' | ' +
+    'Scored'.padEnd(7) + ' | ' + 'Stats'.padEnd(6) + ' | ' + 'Action Needed');
+  console.log('-'.repeat(130));
+
+  let actionCount = 0;
+  matches.forEach(m => {
+    const result = resultMap[m.match_id];
+    const bCount = betCounts[m.match_id] || 0;
+    const sCount = scoredCounts[m.match_id] || 0;
+    const stCount = statCounts[m.match_id] || 0;
+    const lockIST = m.lock_time ? new Date(m.lock_time).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false }) : '—';
+    const isPastLock = m.lock_time && new Date(m.lock_time) < new Date();
+
+    let action = '';
+    if (m.status === 'LOCKED' && !result) action = 'NEEDS RESULT + STATS + SCORING';
+    else if (m.status === 'LOCKED' && result && stCount === 0) action = 'NEEDS STATS + SCORING';
+    else if (m.status === 'LOCKED' && result && stCount > 0 && sCount === 0) action = 'NEEDS SCORING (ready!)';
+    else if (m.status === 'OPEN' && isPastLock) action = 'NEEDS LOCKING (past lock time)';
+    else if (m.status === 'OPEN') action = '(open for betting)';
+    else if (m.status === 'SCORED') return; // skip scored
+
+    actionCount++;
+    console.log(
+      m.match_id.padEnd(8) + ' | ' +
+      (m.team_a + ' v ' + m.team_b).padEnd(14) + ' | ' +
+      m.status.padEnd(7) + ' | ' +
+      lockIST.padEnd(22) + ' | ' +
+      (result ? (result.winner || '').substring(0, 12) : 'NO RESULT').padEnd(12) + ' | ' +
+      String(bCount).padStart(4) + ' | ' +
+      String(sCount).padStart(6) + ' | ' +
+      String(stCount).padStart(5) + ' | ' +
+      action
+    );
+  });
+
+  if (actionCount === 0) console.log('  All matches are scored!');
+
+  console.log('\n=== Already Scored ===');
+  const scored = matches.filter(m => m.status === 'SCORED');
+  console.log(scored.length + ' matches: ' + scored.map(m => m.match_id + ' (' + m.team_a + 'v' + m.team_b + ')').join(', '));
 })();
