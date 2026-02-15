@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { apiGetMatches, apiGetEvents } from "../api";
 import { useAuth } from "../auth/AuthProvider";
 import Spinner, { SkeletonCard } from "../components/Spinner";
 import { formatDateRange, formatMatchDate, formatMatchTime, isToday, getRelativeDayLabel } from "../utils/date";
+import { supabase, isSupabaseConfigured } from "../lib/supabase";
+
+const MATCH_DURATION_MS = 4.5 * 60 * 60 * 1000; // 4.5 hours from match start
 
 const STATUS_BADGE = {
   UPCOMING: "bg-blue-900/50 text-blue-400 border-blue-800",
@@ -16,6 +19,7 @@ const STATUS_BADGE = {
 export default function Home() {
   const [matches, setMatches] = useState([]);
   const [event, setEvent] = useState(null);
+  const [lockTimes, setLockTimes] = useState({});
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -27,10 +31,44 @@ export default function Home() {
         if (events?.length) setEvent(events[0]);
       })
       .finally(() => setLoading(false));
+
+    // Fetch lock times for client-side status override
+    if (supabase && isSupabaseConfigured()) {
+      supabase
+        .from("match_config")
+        .select("match_id, lock_time")
+        .then(({ data }) => {
+          if (data) {
+            const lockMap = {};
+            data.forEach((r) => { lockMap[r.match_id] = r.lock_time; });
+            setLockTimes(lockMap);
+          }
+        });
+    }
   }, []);
 
-  // Get next 3 upcoming matches for preview
-  const upcomingMatches = matches
+  // Derive effective status: lock_time passed + within 4.5hrs → LIVE, past 4.5hrs → COMPLETED
+  const effectiveMatches = useMemo(() => {
+    const now = new Date();
+    return matches.map((m) => {
+      const lt = lockTimes[m.matchId];
+      const lockPassed = lt && new Date(lt) <= now;
+
+      if (m.status === "COMPLETED") return m;
+
+      if (lockPassed) {
+        const estimatedEnd = new Date(lt).getTime() + MATCH_DURATION_MS;
+        if (now.getTime() < estimatedEnd) {
+          return { ...m, status: "LIVE" };
+        }
+        return { ...m, status: "COMPLETED" };
+      }
+      return m;
+    });
+  }, [matches, lockTimes]);
+
+  // Get next 3 upcoming or live matches for preview
+  const upcomingMatches = effectiveMatches
     .filter((m) => m.status === "UPCOMING" || m.status === "LIVE")
     .slice(0, 3);
 
