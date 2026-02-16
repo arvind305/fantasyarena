@@ -342,6 +342,19 @@ async function scoreMatch(m) {
   await sb.from('match_config').update({ status: 'SCORED' }).eq('match_id', m.matchId);
   console.log('  OK');
 
+  console.log('Step 8: Reset stale last_match_score...');
+  const { data: matchBets } = await sb.from('bets').select('user_id').eq('match_id', m.matchId);
+  const bettorSet = new Set((matchBets || []).map(b => b.user_id));
+  const { data: allLb } = await sb.from('leaderboard').select('user_id, display_name, last_match_score');
+  let resetCount = 0;
+  for (const r of (allLb || [])) {
+    if (!bettorSet.has(r.user_id) && r.last_match_score !== 0) {
+      await sb.from('leaderboard').update({ last_match_score: 0 }).eq('user_id', r.user_id);
+      resetCount++;
+    }
+  }
+  console.log('  Reset ' + resetCount + ' non-bettors to 0');
+
   console.log('\n--- BET SCORES ---');
   const { data: bets } = await sb.from('bets')
     .select('user_id, score, winner_points, total_runs_points, player_pick_points, side_bet_points, runner_points')
