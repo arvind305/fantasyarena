@@ -803,7 +803,7 @@ export async function apiJoinGroup(joinCode, userId, displayName) {
   const { data: group, error: findError } = await supabase
     .from('groups')
     .select('*')
-    .eq('join_code', joinCode)
+    .eq('join_code', joinCode.toUpperCase())
     .single();
   if (findError) throw new Error('INVALID_GROUP_CODE');
 
