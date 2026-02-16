@@ -3,6 +3,14 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { resolveIdentity } from "../auth/identity";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
+import {
+  isPushSupported,
+  isIOSSafari,
+  isStandalone,
+  getSubscriptionStatus,
+  subscribeToPush,
+  unsubscribeFromPush,
+} from "../lib/pushNotifications";
 
 // Secondary navigation links
 const MORE_LINKS = [
@@ -450,6 +458,9 @@ export default function Profile() {
         </Link>
       </div>
 
+      {/* Notifications */}
+      <NotificationCard user={user} />
+
       {/* Recent Bets */}
       <div className="card mb-6 animate-slide-up" style={{ animationDelay: "120ms" }}>
         <div className="flex items-center justify-between mb-4">
@@ -605,6 +616,97 @@ function PerformanceCard({ perfStats, perfLoading }) {
           <p className="text-gray-500 text-sm">Place bets to see your performance stats.</p>
         </div>
       )}
+    </div>
+  );
+}
+
+function NotificationCard({ user }) {
+  const [status, setStatus] = useState({ supported: false, subscribed: false, permission: "default" });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    getSubscriptionStatus().then(setStatus);
+  }, []);
+
+  const iosNeedsPWA = isIOSSafari() && !isStandalone();
+
+  const handleSubscribe = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      await subscribeToPush(user.userId);
+      const s = await getSubscriptionStatus();
+      setStatus(s);
+    } catch (err) {
+      setError(err.message || "Failed to enable.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUnsubscribe = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      await unsubscribeFromPush(user.userId);
+      const s = await getSubscriptionStatus();
+      setStatus(s);
+    } catch (err) {
+      setError(err.message || "Failed to disable.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="card mb-6 animate-slide-up" style={{ animationDelay: "105ms" }}>
+      <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Notifications</h3>
+
+      {!isPushSupported() ? (
+        <p className="text-sm text-gray-500">Push notifications are not supported on this browser.</p>
+      ) : iosNeedsPWA ? (
+        <div className="space-y-2">
+          <p className="text-sm text-amber-400 font-medium">Add to Home Screen required</p>
+          <ol className="text-xs text-gray-400 list-decimal list-inside space-y-1">
+            <li>Tap <span className="text-gray-200 font-medium">Share</span> (bottom bar)</li>
+            <li>Tap <span className="text-gray-200 font-medium">Add to Home Screen</span></li>
+            <li>Open from your home screen, then enable here</li>
+          </ol>
+        </div>
+      ) : status.permission === "denied" ? (
+        <div>
+          <p className="text-sm text-red-400 font-medium">Notifications blocked</p>
+          <p className="text-xs text-gray-500 mt-1">Unblock in your browser's site settings to enable.</p>
+        </div>
+      ) : status.subscribed ? (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 bg-emerald-400 rounded-full" />
+            <span className="text-sm text-emerald-400 font-medium">Reminders enabled</span>
+          </div>
+          <button
+            onClick={handleUnsubscribe}
+            disabled={loading}
+            className="text-xs py-1.5 px-3 rounded-lg bg-gray-800 border border-gray-600 text-gray-400 hover:text-gray-200 hover:border-gray-500 transition-all disabled:opacity-50"
+          >
+            {loading ? "..." : "Disable"}
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-gray-400">Get reminded before matches lock.</p>
+          <button
+            onClick={handleSubscribe}
+            disabled={loading}
+            className="text-xs py-1.5 px-3 rounded-lg bg-brand-600/20 border border-brand-700/50 text-brand-300 hover:bg-brand-600/30 transition-all font-medium disabled:opacity-50"
+          >
+            {loading ? "..." : "Enable"}
+          </button>
+        </div>
+      )}
+
+      {error && <p className="text-xs text-red-400 mt-2">{error}</p>}
     </div>
   );
 }

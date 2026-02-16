@@ -122,6 +122,13 @@ function App() {
 
 // Wait for admin config before rendering
 loadAdminConfig().then(() => {
+  // Register service worker for push notifications
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('[SW] Registered:', reg.scope))
+      .catch(err => console.error('[SW] Registration failed:', err));
+  }
+
   const root = ReactDOM.createRoot(document.getElementById("root"));
   root.render(<App />);
 });

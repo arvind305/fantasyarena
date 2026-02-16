@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { getAdminEmail } from "../config";
+import NotificationBell from "./NotificationBell";
 
 // Streamlined 4-item navigation
 const links = [
@@ -157,6 +158,7 @@ export default function Navbar() {
           )}
           {user ? (
             <>
+              <NotificationBell />
               {user.avatar && (
                 <img src={user.avatar} alt="" className="w-7 h-7 rounded-full ring-2 ring-brand-600/40" referrerPolicy="no-referrer" />
               )}
@@ -219,6 +221,15 @@ export default function Navbar() {
               </NavLink>
             ))}
           </div>
+
+          {/* Mobile notification settings */}
+          {user && (
+            <div className="border-t border-gray-700/50 mt-1 pt-1">
+              <div className="px-6 py-3">
+                <NotificationBell />
+              </div>
+            </div>
+          )}
 
           {/* Mobile admin section */}
           {isAdmin && (
