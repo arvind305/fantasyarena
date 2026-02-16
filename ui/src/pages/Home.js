@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { apiGetMatches, apiGetEvents } from "../api";
 import { useAuth } from "../auth/AuthProvider";
 import Spinner, { SkeletonCard } from "../components/Spinner";
+import LongTermBetsBanner from "../components/LongTermBetsBanner";
 import { formatDateRange, formatMatchDate, formatMatchTime, isToday, getRelativeDayLabel } from "../utils/date";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
 
@@ -104,6 +105,8 @@ export default function Home() {
           <p className="text-gray-500 mt-4 text-sm">Log in from the navbar to start placing bets.</p>
         )}
       </div>
+
+      <LongTermBetsBanner />
 
       {/* Tournament summary */}
       {event && (

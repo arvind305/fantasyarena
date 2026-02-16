@@ -84,7 +84,7 @@ export async function apiGetEvents() {
     name: t?.name || "T20 World Cup 2026",
     sport: "cricket",
     format: "t20",
-    status: "UPCOMING",
+    status: "Ongoing",
     startDate: "2026-02-07T00:00:00Z",
     endDate: "2026-03-08T00:00:00Z",
   }];

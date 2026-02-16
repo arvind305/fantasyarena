@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { apiGetMatches, apiGetEvents, apiGetLongTermConfig } from "../api";
 import { useAuth } from "../auth/AuthProvider";
 import Spinner, { SkeletonCard } from "../components/Spinner";
+import LongTermBetsBanner from "../components/LongTermBetsBanner";
 import { formatDateRange, formatMatchDate, formatMatchTime, isToday, getRelativeDayLabel } from "../utils/date";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
 
@@ -201,6 +202,8 @@ export default function Play() {
           <span className="text-gray-500">{tournamentDateRange}</span>
         </p>
       </div>
+
+      <LongTermBetsBanner />
 
       {/* How to Play */}
       <div className="card mb-6 bg-gradient-to-br from-brand-950/50 to-gray-900 border-brand-800/40 animate-slide-up">
