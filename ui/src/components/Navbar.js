@@ -176,14 +176,17 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* Mobile toggle */}
-        <button
-          onClick={() => setMenuOpen(!menuOpen)}
-          className="lg:hidden p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-400 hover:text-gray-200"
-          aria-label="Toggle menu"
-        >
-          {menuOpen ? "\u2715" : "\u2630"}
-        </button>
+        {/* Mobile: bell + hamburger */}
+        <div className="lg:hidden flex items-center gap-1">
+          {user && <NotificationBell />}
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-400 hover:text-gray-200"
+            aria-label="Toggle menu"
+          >
+            {menuOpen ? "\u2715" : "\u2630"}
+          </button>
+        </div>
       </div>
 
       {/* Mobile menu */}
@@ -221,15 +224,6 @@ export default function Navbar() {
               </NavLink>
             ))}
           </div>
-
-          {/* Mobile notification settings */}
-          {user && (
-            <div className="border-t border-gray-700/50 mt-1 pt-1">
-              <div className="px-6 py-3">
-                <NotificationBell />
-              </div>
-            </div>
-          )}
 
           {/* Mobile admin section */}
           {isAdmin && (
