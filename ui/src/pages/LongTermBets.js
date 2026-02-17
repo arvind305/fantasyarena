@@ -18,23 +18,36 @@ import OrangeCap from "../components/long-term/OrangeCap";
 import PurpleCap from "../components/long-term/PurpleCap";
 import LongTermSummary from "../components/long-term/LongTermSummary";
 
-function Countdown({ target }) {
-  const [diff, setDiff] = useState(new Date(target) - Date.now());
+function LockCountdown({ target }) {
+  const [diff, setDiff] = useState(() => new Date(target) - Date.now());
   useEffect(() => {
-    const id = setInterval(() => setDiff(new Date(target) - Date.now()), 1000);
+    setDiff(new Date(target) - Date.now());
+    const id = setInterval(() => setDiff(new Date(target) - Date.now()), 60000);
     return () => clearInterval(id);
   }, [target]);
 
   if (diff <= 0) return null;
 
-  const days = Math.floor(diff / 86400000);
-  const h = Math.floor((diff % 86400000) / 3600000);
-  const m = Math.floor((diff % 3600000) / 60000);
+  const totalMins = Math.floor(diff / 60000);
+  const days = Math.floor(totalMins / 1440);
+  const h = Math.floor((totalMins % 1440) / 60);
+  const mins = totalMins % 60;
+  const isUrgent = totalMins <= 30;
 
-  if (days > 0) {
-    return <span className="font-mono text-purple-300">{days}d {h}h</span>;
-  }
-  return <span className="font-mono text-purple-300">{h}h {m}m</span>;
+  let timeStr;
+  if (days > 0) timeStr = `${days}d ${h}h`;
+  else if (h > 0) timeStr = `${h}h ${mins}m`;
+  else timeStr = `${mins}m`;
+
+  return (
+    <div className={`flex items-center gap-1.5 text-sm mt-1 ${isUrgent ? "text-amber-400" : "text-gray-400"}`}>
+      <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      Closes in {timeStr}
+      {isUrgent && <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />}
+    </div>
+  );
 }
 
 export default function LongTermBets() {
@@ -172,16 +185,7 @@ export default function LongTermBets() {
               <>
                 <p className="text-purple-400 font-semibold">Submissions Open</p>
                 {config.lockTime && new Date(config.lockTime) > new Date() && (
-                  <p className="text-gray-500 text-sm mt-1">
-                    Locks at: {new Date(config.lockTime).toLocaleString(undefined, {
-                      weekday: "short", month: "short", day: "numeric",
-                      hour: "2-digit", minute: "2-digit",
-                      timeZone: "Asia/Kolkata",
-                    })} IST
-                    <span className="ml-2">
-                      (<Countdown target={config.lockTime} />)
-                    </span>
-                  </p>
+                  <LockCountdown target={config.lockTime} />
                 )}
               </>
             )}
