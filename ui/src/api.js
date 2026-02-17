@@ -733,8 +733,17 @@ export async function apiGetGroups(userId) {
     // Fetch members separately (no FK relationship in schema)
     const { data: allMembers } = await supabase
       .from('group_members')
-      .select('group_id, user_id, display_name, score')
+      .select('group_id, user_id, display_name')
       .in('group_id', groupIds);
+
+    // Pull actual scores from the main leaderboard
+    const allUserIds = [...new Set((allMembers || []).map(m => m.user_id))];
+    const { data: lbRows } = allUserIds.length > 0
+      ? await supabase.from('leaderboard').select('user_id, total_score').in('user_id', allUserIds)
+      : { data: [] };
+    const scoreMap = {};
+    (lbRows || []).forEach(r => { scoreMap[r.user_id] = r.total_score || 0; });
+
     const membersByGroup = {};
     (allMembers || []).forEach(m => {
       if (!membersByGroup[m.group_id]) membersByGroup[m.group_id] = [];
@@ -754,7 +763,7 @@ export async function apiGetGroups(userId) {
         members: gMembers.map(m => ({
           userId: m.user_id,
           displayName: m.display_name,
-          score: m.score || 0
+          score: scoreMap[m.user_id] || 0
         }))
       };
     });
@@ -870,10 +879,25 @@ export async function apiGetGroupDetail(groupId) {
 
   const { data: members, error: membersError } = await supabase
     .from('group_members')
-    .select('user_id, display_name, score')
-    .eq('group_id', groupId)
-    .order('score', { ascending: false });
+    .select('user_id, display_name')
+    .eq('group_id', groupId);
   if (membersError) throw new Error(membersError.message);
+
+  // Pull actual scores from the main leaderboard table
+  const memberIds = members.map(m => m.user_id);
+  const { data: lbRows } = await supabase
+    .from('leaderboard')
+    .select('user_id, total_score, matches_played')
+    .in('user_id', memberIds);
+  const scoreMap = {};
+  (lbRows || []).forEach(r => { scoreMap[r.user_id] = r.total_score || 0; });
+
+  // Merge and sort by score descending
+  const merged = members.map(m => ({
+    userId: m.user_id,
+    displayName: m.display_name,
+    score: scoreMap[m.user_id] || 0,
+  })).sort((a, b) => b.score - a.score);
 
   return {
     groupId: group.group_id,
@@ -881,12 +905,12 @@ export async function apiGetGroupDetail(groupId) {
     joinCode: group.join_code,
     createdBy: group.created_by,
     createdAt: group.created_at,
-    memberIds: members.map(m => m.user_id),
-    members: members.map(m => ({ userId: m.user_id, displayName: m.display_name, score: m.score })),
-    leaderboard: members.map((m, i) => ({
-      userId: m.user_id,
-      displayName: m.display_name,
-      score: m.score || 0,
+    memberIds: merged.map(m => m.userId),
+    members: merged,
+    leaderboard: merged.map((m, i) => ({
+      userId: m.userId,
+      displayName: m.displayName,
+      score: m.score,
       rank: i + 1
     }))
   };
