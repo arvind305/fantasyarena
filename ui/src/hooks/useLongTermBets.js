@@ -38,7 +38,7 @@ export function useLongTermBets() {
   const toggleOrangeCap = useCallback((playerId) => {
     setOrangeCapPlayers((prev) => {
       if (prev.includes(playerId)) return prev.filter((p) => p !== playerId);
-      if (prev.length >= 2) return prev;
+      if (prev.length >= 3) return prev;
       return [...prev, playerId];
     });
   }, []);
@@ -46,7 +46,7 @@ export function useLongTermBets() {
   const togglePurpleCap = useCallback((playerId) => {
     setPurpleCapPlayers((prev) => {
       if (prev.includes(playerId)) return prev.filter((p) => p !== playerId);
-      if (prev.length >= 2) return prev;
+      if (prev.length >= 3) return prev;
       return [...prev, playerId];
     });
   }, []);
@@ -64,8 +64,8 @@ export function useLongTermBets() {
     if (!winnerTeam) errors.push("Please select a tournament winner");
     if (finalistTeams.length !== 2) errors.push("Please select exactly 2 finalists");
     if (finalFourTeams.length !== 4) errors.push("Please select exactly 4 semi-finalists");
-    if (orangeCapPlayers.length !== 2) errors.push("Please select exactly 2 Orange Cap picks");
-    if (purpleCapPlayers.length !== 2) errors.push("Please select exactly 2 Purple Cap picks");
+    if (orangeCapPlayers.length < 2 || orangeCapPlayers.length > 3) errors.push("Please select 2 or 3 Orange Cap picks");
+    if (purpleCapPlayers.length < 2 || purpleCapPlayers.length > 3) errors.push("Please select 2 or 3 Purple Cap picks");
     return errors;
   }, [winnerTeam, finalistTeams, finalFourTeams, orangeCapPlayers, purpleCapPlayers]);
 

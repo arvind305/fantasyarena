@@ -37,21 +37,21 @@ export default function LongTermSummary({
     },
     {
       label: "Orange Cap",
-      done: predictions.orangeCapPlayers.length === 2,
+      done: predictions.orangeCapPlayers.length >= 2,
       value: predictions.orangeCapPlayers
         .map((id) => allPlayers.find((p) => p.playerId === id)?.playerName || id)
         .join(", "),
       points: config?.orangeCapPoints,
-      count: `${predictions.orangeCapPlayers.length}/2`,
+      count: `${predictions.orangeCapPlayers.length}/3`,
     },
     {
       label: "Purple Cap",
-      done: predictions.purpleCapPlayers.length === 2,
+      done: predictions.purpleCapPlayers.length >= 2,
       value: predictions.purpleCapPlayers
         .map((id) => allPlayers.find((p) => p.playerId === id)?.playerName || id)
         .join(", "),
       points: config?.purpleCapPoints,
-      count: `${predictions.purpleCapPlayers.length}/2`,
+      count: `${predictions.purpleCapPlayers.length}/3`,
     },
   ];
 
@@ -63,8 +63,8 @@ export default function LongTermSummary({
     (config?.winnerPoints || 0) +
     (config?.finalistPoints || 0) * 2 +
     (config?.finalFourPoints || 0) * 4 +
-    (config?.orangeCapPoints || 0) * 2 +
-    (config?.purpleCapPoints || 0) * 2;
+    (config?.orangeCapPoints || 0) * 3 +
+    (config?.purpleCapPoints || 0) * 3;
 
   return (
     <div className="card animate-slide-up" style={{ animationDelay: "250ms" }}>
@@ -97,7 +97,7 @@ export default function LongTermSummary({
               <span className={item.done ? "text-emerald-400" : "text-gray-600"}>
                 {item.done ? "\u2713" : "\u25CB"}
               </span>
-              <span className="truncate">
+              <span>
                 {item.label}
                 {item.count && !item.done && (
                   <span className="text-gray-600 ml-1">({item.count})</span>
@@ -105,7 +105,7 @@ export default function LongTermSummary({
               </span>
             </div>
             {item.done && (
-              <span className="text-xs text-gray-500 ml-2 whitespace-nowrap truncate max-w-[140px]">
+              <span className="text-xs text-gray-500 ml-2 text-right">
                 {item.value}
               </span>
             )}
