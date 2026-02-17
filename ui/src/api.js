@@ -726,24 +726,38 @@ export async function apiGetGroups(userId) {
     const groupIds = memberships.map(m => m.group_id);
     const { data: groups, error: groupError } = await supabase
       .from('groups')
-      .select('*, group_members(user_id, display_name, score)')
+      .select('*')
       .in('group_id', groupIds);
     if (groupError) throw groupError;
 
-    return groups.map(g => ({
-      groupId: g.group_id,
-      name: g.name,
-      joinCode: g.join_code,
-      createdBy: g.created_by,
-      eventId: g.event_id,
-      createdAt: g.created_at,
-      memberIds: g.group_members?.map(m => m.user_id) || [],
-      members: g.group_members?.map(m => ({
-        userId: m.user_id,
-        displayName: m.display_name,
-        score: m.score || 0
-      })) || []
-    }));
+    // Fetch members separately (no FK relationship in schema)
+    const { data: allMembers } = await supabase
+      .from('group_members')
+      .select('group_id, user_id, display_name, score')
+      .in('group_id', groupIds);
+    const membersByGroup = {};
+    (allMembers || []).forEach(m => {
+      if (!membersByGroup[m.group_id]) membersByGroup[m.group_id] = [];
+      membersByGroup[m.group_id].push(m);
+    });
+
+    return groups.map(g => {
+      const gMembers = membersByGroup[g.group_id] || [];
+      return {
+        groupId: g.group_id,
+        name: g.name,
+        joinCode: g.join_code,
+        createdBy: g.created_by,
+        eventId: g.event_id,
+        createdAt: g.created_at,
+        memberIds: gMembers.map(m => m.user_id),
+        members: gMembers.map(m => ({
+          userId: m.user_id,
+          displayName: m.display_name,
+          score: m.score || 0
+        }))
+      };
+    });
   } catch (err) {
     console.warn('[api] Error fetching groups:', err);
     return [];
