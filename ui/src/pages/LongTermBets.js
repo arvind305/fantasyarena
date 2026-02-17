@@ -18,34 +18,84 @@ import OrangeCap from "../components/long-term/OrangeCap";
 import PurpleCap from "../components/long-term/PurpleCap";
 import LongTermSummary from "../components/long-term/LongTermSummary";
 
-function LockCountdown({ target }) {
-  const [diff, setDiff] = useState(() => new Date(target) - Date.now());
-  useEffect(() => {
-    setDiff(new Date(target) - Date.now());
-    const id = setInterval(() => setDiff(new Date(target) - Date.now()), 60000);
-    return () => clearInterval(id);
-  }, [target]);
+// Same deadline as LongTermBetsBanner: Feb 19, 2026 00:00 IST = Feb 18, 2026 18:30 UTC
+const PREDICTIONS_DEADLINE = new Date("2026-02-18T18:30:00Z");
 
+function getTimeLeft() {
+  const diff = PREDICTIONS_DEADLINE - Date.now();
   if (diff <= 0) return null;
+  const d = Math.floor(diff / 86400000);
+  const h = Math.floor((diff % 86400000) / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  return { d, h, m, total: diff };
+}
 
-  const totalMins = Math.floor(diff / 60000);
-  const days = Math.floor(totalMins / 1440);
-  const h = Math.floor((totalMins % 1440) / 60);
-  const mins = totalMins % 60;
-  const isUrgent = totalMins <= 30;
+function LockStatusBanner({ isLocked, isReopened, editCost }) {
+  const [timeLeft, setTimeLeft] = useState(getTimeLeft);
+  useEffect(() => {
+    const id = setInterval(() => setTimeLeft(getTimeLeft()), 60000);
+    return () => clearInterval(id);
+  }, []);
 
-  let timeStr;
-  if (days > 0) timeStr = `${days}d ${h}h`;
-  else if (h > 0) timeStr = `${h}h ${mins}m`;
-  else timeStr = `${mins}m`;
+  if (isReopened) {
+    return (
+      <div className="card mb-6 bg-amber-950/30 border-amber-800/40">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-amber-400 font-semibold">Editing Reopened (Paid)</p>
+            <p className="text-gray-500 text-sm mt-1">
+              Each save costs <span className="text-amber-300">{editCost}% of your points</span>
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLocked) {
+    return (
+      <div className="card mb-6 bg-red-950/30 border-red-800/40">
+        <p className="text-red-400 font-semibold">Submissions Locked</p>
+        <p className="text-gray-500 text-sm mt-1">Predictions are locked for this tournament.</p>
+      </div>
+    );
+  }
+
+  // Open state — show countdown matching LongTermBetsBanner style
+  const isUrgent = timeLeft && timeLeft.total < 24 * 3600000;
+  const countdownStr = timeLeft
+    ? (timeLeft.d > 0 ? `${timeLeft.d}d ${timeLeft.h}h ${timeLeft.m}m` : `${timeLeft.h}h ${timeLeft.m}m`)
+    : null;
 
   return (
-    <div className={`flex items-center gap-1.5 text-sm mt-1 ${isUrgent ? "text-amber-400" : "text-gray-400"}`}>
-      <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-      Closes in {timeStr}
-      {isUrgent && <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />}
+    <div className={`rounded-xl border p-4 sm:p-5 mb-6 ${
+      isUrgent
+        ? "bg-gradient-to-r from-red-950/40 to-amber-950/30 border-red-800/50"
+        : "bg-gradient-to-r from-purple-950/40 to-amber-950/30 border-purple-800/40"
+    }`}>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div>
+          <p className={`font-bold ${isUrgent ? "text-amber-300" : "text-purple-300"}`}>
+            Submissions Open
+          </p>
+          <p className="text-gray-400 text-sm mt-0.5">
+            Pick the Winner, Finalists, Final Four, Highest Run Scorer & Most Wickets
+          </p>
+        </div>
+        {countdownStr && (
+          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono border shrink-0 ${
+            isUrgent
+              ? "bg-red-900/40 text-red-300 border-red-700/60"
+              : "bg-amber-900/30 text-amber-300 border-amber-700/50"
+          }`}>
+            <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {countdownStr}
+            {isUrgent && <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -174,38 +224,7 @@ export default function LongTermBets() {
       </div>
 
       {/* Lock Status Banner */}
-      <div className={`card mb-6 ${
-        isLocked && !isReopened ? "bg-red-950/30 border-red-800/40" :
-        isReopened ? "bg-amber-950/30 border-amber-800/40" :
-        "bg-purple-950/30 border-purple-800/40"
-      }`}>
-        <div className="flex items-center justify-between">
-          <div>
-            {!isLocked && (
-              <>
-                <p className="text-purple-400 font-semibold">Submissions Open</p>
-                {config.lockTime && new Date(config.lockTime) > new Date() && (
-                  <LockCountdown target={config.lockTime} />
-                )}
-              </>
-            )}
-            {isLocked && !isReopened && (
-              <>
-                <p className="text-red-400 font-semibold">Submissions Locked</p>
-                <p className="text-gray-500 text-sm mt-1">Predictions are locked for this tournament.</p>
-              </>
-            )}
-            {isReopened && (
-              <>
-                <p className="text-amber-400 font-semibold">Editing Reopened (Paid)</p>
-                <p className="text-gray-500 text-sm mt-1">
-                  Each save costs <span className="text-amber-300">{editCost}% of your points</span>
-                </p>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
+      <LockStatusBanner isLocked={isLocked} isReopened={isReopened} editCost={editCost} />
 
       {/* Guest CTA */}
       {!user && (
