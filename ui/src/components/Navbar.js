@@ -4,23 +4,28 @@ import { useAuth } from "../auth/AuthProvider";
 import { getAdminEmail } from "../config";
 import NotificationBell from "./NotificationBell";
 
-// Streamlined 4-item navigation
+// Primary navigation (shown on desktop bar + mobile menu top-level)
 const links = [
+  { to: "/play", label: "Play" },
+  { to: "/leaderboard", label: "Leaderboard" },
+  { to: "/long-term-bets", label: "Predictions" },
+  { to: "/profile", label: "My Profile" },
+];
+
+// Desktop secondary links (desktop nav still shows Teams)
+const desktopLinks = [
   { to: "/play", label: "Play" },
   { to: "/leaderboard", label: "Leaderboard" },
   { to: "/teams", label: "Teams" },
   { to: "/profile", label: "My Profile" },
 ];
 
-// Secondary links accessible from within pages or mobile menu
-const moreLinks = [
-  { to: "/long-term-bets", label: "Predictions" },
+// Mobile "More" accordion links (browse/reference pages)
+const mobileMoreLinks = [
+  { to: "/teams", label: "Teams" },
   { to: "/schedule", label: "Schedule" },
   { to: "/players", label: "Players" },
   { to: "/groups", label: "Groups" },
-  { to: "/rules", label: "Rules" },
-  { to: "/faq", label: "FAQ" },
-  { to: "/about", label: "About" },
 ];
 
 // Admin links (only visible to admins)
@@ -32,6 +37,7 @@ const adminLinks = [
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [adminDropdownOpen, setAdminDropdownOpen] = useState(false);
   const adminDropdownRef = useRef(null);
   const location = useLocation();
@@ -50,9 +56,10 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Close dropdown on route change
+  // Close dropdowns on route change
   useEffect(() => {
     setAdminDropdownOpen(false);
+    setMoreOpen(false);
   }, [location.pathname]);
 
   // Check if current path is an admin page
@@ -75,9 +82,9 @@ export default function Navbar() {
           </span>
         </NavLink>
 
-        {/* Desktop nav - 5 items */}
+        {/* Desktop nav */}
         <div className="hidden lg:flex items-center gap-0.5">
-          {links.map((l) => (
+          {desktopLinks.map((l) => (
             <NavLink key={l.to} to={l.to} className={linkClass}>
               {l.label}
             </NavLink>
@@ -207,22 +214,39 @@ export default function Navbar() {
             </NavLink>
           ))}
 
-          {/* Divider and More links */}
-          <div className="border-t border-gray-700/50 mt-1 pt-1">
-            <div className="px-6 py-2 text-xs text-gray-600 uppercase tracking-wide">More</div>
-            {moreLinks.map((l) => (
-              <NavLink
-                key={l.to} to={l.to}
-                onClick={() => setMenuOpen(false)}
-                className={({ isActive }) =>
-                  `block px-6 py-3 text-sm font-medium border-b border-gray-800/50 ${
-                    isActive ? "bg-brand-600/10 text-brand-300" : "text-gray-500"
-                  }`
-                }
+          {/* Collapsible More section */}
+          <div className="border-t border-gray-700/50">
+            <button
+              onClick={() => setMoreOpen(!moreOpen)}
+              className="w-full flex items-center justify-between px-6 py-3 text-sm font-medium text-gray-500 hover:text-gray-300 transition-colors"
+            >
+              <span>More</span>
+              <svg
+                className={`w-4 h-4 transition-transform duration-200 ${moreOpen ? "rotate-180" : ""}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-                {l.label}
-              </NavLink>
-            ))}
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {moreOpen && (
+              <div className="bg-gray-900/50">
+                {mobileMoreLinks.map((l) => (
+                  <NavLink
+                    key={l.to} to={l.to}
+                    onClick={() => setMenuOpen(false)}
+                    className={({ isActive }) =>
+                      `block px-8 py-2.5 text-sm font-medium border-b border-gray-800/30 ${
+                        isActive ? "bg-brand-600/10 text-brand-300" : "text-gray-500"
+                      }`
+                    }
+                  >
+                    {l.label}
+                  </NavLink>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Mobile admin section */}
