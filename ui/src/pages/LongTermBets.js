@@ -171,12 +171,13 @@ export default function LongTermBets() {
             {!isLocked && (
               <>
                 <p className="text-purple-400 font-semibold">Submissions Open</p>
-                {config.lockTime && (
+                {config.lockTime && new Date(config.lockTime) > new Date() && (
                   <p className="text-gray-500 text-sm mt-1">
                     Locks at: {new Date(config.lockTime).toLocaleString(undefined, {
                       weekday: "short", month: "short", day: "numeric",
                       hour: "2-digit", minute: "2-digit",
-                    })}
+                      timeZone: "Asia/Kolkata",
+                    })} IST
                     <span className="ml-2">
                       (<Countdown target={config.lockTime} />)
                     </span>
