@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 
-// Deadline: Feb 19, 2026 00:00 IST = Feb 18, 2026 18:30 UTC
-const DEADLINE_UTC = new Date("2026-02-18T18:30:00Z");
+// Deadline: Feb 20, 2026 00:00 IST = Feb 19, 2026 18:30 UTC
+const DEADLINE_UTC = new Date("2026-02-19T18:30:00Z");
 const DISMISS_KEY = "lt_banner_dismissed";
 
 function getTimeLeft() {

@@ -18,8 +18,8 @@ import OrangeCap from "../components/long-term/OrangeCap";
 import PurpleCap from "../components/long-term/PurpleCap";
 import LongTermSummary from "../components/long-term/LongTermSummary";
 
-// Same deadline as LongTermBetsBanner: Feb 19, 2026 00:00 IST = Feb 18, 2026 18:30 UTC
-const PREDICTIONS_DEADLINE = new Date("2026-02-18T18:30:00Z");
+// Same deadline as LongTermBetsBanner: Feb 20, 2026 00:00 IST = Feb 19, 2026 18:30 UTC
+const PREDICTIONS_DEADLINE = new Date("2026-02-19T18:30:00Z");
 
 function getTimeLeft() {
   const diff = PREDICTIONS_DEADLINE - Date.now();
