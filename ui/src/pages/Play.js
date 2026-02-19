@@ -478,7 +478,7 @@ function MatchCard({ match: m, lockTime, delay = 0, reopened = false, userHasBet
     }
   } else {
     if (userHasBet) {
-      ctaLabel = "Bets Placed · Edit →";
+      ctaLabel = "Update Bets →";
       ctaClass = "bg-emerald-900/20 border border-emerald-800/50 text-emerald-400 group-hover:bg-emerald-900/30 group-hover:border-emerald-700";
     } else {
       ctaLabel = "Place Bets →";
@@ -491,7 +491,7 @@ function MatchCard({ match: m, lockTime, delay = 0, reopened = false, userHasBet
       onClick={() => navigate(`/match/${m.matchId}`)}
       className={`card hover:border-brand-600 hover:shadow-lg hover:shadow-brand-900/20 transition-all duration-300 cursor-pointer group animate-slide-up ${
         reopened ? "border-amber-800/40" : ""
-      }`}
+      } ${userHasBet && !isCompleted ? "border-l-2 border-l-emerald-600" : ""}`}
       style={{ animationDelay: `${delay}ms` }}
     >
       {/* Header row */}
@@ -501,14 +501,24 @@ function MatchCard({ match: m, lockTime, delay = 0, reopened = false, userHasBet
           <span className="text-gray-600 text-xs">vs</span>
           <span className="font-bold text-gray-200 group-hover:text-white transition-colors">{m.teamB}</span>
         </div>
-        <span className={`text-xs px-2.5 py-1 rounded-full border ${
-          reopened ? "bg-amber-900/50 text-amber-400 border-amber-800" : STATUS_BADGE[m.status] || ""
-        }`}>
-          {isLive && !reopened && (
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mr-1.5 align-middle" />
+        <div className="flex items-center gap-2">
+          {userHasBet && (isUpcoming || isLive) && (
+            <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-emerald-900/30 text-emerald-400 border border-emerald-800/50">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+              </svg>
+              Bet placed
+            </span>
           )}
-          {statusLabel}
-        </span>
+          <span className={`text-xs px-2.5 py-1 rounded-full border ${
+            reopened ? "bg-amber-900/50 text-amber-400 border-amber-800" : STATUS_BADGE[m.status] || ""
+          }`}>
+            {isLive && !reopened && (
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mr-1.5 align-middle" />
+            )}
+            {statusLabel}
+          </span>
+        </div>
       </div>
 
       {/* Match details */}
