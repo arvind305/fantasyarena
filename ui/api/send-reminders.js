@@ -5,21 +5,20 @@ import webpush from "web-push";
  * POST /api/send-reminders
  *
  * Called by external cron (cron-job.org every 10 min).
- * Sends web push notifications for matches about to lock.
+ * Sends web push notifications for matches about to START (using schedule time,
+ * not lock_time — so notifications are correct even when lock_time is extended).
  *
  * Time windows:
- *   - 30-min reminder: lock_time BETWEEN now+25min AND now+35min
- *   - 10-min reminder: lock_time BETWEEN now+5min AND now+15min
+ *   - 30-min reminder: match start BETWEEN now+25min AND now+35min
+ *   - 10-min reminder: match start BETWEEN now+5min AND now+15min
  *
  * Requires: CRON_SECRET, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT
  */
 export default async function handler(req, res) {
-  // Only allow POST
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  // Verify cron secret
   const secret = req.headers["authorization"];
   if (secret !== `Bearer ${process.env.CRON_SECRET}`) {
     return res.status(401).json({ error: "Unauthorized" });
@@ -36,7 +35,6 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Missing VAPID env vars" });
   }
 
-  // Configure web-push
   webpush.setVapidDetails(
     process.env.VAPID_SUBJECT,
     process.env.VAPID_PUBLIC_KEY,
@@ -46,9 +44,36 @@ export default async function handler(req, res) {
   const sb = createClient(url, key);
 
   try {
+    // Fetch the match schedule for actual start times
+    const scheduleUrl = `https://${req.headers.host}/data/t20wc_2026.json`;
+    const scheduleRes = await fetch(scheduleUrl);
+    if (!scheduleRes.ok) {
+      return res.status(500).json({ error: "Failed to fetch schedule JSON" });
+    }
+    const schedule = await scheduleRes.json();
+
+    // Build a map of match_id -> start time (UTC)
+    const startTimeMap = {};
+    for (const m of schedule.matches) {
+      const matchId = `wc_m${m.match_id}`;
+      // date: "2026-02-18", time_gmt: "05:30" → UTC datetime
+      const startUtc = new Date(`${m.date}T${m.time_gmt}:00Z`);
+      startTimeMap[matchId] = startUtc;
+    }
+
+    // Get all OPEN or LOCKED matches (LOCKED ones may still need reminders
+    // if they were locked early but match hasn't started yet)
+    const { data: openMatches, error: matchErr } = await sb
+      .from("match_config")
+      .select("match_id, team_a, team_b, status")
+      .in("status", ["OPEN", "LOCKED"]);
+
+    if (matchErr) {
+      return res.status(500).json({ error: matchErr.message });
+    }
+
     const now = Date.now();
 
-    // Define time windows
     const windows = [
       { type: "30min", label: "30 minutes", minMs: 25 * 60 * 1000, maxMs: 35 * 60 * 1000 },
       { type: "10min", label: "10 minutes", minMs: 5 * 60 * 1000, maxMs: 15 * 60 * 1000 },
@@ -57,30 +82,25 @@ export default async function handler(req, res) {
     const result = { sent: {}, matches: [], errors: [] };
 
     for (const w of windows) {
-      const rangeStart = new Date(now + w.minMs).toISOString();
-      const rangeEnd = new Date(now + w.maxMs).toISOString();
+      const rangeStart = now + w.minMs;
+      const rangeEnd = now + w.maxMs;
 
-      // Find OPEN matches in this window
-      const { data: matches, error: matchErr } = await sb
-        .from("match_config")
-        .select("match_id, team_a, team_b, lock_time")
-        .eq("status", "OPEN")
-        .gte("lock_time", rangeStart)
-        .lte("lock_time", rangeEnd);
+      // Find matches whose SCHEDULED start time falls in this window
+      const matchesInWindow = (openMatches || []).filter((m) => {
+        const startTime = startTimeMap[m.match_id];
+        if (!startTime) return false;
+        const startMs = startTime.getTime();
+        return startMs >= rangeStart && startMs <= rangeEnd;
+      });
 
-      if (matchErr) {
-        result.errors.push({ window: w.type, error: matchErr.message });
-        continue;
-      }
-
-      if (!matches || matches.length === 0) {
+      if (matchesInWindow.length === 0) {
         result.sent[w.type] = 0;
         continue;
       }
 
       let sentCount = 0;
 
-      for (const match of matches) {
+      for (const match of matchesInWindow) {
         // Check if we already sent this reminder
         const { data: existing } = await sb
           .from("notification_log")
@@ -90,7 +110,7 @@ export default async function handler(req, res) {
           .maybeSingle();
 
         if (existing) {
-          continue; // Already sent
+          continue;
         }
 
         // Fetch all subscribers
@@ -108,18 +128,13 @@ export default async function handler(req, res) {
           url: `/match/${match.match_id}`,
         });
 
-        // Send to all subscribers
         for (const sub of subs) {
           try {
             await webpush.sendNotification(
-              {
-                endpoint: sub.endpoint,
-                keys: { p256dh: sub.p256dh, auth: sub.auth },
-              },
+              { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
               payload
             );
           } catch (pushErr) {
-            // 410 Gone — subscription expired, remove it
             if (pushErr.statusCode === 410 || pushErr.statusCode === 404) {
               await sb.from("push_subscriptions").delete().eq("id", sub.id);
             } else {
@@ -132,7 +147,6 @@ export default async function handler(req, res) {
           }
         }
 
-        // Log that we sent this reminder
         await sb
           .from("notification_log")
           .insert({ match_id: match.match_id, reminder_type: w.type });

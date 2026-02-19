@@ -4,6 +4,7 @@ import { apiGetMatches, apiGetEvents, apiGetLongTermConfig } from "../api";
 import { useAuth } from "../auth/AuthProvider";
 import Spinner, { SkeletonCard } from "../components/Spinner";
 import LongTermBetsBanner from "../components/LongTermBetsBanner";
+import NotificationPrompt from "../components/NotificationPrompt";
 import { formatDateRange, formatMatchDate, formatMatchTime, isToday, getRelativeDayLabel } from "../utils/date";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
 
@@ -204,6 +205,7 @@ export default function Play() {
       </div>
 
       <LongTermBetsBanner />
+      <NotificationPrompt />
 
       {/* How to Play */}
       <div className="card mb-6 bg-gradient-to-br from-brand-950/50 to-gray-900 border-brand-800/40 animate-slide-up">
