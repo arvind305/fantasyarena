@@ -89,20 +89,20 @@ export default function Play() {
 
   // Fetch user's placed bets (just match IDs)
   useEffect(() => {
-    if (!user?.id || !supabase || !isSupabaseConfigured()) {
+    if (!user?.userId || !supabase || !isSupabaseConfigured()) {
       setUserBetMatchIds(new Set());
       return;
     }
     supabase
       .from("bets")
       .select("match_id")
-      .eq("user_id", user.id)
+      .eq("user_id", user.userId)
       .then(({ data }) => {
         if (data) {
           setUserBetMatchIds(new Set(data.map((r) => r.match_id)));
         }
       });
-  }, [user?.id]);
+  }, [user?.userId]);
 
   // Derive effective UI status from DB status + lock_time + estimated end:
   //   - lock_time passed + within 4.5 hours → LIVE
