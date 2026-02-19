@@ -20,7 +20,7 @@ const MORE_LINKS = [
   { to: "/stats", label: "Stats", icon: "📊", desc: "Detailed breakdowns & history" },
   { to: "/rules", label: "Rules", icon: "📖", desc: "How the game works" },
   { to: "/faq", label: "FAQ", icon: "❓", desc: "Common questions" },
-  { to: "/about", label: "About", icon: "ℹ️", desc: "About Fantasy Arena" },
+  { to: "/about", label: "About", icon: "ℹ️", desc: "About Super Selector" },
 ];
 
 export default function Profile() {

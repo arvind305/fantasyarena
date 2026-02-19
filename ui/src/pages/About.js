@@ -8,7 +8,7 @@ export default function About() {
       </div>
       <div className="card">
         <p className="text-gray-400 text-sm mb-4">
-          Fantasy Arena is a cricket prediction platform where you can test your cricket knowledge
+          Super Selector is a cricket prediction platform where you can test your cricket knowledge
           by making predictions on upcoming matches and tournament outcomes.
         </p>
         <p className="text-gray-400 text-sm mb-4">

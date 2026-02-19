@@ -108,7 +108,7 @@ export default function NotificationBell() {
                 <ol className="text-xs text-gray-400 list-decimal list-inside space-y-1">
                   <li>Tap the <span className="text-gray-200 font-medium">Share</span> button (bottom bar)</li>
                   <li>Scroll down and tap <span className="text-gray-200 font-medium">Add to Home Screen</span></li>
-                  <li>Open Fantasy Arena from your home screen</li>
+                  <li>Open Super Selector from your home screen</li>
                   <li>Come back here to enable notifications</li>
                 </ol>
               </div>

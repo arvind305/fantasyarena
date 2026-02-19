@@ -78,7 +78,7 @@ export default function Navbar() {
         <NavLink to="/" className="flex items-center gap-2 group shrink-0">
           <span className="text-2xl">{"\u26A1"}</span>
           <span className="text-lg font-bold bg-gradient-to-r from-brand-400 to-brand-200 bg-clip-text text-transparent">
-            Fantasy Arena
+            Super Selector
           </span>
         </NavLink>
 

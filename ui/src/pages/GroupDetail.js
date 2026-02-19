@@ -63,7 +63,7 @@ export default function GroupDetail() {
   if (!group) return <div className="max-w-3xl mx-auto px-4 py-10 card text-center"><p className="text-gray-400">Group not found</p></div>;
 
   const code = group.joinCode || group.code || "";
-  const inviteMessage = `Join my group "${group.name}" on Fantasy Arena!\n\nGroup Code: ${code}\n\nOpen the app and enter this code to join:`;
+  const inviteMessage = `Join my group "${group.name}" on Super Selector!\n\nGroup Code: ${code}\n\nOpen the app and enter this code to join:`;
   const inviteUrl = `${window.location.origin}/groups?join=${code}`;
   const fullInvite = `${inviteMessage}\n${inviteUrl}`;
 

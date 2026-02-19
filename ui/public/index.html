@@ -8,7 +8,14 @@
   <link rel="apple-touch-icon" href="/images/icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Fantasy Sports Game</title>
+  <title>Super Selector</title>
+
+  <!-- Redirect old Vercel domain to custom domain -->
+  <script>
+    if (window.location.hostname === 'fantasyarena-two.vercel.app') {
+      window.location.replace('https://www.superselector.in' + window.location.pathname + window.location.search + window.location.hash);
+    }
+  </script>
 
   <!-- Google Identity Services (OAuth) -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>

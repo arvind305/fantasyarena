@@ -41,7 +41,7 @@ startPolling();
 
 // CRITICAL: Log configuration status for debugging
 console.log("========================================");
-console.log("[CONFIG] Fantasy Arena Startup Check");
+console.log("[CONFIG] Super Selector Startup Check");
 console.log("========================================");
 console.log("[CONFIG] Engine mode:", ENGINE_MODE);
 console.log("[CONFIG] Supabase configured:", isSupabaseConfigured() ? "YES" : "NO - BETS WILL BE LOST!");
@@ -111,7 +111,7 @@ function App() {
               </Routes>
             </main>
             <footer className="border-t border-gray-800 py-6 text-center text-xs text-gray-600">
-              Fantasy Arena — Built for friends, played with passion.
+              Super Selector — Built for friends, played with passion.
             </footer>
           </div>
         </ToastProvider>

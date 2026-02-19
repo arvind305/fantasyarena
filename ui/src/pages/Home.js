@@ -21,6 +21,7 @@ export default function Home() {
   const [matches, setMatches] = useState([]);
   const [event, setEvent] = useState(null);
   const [lockTimes, setLockTimes] = useState({});
+  const [userBetMatchIds, setUserBetMatchIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -47,6 +48,23 @@ export default function Home() {
         });
     }
   }, []);
+
+  // Fetch user's placed bets (just match IDs)
+  useEffect(() => {
+    if (!user?.userId || !supabase || !isSupabaseConfigured()) {
+      setUserBetMatchIds(new Set());
+      return;
+    }
+    supabase
+      .from("bets")
+      .select("match_id")
+      .eq("user_id", user.userId)
+      .then(({ data }) => {
+        if (data) {
+          setUserBetMatchIds(new Set(data.map((r) => r.match_id)));
+        }
+      });
+  }, [user?.userId]);
 
   // Derive effective status: lock_time passed + within 4.5hrs → LIVE, past 4.5hrs → COMPLETED
   const effectiveMatches = useMemo(() => {
@@ -83,7 +101,7 @@ export default function Home() {
       <div className="text-center mb-12 animate-fade-in">
         <h1 className="text-4xl sm:text-5xl font-extrabold mb-3">
           <span className="bg-gradient-to-r from-brand-300 via-brand-400 to-emerald-400 bg-clip-text text-transparent">
-            Fantasy Arena
+            Super Selector
           </span>
         </h1>
         <p className="text-gray-400 text-lg max-w-md mx-auto">
@@ -140,7 +158,7 @@ export default function Home() {
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {upcomingMatches.map((m, i) => (
-              <MatchCard key={m.matchId} match={m} delay={i * 60} />
+              <MatchCard key={m.matchId} match={m} delay={i * 60} userHasBet={userBetMatchIds.has(m.matchId)} />
             ))}
           </div>
           <p className="text-gray-500 text-xs mt-4 text-center">
@@ -182,7 +200,7 @@ export default function Home() {
   );
 }
 
-function MatchCard({ match: m, delay = 0 }) {
+function MatchCard({ match: m, delay = 0, userHasBet = false }) {
   const navigate = useNavigate();
   const statusLabel = m.status.charAt(0) + m.status.slice(1).toLowerCase();
   const isLive = m.status === "LIVE";
@@ -192,7 +210,9 @@ function MatchCard({ match: m, delay = 0 }) {
   return (
     <div
       onClick={() => navigate(`/match/${m.matchId}`)}
-      className="card hover:border-brand-600 hover:shadow-lg hover:shadow-brand-900/20 transition-all duration-300 cursor-pointer group animate-slide-up"
+      className={`card hover:border-brand-600 hover:shadow-lg hover:shadow-brand-900/20 transition-all duration-300 cursor-pointer group animate-slide-up ${
+        userHasBet ? "border-l-2 border-l-emerald-600" : ""
+      }`}
       style={{ animationDelay: `${delay}ms` }}
     >
       <div className="flex items-center justify-between mb-3">
@@ -201,12 +221,22 @@ function MatchCard({ match: m, delay = 0 }) {
           <span className="text-gray-600 text-xs">vs</span>
           <span className="font-bold text-gray-200 group-hover:text-white transition-colors">{m.teamB}</span>
         </div>
-        <span className={`text-xs px-2.5 py-1 rounded-full border ${STATUS_BADGE[m.status] || ""}`}>
-          {isLive && (
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mr-1.5 align-middle" />
+        <div className="flex items-center gap-2">
+          {userHasBet && (isUpcoming || isLive) && (
+            <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-emerald-900/30 text-emerald-400 border border-emerald-800/50">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+              </svg>
+              Bet placed
+            </span>
           )}
-          {statusLabel}
-        </span>
+          <span className={`text-xs px-2.5 py-1 rounded-full border ${STATUS_BADGE[m.status] || ""}`}>
+            {isLive && (
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mr-1.5 align-middle" />
+            )}
+            {statusLabel}
+          </span>
+        </div>
       </div>
       <div className="text-xs text-gray-500">
         <div>{m.venue}</div>
@@ -216,8 +246,12 @@ function MatchCard({ match: m, delay = 0 }) {
       </div>
       {m.result && <div className="text-xs text-emerald-400 mt-2">{m.result}</div>}
       {(isUpcoming || isLive) && !m.result && (
-        <button className="w-full mt-3 py-2 px-3 rounded-lg bg-brand-600/20 border border-brand-700/50 text-brand-300 text-sm font-medium group-hover:bg-brand-600/30 group-hover:border-brand-600 transition-all">
-          Place Bets →
+        <button className={`w-full mt-3 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+          userHasBet
+            ? "bg-emerald-900/20 border border-emerald-800/50 text-emerald-400 group-hover:bg-emerald-900/30 group-hover:border-emerald-700"
+            : "bg-brand-600/20 border border-brand-700/50 text-brand-300 group-hover:bg-brand-600/30 group-hover:border-brand-600"
+        }`}>
+          {userHasBet ? "Update Bets →" : "Place Bets →"}
         </button>
       )}
     </div>

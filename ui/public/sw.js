@@ -1,8 +1,8 @@
-// Fantasy Arena — Push Notification Service Worker
+// Super Selector — Push Notification Service Worker
 // No caching logic — purely push handling
 
 self.addEventListener('push', function(event) {
-  let data = { title: 'Fantasy Arena', body: 'You have a new notification!', url: '/play' };
+  let data = { title: 'Super Selector', body: 'You have a new notification!', url: '/play' };
 
   try {
     if (event.data) {
@@ -21,7 +21,7 @@ self.addEventListener('push', function(event) {
   };
 
   event.waitUntil(
-    self.registration.showNotification(data.title || 'Fantasy Arena', options)
+    self.registration.showNotification(data.title || 'Super Selector', options)
   );
 });
 
