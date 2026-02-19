@@ -1,0 +1,37 @@
+{
+  "matchId": "wc_mXX",
+  "winner": "teamA",
+  "totalRuns": 0,
+  "manOfMatch": "Player Name",
+  "sideBetAnswer": "option_value",
+  "innings": [
+    {
+      "batting": [
+        { "name": "Batter 1", "runs": 0, "balls": 0, "fours": 0, "sixes": 0 },
+        { "name": "Batter 2", "runs": 0, "balls": 0, "fours": 0, "sixes": 0 }
+      ],
+      "bowling": [
+        { "name": "Bowler 1", "overs": 4, "runs": 0, "wickets": 0 },
+        { "name": "Bowler 2", "overs": 3.3, "runs": 0, "wickets": 0 }
+      ],
+      "fielding": {
+        "catches": { "Fielder Name": 1 },
+        "stumpings": {},
+        "runOuts": {}
+      }
+    },
+    {
+      "batting": [
+        { "name": "Batter A", "runs": 0, "balls": 0, "fours": 0, "sixes": 0 }
+      ],
+      "bowling": [
+        { "name": "Bowler A", "overs": 4, "runs": 0, "wickets": 0 }
+      ],
+      "fielding": {
+        "catches": {},
+        "stumpings": {},
+        "runOuts": {}
+      }
+    }
+  ]
+}
