@@ -25,7 +25,7 @@ export default function Rules() {
         <div className="mb-6">
           <h3 className="text-md font-semibold text-blue-400 mb-2">Match Winner</h3>
           <p className="text-gray-400 text-sm mb-2">
-            Predict the winning team. Full points if correct, 0 if wrong.
+            Predict the winning team. Points vary by stage — see below.
           </p>
         </div>
 
@@ -91,6 +91,62 @@ export default function Rules() {
             </ul>
           </div>
         </div>
+      </div>
+
+      {/* Super 8 Scoring Changes */}
+      <div className="card mb-6">
+        <h2 className="text-lg font-bold text-gray-200 mb-4">
+          Super 8 Scoring
+          <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-amber-600/30 text-amber-400 border border-amber-700/50">NEW</span>
+        </h2>
+        <p className="text-gray-400 text-sm mb-4">
+          From the Super 8 stage onwards, scoring is significantly boosted with higher stakes.
+        </p>
+
+        <div className="bg-gray-800/50 rounded-lg p-4 mb-4">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-gray-500 border-b border-gray-700">
+                  <th className="pb-2">Category</th>
+                  <th className="pb-2 text-right">Group Stage</th>
+                  <th className="pb-2 text-right">Super 8+</th>
+                </tr>
+              </thead>
+              <tbody className="text-gray-300">
+                <tr className="border-b border-gray-800">
+                  <td className="py-2">Winner (correct)</td>
+                  <td className="py-2 text-right text-gray-500">+1,000</td>
+                  <td className="py-2 text-right text-emerald-400 font-bold">+5,000</td>
+                </tr>
+                <tr className="border-b border-gray-800">
+                  <td className="py-2">Winner (wrong)</td>
+                  <td className="py-2 text-right text-gray-500">0</td>
+                  <td className="py-2 text-right text-red-400 font-bold">-1,000</td>
+                </tr>
+                <tr className="border-b border-gray-800">
+                  <td className="py-2">Total Runs base</td>
+                  <td className="py-2 text-right text-gray-500">1,000</td>
+                  <td className="py-2 text-right text-emerald-400 font-bold">2,000</td>
+                </tr>
+                <tr className="border-b border-gray-800">
+                  <td className="py-2">Player Picks</td>
+                  <td className="py-2 text-right text-gray-500">3 slots (3x, 2x, 1x)</td>
+                  <td className="py-2 text-right text-emerald-400 font-bold">4 slots (15x, 10x, 7x, 3x)</td>
+                </tr>
+                <tr>
+                  <td className="py-2">Side Bets</td>
+                  <td className="py-2 text-right text-gray-500">1 per match</td>
+                  <td className="py-2 text-right text-emerald-400 font-bold">2 per match (+5,000 / -5,000)</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <p className="text-xs text-gray-500">
+          All scoring values are configured per match and loaded from the database. Check each match's betting page for exact point values.
+        </p>
       </div>
 
       {/* General Rules */}

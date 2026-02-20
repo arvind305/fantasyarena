@@ -335,6 +335,7 @@ export async function apiGetMatchConfig(matchId) {
         matchId: configRes.data.match_id,
         eventId: configRes.data.event_id,
         winnerBasePoints: configRes.data.winner_base_points,
+        winnerWrongPoints: configRes.data.winner_wrong_points || 0,
         superOverMultiplier: parseFloat(configRes.data.super_over_multiplier),
         totalRunsBasePoints: configRes.data.total_runs_base_points,
         playerSlotsEnabled: configRes.data.player_slots_enabled,
@@ -1117,7 +1118,7 @@ export async function apiGetUserMatchBet(matchId, userId) {
   // Check match status
   const { data: cfg } = await supabase
     .from('match_config')
-    .select('status, team_a, team_b, winner_base_points, total_runs_base_points')
+    .select('status, team_a, team_b, winner_base_points, winner_wrong_points, total_runs_base_points')
     .eq('match_id', matchId)
     .maybeSingle();
 

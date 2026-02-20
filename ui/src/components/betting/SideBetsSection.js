@@ -8,7 +8,8 @@ import SideBetQuestion from "./SideBetQuestion";
 export default function SideBetsSection({ sideBets, sideBetAnswers, setSideBetAnswer, disabled }) {
   if (!sideBets || sideBets.length === 0) return null;
 
-  const openBets = sideBets.filter(sb => sb.status === "OPEN");
+  // Show only OPEN side bets with 3+ options (hides binary yes/no bets)
+  const openBets = sideBets.filter(sb => sb.status === "OPEN" && (sb.options || []).length > 2);
   if (openBets.length === 0) return null;
 
   // Calculate potential win/loss

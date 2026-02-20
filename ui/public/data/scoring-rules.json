@@ -1,11 +1,26 @@
 {
-  "version": "1.1",
-  "lastUpdated": "2026-02-08",
+  "version": "2.0",
+  "lastUpdated": "2026-02-20",
+  "stages": {
+    "groupStage": {
+      "label": "Group Stage (M1-M40)",
+      "winner": { "correct": 1000, "wrong": 0 },
+      "totalRunsBase": 1000,
+      "playerSlots": [3, 2, 1],
+      "sideBets": { "count": 1, "correct": 1000, "wrong": -1000 }
+    },
+    "super8": {
+      "label": "Super 8+ (M41-M55)",
+      "winner": { "correct": 5000, "wrong": -1000 },
+      "totalRunsBase": 2000,
+      "playerSlots": [15, 10, 7, 3],
+      "sideBets": { "count": 2, "correct": 5000, "wrong": -5000 }
+    }
+  },
   "rules": {
     "WINNER": {
       "description": "Predict the winning team",
-      "scoring": "Full points if correct, 0 if wrong",
-      "example": "If question is worth 1000 points, you get 1000 for correct prediction, 0 for wrong"
+      "scoring": "Points if correct, penalty if wrong (Super 8+)"
     },
     "TOTAL_RUNS": {
       "description": "Predict the total combined runs scored by both teams",
@@ -17,28 +32,14 @@
         { "difference": "Off by 6-10", "multiplier": "0.25x", "description": "Quarter points (25%)" },
         { "difference": "Off by 11-15", "multiplier": "0.1x", "description": "10% of points" },
         { "difference": "Off by 16+", "multiplier": "0x", "description": "No points" }
-      ],
-      "example": {
-        "basePoints": 1000,
-        "actualTotal": 295,
-        "predictions": [
-          { "predicted": 295, "points": 5000, "note": "Exact match = 5x bonus" },
-          { "predicted": 294, "points": 1000, "note": "Off by 1 = base points" },
-          { "predicted": 296, "points": 1000, "note": "Off by 1 = base points" },
-          { "predicted": 292, "points": 500, "note": "Off by 3 = 50%" },
-          { "predicted": 300, "points": 500, "note": "Off by 5 = 50%" },
-          { "predicted": 288, "points": 250, "note": "Off by 7 = 25%" },
-          { "predicted": 305, "points": 250, "note": "Off by 10 = 25%" },
-          { "predicted": 283, "points": 100, "note": "Off by 12 = 10%" },
-          { "predicted": 280, "points": 100, "note": "Off by 15 = 10%" },
-          { "predicted": 275, "points": 0, "note": "Off by 20 = 0 points" }
-        ]
-      }
+      ]
     }
   },
   "notes": [
-    "Scoring rules may be updated by admins for future matches",
-    "Points are calculated automatically when match results are entered",
-    "Leaderboard updates in real-time after scoring"
+    "Scoring values increase significantly from Super 8 onwards",
+    "Wrong winner picks carry a -1000 penalty in Super 8+",
+    "Side bets in Super 8+ are high-stakes: +5000/-5000 per question",
+    "All point values are configured per match and loaded from the database",
+    "Leaderboard updates after each match is scored"
   ]
 }

@@ -9,6 +9,7 @@ export default function MatchWinnerBet({ config, match, winner, setWinner, disab
   const teamA = config?.teamA || match?.teamA?.shortName || "Team A";
   const teamB = config?.teamB || match?.teamB?.shortName || "Team B";
   const basePoints = config?.winnerBasePoints || 0;
+  const wrongPoints = config?.winnerWrongPoints || 0;
   const superOverMultiplier = config?.superOverMultiplier || 5;
 
   const options = [
@@ -35,6 +36,11 @@ export default function MatchWinnerBet({ config, match, winner, setWinner, disab
           <span className="px-2.5 py-1 rounded-lg bg-gray-800/80 border border-gray-700 text-xs font-semibold text-emerald-400">
             +{basePoints} pts
           </span>
+          {wrongPoints < 0 && (
+            <span className="px-2.5 py-1 rounded-lg bg-gray-800/80 border border-red-900/50 text-xs font-semibold text-red-400">
+              {wrongPoints} pts
+            </span>
+          )}
         </div>
       </div>
 
@@ -42,6 +48,12 @@ export default function MatchWinnerBet({ config, match, winner, setWinner, disab
       <div className="mb-4 p-3 rounded-lg bg-gray-800/50 border border-gray-700/50">
         <p className="text-xs text-gray-400">
           <span className="text-emerald-400 font-medium">Correct:</span> +{basePoints} pts
+          {wrongPoints < 0 && (
+            <>
+              <span className="mx-2 text-gray-600">|</span>
+              <span className="text-red-400 font-medium">Wrong:</span> {wrongPoints} pts
+            </>
+          )}
           <span className="mx-2 text-gray-600">|</span>
           <span className="text-amber-400 font-medium">Super Over correct:</span> +{Math.round(basePoints * superOverMultiplier)} pts ({superOverMultiplier}x)
         </p>
