@@ -17,7 +17,7 @@ export default function BetSummary({
   if (!config) return null;
 
   const enabledSlots = (slots || []).filter(s => s.isEnabled);
-  const openSideBets = (sideBets || []).filter(sb => sb.status === "OPEN");
+  const openSideBets = (sideBets || []).filter(sb => sb.status === "OPEN" && (sb.options || []).length > 2);
 
   // Count completion
   const sections = [];
@@ -74,9 +74,12 @@ export default function BetSummary({
 
   // Calculate potential points
   const winnerPoints = config.winnerBasePoints || 0;
+  const winnerRisk = config.winnerWrongPoints || 0;
   const maxRunsPoints = (config.totalRunsBasePoints || 0) * 5;
+  const playerPicksMultiplierSum = enabledSlots.reduce((sum, s) => sum + s.multiplier, 0);
   const sideBetMax = openSideBets.reduce((sum, sb) => sum + sb.pointsCorrect, 0);
   const sideBetMin = openSideBets.reduce((sum, sb) => sum + (sb.pointsWrong || 0), 0);
+  const totalRisk = (winnerRisk < 0 ? winnerRisk : 0) + (sideBetMin < 0 ? sideBetMin : 0);
 
   return (
     <div className="card bg-gray-900/70 border-gray-700">
@@ -104,7 +107,7 @@ export default function BetSummary({
       </div>
 
       {/* Point projections */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
         <div className="text-center p-2 rounded-lg bg-gray-800/50">
           <div className="text-lg font-bold text-emerald-400">+{winnerPoints}</div>
           <div className="text-xs text-gray-500">Winner</div>
@@ -113,14 +116,22 @@ export default function BetSummary({
           <div className="text-lg font-bold text-blue-400">+{maxRunsPoints}</div>
           <div className="text-xs text-gray-500">Runs (max)</div>
         </div>
-        <div className="text-center p-2 rounded-lg bg-gray-800/50">
-          <div className="text-lg font-bold text-purple-400">+{sideBetMax}</div>
-          <div className="text-xs text-gray-500">Side Bets</div>
-        </div>
-        {sideBetMin < 0 && (
+        {enabledSlots.length > 0 && (
+          <div className="text-center p-2 rounded-lg bg-gray-800/50">
+            <div className="text-lg font-bold text-cyan-400">{playerPicksMultiplierSum}x</div>
+            <div className="text-xs text-gray-500">Player Picks</div>
+          </div>
+        )}
+        {sideBetMax > 0 && (
+          <div className="text-center p-2 rounded-lg bg-gray-800/50">
+            <div className="text-lg font-bold text-purple-400">+{sideBetMax}</div>
+            <div className="text-xs text-gray-500">Side Bets</div>
+          </div>
+        )}
+        {totalRisk < 0 && (
           <div className="text-center p-2 rounded-lg bg-red-950/30 border border-red-900/30">
-            <div className="text-lg font-bold text-red-400">{sideBetMin}</div>
-            <div className="text-xs text-red-600">Risk</div>
+            <div className="text-lg font-bold text-red-400">{totalRisk}</div>
+            <div className="text-xs text-red-600">Max Risk</div>
           </div>
         )}
       </div>

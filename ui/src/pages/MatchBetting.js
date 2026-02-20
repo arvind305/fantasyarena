@@ -460,15 +460,12 @@ function V2BettingForm({ config, slots, sideBets, match, bet, user, isEditable, 
         <div className="mt-8 text-center">
           <button
             onClick={handleSubmit}
-            disabled={submitting || !bet.isComplete}
+            disabled={submitting}
             className="btn-primary text-lg px-10 py-4 w-full sm:w-auto sm:min-w-[200px]"
           >
             {submitting ? <Spinner size="sm" className="text-white inline mr-2" /> : null}
             {existing ? "Update Predictions" : "Submit Predictions"}
           </button>
-          {!bet.isComplete && (
-            <p className="text-xs text-gray-500 mt-2">Complete all required fields to submit</p>
-          )}
         </div>
       )}
     </>

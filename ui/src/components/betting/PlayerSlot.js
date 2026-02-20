@@ -54,8 +54,8 @@ export default function PlayerSlot({
 
   // Multiplier color based on value
   const multiplierColor =
-    slot.multiplier >= 80 ? "from-amber-500 to-orange-500" :
-    slot.multiplier >= 50 ? "from-blue-500 to-cyan-500" :
+    slot.multiplier >= 12 ? "from-amber-500 to-orange-500" :
+    slot.multiplier >= 7 ? "from-blue-500 to-cyan-500" :
     "from-green-500 to-emerald-500";
 
   return (

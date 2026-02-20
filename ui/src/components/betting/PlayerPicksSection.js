@@ -22,9 +22,6 @@ export default function PlayerPicksSection({
 
   if (enabledSlots.length === 0) return null;
 
-  // Calculate max potential points
-  const maxPoints = enabledSlots.reduce((sum, s) => sum + Math.round(s.multiplier * 200), 0); // rough max per player
-
   return (
     <div className="animate-slide-up" style={{ animationDelay: "80ms" }}>
       <div className="flex items-center gap-3 mb-4 pb-3 border-b border-cyan-800/50">

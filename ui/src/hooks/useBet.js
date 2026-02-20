@@ -110,29 +110,17 @@ export function useBet(config, slots, sideBets) {
     };
   }, [config, winner, totalRuns, playerPicks, sideBetAnswers, runnerPicks]);
 
-  // Validation
+  // Validation — only checks data integrity, not completeness (partial bets are allowed)
   const validate = useCallback(() => {
     const errors = [];
 
-    if (!winner) {
-      errors.push("Please predict the match winner");
-    }
-    if (!totalRuns || totalRuns.trim() === "") {
-      errors.push("Please predict the total runs");
-    } else if (!/^\d+$/.test(totalRuns.trim())) {
+    if (totalRuns && totalRuns.trim() !== "" && !/^\d+$/.test(totalRuns.trim())) {
       errors.push("Total runs must be a valid number");
     }
 
-    // Validate player picks if enabled
+    // Check for duplicate players (data integrity)
     if (config?.playerSlotsEnabled && slots && slots.length > 0) {
-      const enabledSlots = slots.filter(s => s.isEnabled);
       const filledSlots = playerPicks.filter(p => p.player_id);
-
-      if (filledSlots.length < enabledSlots.length) {
-        errors.push(`Please fill all ${enabledSlots.length} player pick slot(s)`);
-      }
-
-      // Check for duplicate players
       const playerIds = filledSlots.map(p => p.player_id);
       const unique = new Set(playerIds);
       if (unique.size < playerIds.length) {
@@ -140,21 +128,8 @@ export function useBet(config, slots, sideBets) {
       }
     }
 
-    // Validate side bets (all required)
-    if (sideBets && sideBets.length > 0) {
-      const openSideBets = sideBets.filter(sb => sb.status === "OPEN");
-      for (const sb of openSideBets) {
-        if (!sideBetAnswers[sb.sideBetId]) {
-          errors.push(`Please answer side bet: ${sb.questionText}`);
-        }
-      }
-    }
-
     return errors;
-  }, [winner, totalRuns, config, slots, playerPicks, sideBets, sideBetAnswers]);
-
-  // Check if form is complete (no validation errors)
-  const isComplete = useMemo(() => validate().length === 0, [validate]);
+  }, [totalRuns, config, slots, playerPicks]);
 
   // Get all selected player IDs (for duplicate prevention)
   const selectedPlayerIds = useMemo(() =>
@@ -181,7 +156,6 @@ export function useBet(config, slots, sideBets) {
     // Computed
     betData,
     validate,
-    isComplete,
     selectedPlayerIds,
 
     // Initialization
