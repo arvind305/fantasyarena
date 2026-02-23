@@ -1,21 +1,22 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Navigate, Link } from "react-router-dom";
 import { useAuth } from "../../auth/AuthProvider";
-import { getAdminEmail } from "../../config";
+import { useIsAdmin } from "../../hooks/useIsAdmin";
 import { useToast } from "../../components/Toast";
 import Spinner from "../../components/Spinner";
 import AdminNav from "../../components/admin/AdminNav";
 import { useMatchConfig } from "../../hooks/useMatchConfig";
 import { useAdmin } from "../../hooks/useAdmin";
-import { apiGetMatchResults, apiGetBettingQuestions } from "../../api";
+import { apiGetMatchResults } from "../../api";
+import PlayerStatsEntry from "../../components/admin/PlayerStatsEntry";
 import { supabase, isSupabaseConfigured } from "../../lib/supabase";
+import { CURRENT_TOURNAMENT } from "../../config/tournament";
 
 export default function ScoreMatch() {
   const { matchId } = useParams();
   const { user } = useAuth();
   const toast = useToast();
-  const adminEmail = getAdminEmail();
-  const isAdmin = user && adminEmail && user.email?.trim().toLowerCase() === adminEmail;
+  const isAdmin = useIsAdmin();
 
   const { config, sideBets, loading: configLoading } = useMatchConfig(matchId);
   const admin = useAdmin();
@@ -31,57 +32,20 @@ export default function ScoreMatch() {
   const [manOfMatch, setManOfMatch] = useState("");
   const [scored, setScored] = useState(false);
   const [scoreResult, setScoreResult] = useState(null);
-  const [winnerOptions, setWinnerOptions] = useState([]);
   const [superOverTeam, setSuperOverTeam] = useState("");
 
   // Player stats status
   const [playerStatsCount, setPlayerStatsCount] = useState(0);
-  const [playerStatsLoading, setPlayerStatsLoading] = useState(true);
   const [betCount, setBetCount] = useState(0);
 
   useEffect(() => {
     Promise.all([
-      fetch("/data/t20wc_2026.json").then((r) => r.json()),
+      fetch(CURRENT_TOURNAMENT.dataFile).then((r) => r.json()),
       apiGetMatchResults(matchId),
-      apiGetBettingQuestions(matchId),
     ])
-      .then(([tournament, results, questions]) => {
+      .then(([tournament, results]) => {
         const m = (tournament.matches || []).find((m) => String(m.match_id) === matchId);
         setMatch(m);
-
-        // Build winner options from the WINNER question's options
-        const winnerQ = (questions || []).find(q => q.kind === "WINNER");
-        if (winnerQ && winnerQ.options && winnerQ.options.length > 0) {
-          const opts = winnerQ.options.map(opt => ({
-            value: opt.optionId,
-            label: opt.label || opt.optionId,
-          }));
-          // Add Super Over if not already present (check both "super_over" and "superover")
-          const hasSuperOver = opts.some(o => {
-            const v = o.value.toLowerCase();
-            return v.includes('super_over') || v.includes('superover');
-          });
-          if (!hasSuperOver) {
-            opts.push({
-              value: `opt_${matchId}_winner_super_over`,
-              label: "Super Over",
-            });
-          }
-          setWinnerOptions(opts);
-
-          // When loading existing results, normalize winner to match an option's optionId.
-          // Handle variant: match_results may store "super_over" while options use "superover" or vice versa.
-          if (results && results.winner) {
-            const exactMatch = opts.find(o => o.value === results.winner);
-            if (!exactMatch) {
-              const normalize = (s) => s.toLowerCase().replace(/_/g, '');
-              const fuzzyMatch = opts.find(o => normalize(o.value) === normalize(results.winner));
-              if (fuzzyMatch) {
-                results.winner = fuzzyMatch.value;
-              }
-            }
-          }
-        }
 
         if (results) {
           setExistingResults(results);
@@ -100,7 +64,6 @@ export default function ScoreMatch() {
   // Check player stats and bet counts
   useEffect(() => {
     if (!isSupabaseConfigured() || !supabase) return;
-    setPlayerStatsLoading(true);
     Promise.all([
       supabase.from('player_match_stats').select('stat_id', { count: 'exact', head: true }).eq('match_id', matchId),
       supabase.from('bets').select('bet_id', { count: 'exact', head: true }).eq('match_id', matchId),
@@ -108,20 +71,20 @@ export default function ScoreMatch() {
       .then(([statsRes, betsRes]) => {
         setPlayerStatsCount(statsRes.count || 0);
         setBetCount(betsRes.count || 0);
-      })
-      .finally(() => setPlayerStatsLoading(false));
+      });
   }, [matchId, scored]);
 
   async function handleSaveResults() {
-    if (!winner) return toast.error("Please set the winner");
-    if (!totalRuns) return toast.error("Please set total runs");
-    if (!manOfMatch.trim()) return toast.error("Man of the Match is required");
+    if (!winner) { toast.error("Please set the winner"); return false; }
+    if (!totalRuns) { toast.error("Please set total runs"); return false; }
+    if (!manOfMatch.trim()) { toast.error("Man of the Match is required"); return false; }
 
     // Check side bets are answered
     if (sideBets && sideBets.length > 0) {
       const unanswered = sideBets.filter(sb => !sideBetAnswers[sb.sideBetId]);
       if (unanswered.length > 0) {
-        return toast.error(`Please answer all side bets (${unanswered.length} unanswered)`);
+        toast.error(`Please answer all side bets (${unanswered.length} unanswered)`);
+        return false;
       }
     }
 
@@ -140,8 +103,10 @@ export default function ScoreMatch() {
         completedAt: new Date().toISOString(),
       });
       toast.success("Match results saved!");
+      return true;
     } catch (err) {
       toast.error(err.message);
+      return false;
     }
   }
 
@@ -156,6 +121,18 @@ export default function ScoreMatch() {
 
     if (issues.length > 0) {
       toast.error("Cannot score: " + issues.join(", "));
+      return;
+    }
+
+    // Confirmation dialog
+    if (!window.confirm(
+      `Score match ${matchId}?\n\nThis will calculate points for ${betCount} bets.\nResults will be saved automatically before scoring.`
+    )) return;
+
+    // Auto-save results before scoring to ensure DB has latest data
+    const saveSuccess = await handleSaveResults();
+    if (!saveSuccess) {
+      toast.error("Failed to save results. Fix errors before scoring.");
       return;
     }
 
@@ -177,16 +154,13 @@ export default function ScoreMatch() {
   const teamA = config?.teamA || match?.teams?.[0] || "Team A";
   const teamB = config?.teamB || match?.teams?.[1] || "Team B";
 
-  // Use match_questions options if available, otherwise build fallback options with proper optionIds
-  const resolvedWinnerOptions = winnerOptions.length > 0
-    ? winnerOptions
-    : [
-        { value: `opt_${matchId}_winner_teamA`, label: teamA },
-        { value: `opt_${matchId}_winner_teamB`, label: teamB },
-        { value: `opt_${matchId}_winner_tie`, label: "TIE" },
-        { value: `opt_${matchId}_winner_no_result`, label: "NO RESULT" },
-        { value: `opt_${matchId}_winner_super_over`, label: "Super Over" },
-      ];
+  const resolvedWinnerOptions = [
+    { value: `opt_${matchId}_winner_teamA`, label: teamA },
+    { value: `opt_${matchId}_winner_teamB`, label: teamB },
+    { value: `opt_${matchId}_winner_tie`, label: "TIE" },
+    { value: `opt_${matchId}_winner_no_result`, label: "NO RESULT" },
+    { value: `opt_${matchId}_winner_super_over`, label: "Super Over" },
+  ];
   const winnerLower = winner.toLowerCase();
   const isSuperOverSelected = winnerLower.includes('super_over') || winnerLower.includes('superover');
 
@@ -199,10 +173,17 @@ export default function ScoreMatch() {
       label: "Side Bet Answers",
       ok: !sideBets || sideBets.length === 0 || sideBets.every(sb => sideBetAnswers[sb.sideBetId]),
     },
-    playerStats: { label: `Player Stats (${playerStatsCount} rows)`, ok: playerStatsCount > 0 },
+    playerStats: { label: `Player Stats (${playerStatsCount}/22 rows)`, ok: playerStatsCount > 0 },
+    playerStatsComplete: {
+      label: playerStatsCount > 0 && playerStatsCount < 22
+        ? `Warning: Only ${playerStatsCount}/22 player stats — missing players will score 0`
+        : "Player Stats Complete",
+      ok: playerStatsCount >= 22 || playerStatsCount === 0,
+      isWarning: playerStatsCount > 0 && playerStatsCount < 22,
+    },
     bets: { label: `Bets to Score (${betCount})`, ok: betCount > 0 },
   };
-  const allChecksOk = Object.values(checks).every(c => c.ok);
+  const allChecksOk = Object.values(checks).every(c => c.ok || c.isWarning);
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-10">
@@ -361,41 +342,24 @@ export default function ScoreMatch() {
         </div>
       </div>
 
-      {/* Step 2: Player Stats Status */}
+      {/* Step 2: Player Stats Entry */}
       <div className="card mb-6">
         <h2 className="text-lg font-semibold text-gray-200 mb-4">Step 2: Player Stats</h2>
         <p className="text-sm text-gray-500 mb-4">
-          Player match stats must be entered before scoring. These determine the fantasy points
-          for each player, which are multiplied by slot multipliers for user scores.
+          Enter the scorecard for each player who played. Stats determine fantasy points,
+          which are multiplied by slot multipliers for user scores.
         </p>
 
-        {playerStatsLoading ? (
-          <div className="flex items-center gap-2 text-gray-500 text-sm">
-            <Spinner size="sm" /> Checking player stats...
-          </div>
-        ) : playerStatsCount > 0 ? (
-          <div className="p-3 rounded-lg bg-emerald-950/20 border border-emerald-800/30">
-            <div className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              <span className="text-emerald-400 font-semibold">{playerStatsCount} player stats loaded</span>
-            </div>
-          </div>
-        ) : (
-          <div className="p-3 rounded-lg bg-red-950/20 border border-red-800/30">
-            <div className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
-              <span className="text-red-400 font-semibold">No player stats entered</span>
-            </div>
-            <p className="text-xs text-gray-500 mt-2">
-              Run the scoring script (e.g. <code className="text-gray-400">node scripts/score-m{matchId?.replace('wc_m','')}.js</code>) to
-              insert player stats from the scorecard before calculating scores.
-            </p>
-          </div>
-        )}
+        <PlayerStatsEntry
+          matchId={matchId}
+          teamA={teamA}
+          teamB={teamB}
+          manOfMatch={manOfMatch}
+          onManOfMatchChange={setManOfMatch}
+          onStatsCountChange={setPlayerStatsCount}
+          admin={admin}
+          toast={toast}
+        />
       </div>
 
       {/* Step 3: Pre-Scoring Checklist & Trigger */}
@@ -406,18 +370,22 @@ export default function ScoreMatch() {
         <div className="mb-6 p-4 rounded-lg bg-gray-800/30 border border-gray-700/50">
           <h3 className="text-sm font-semibold text-gray-300 mb-3 uppercase tracking-wider">Pre-Scoring Checklist</h3>
           <div className="space-y-2">
-            {Object.entries(checks).map(([key, { label, ok }]) => (
+            {Object.entries(checks).map(([key, { label, ok, isWarning }]) => (
               <div key={key} className="flex items-center gap-2 text-sm">
                 {ok ? (
                   <svg className="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : isWarning ? (
+                  <svg className="w-4 h-4 text-yellow-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                   </svg>
                 ) : (
                   <svg className="w-4 h-4 text-red-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 )}
-                <span className={ok ? "text-gray-300" : "text-red-400 font-medium"}>{label}</span>
+                <span className={ok ? "text-gray-300" : isWarning ? "text-yellow-400 font-medium" : "text-red-400 font-medium"}>{label}</span>
               </div>
             ))}
           </div>

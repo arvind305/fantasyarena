@@ -7,3 +7,4 @@ node_modules/
 nul
 ui/build/
 .claude/
+.vercel/
