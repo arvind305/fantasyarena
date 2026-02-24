@@ -4,6 +4,7 @@ import { useAuth } from "../auth/AuthProvider";
 import { resolveIdentity } from "../auth/identity";
 import { CURRENT_TOURNAMENT } from "../config/tournament";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
+import { authenticatedPost } from "../lib/apiClient";
 import {
   isPushSupported,
   isIOSSafari,
@@ -243,31 +244,7 @@ export default function Profile() {
     setNameSuccess(false);
 
     try {
-      if (!supabase || !isSupabaseConfigured()) {
-        throw new Error("Database not configured.");
-      }
-
-      // Update users table
-      const { error: usersError } = await supabase
-        .from("users")
-        .update({ display_name: trimmed })
-        .eq("user_id", user.userId);
-
-      if (usersError) {
-        throw new Error(usersError.message);
-      }
-
-      // Update leaderboard table
-      await supabase
-        .from("leaderboard")
-        .update({ display_name: trimmed })
-        .eq("user_id", user.userId);
-
-      // Update group_members table too (for group leaderboards)
-      await supabase
-        .from("group_members")
-        .update({ display_name: trimmed })
-        .eq("user_id", user.userId);
+      await authenticatedPost('/api/save-profile', { displayName: trimmed });
 
       setCurrentDisplayName(trimmed);
       setEditingName(false);

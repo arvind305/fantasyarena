@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { authenticatedPost } from './apiClient';
 
 const VAPID_PUBLIC_KEY = process.env.REACT_APP_VAPID_PUBLIC_KEY;
 
@@ -95,20 +95,8 @@ export async function subscribeToPush(userId) {
   const p256dh = subJson.keys.p256dh;
   const auth = subJson.keys.auth;
 
-  // Save to Supabase
-  if (supabase) {
-    const { error } = await supabase
-      .from('push_subscriptions')
-      .upsert(
-        { user_id: userId, endpoint, p256dh, auth },
-        { onConflict: 'endpoint' }
-      );
-
-    if (error) {
-      console.error('[Push] Error saving subscription:', error.message);
-      throw new Error('Failed to save subscription.');
-    }
-  }
+  // Save via API gateway
+  await authenticatedPost('/api/push-subscribe', { endpoint, p256dh, auth });
 
   return subscription;
 }
@@ -127,13 +115,8 @@ export async function unsubscribeFromPush(userId) {
       // Unsubscribe from browser
       await subscription.unsubscribe();
 
-      // Remove from Supabase
-      if (supabase) {
-        await supabase
-          .from('push_subscriptions')
-          .delete()
-          .eq('endpoint', endpoint);
-      }
+      // Remove via API gateway
+      await authenticatedPost('/api/push-unsubscribe', { endpoint });
     }
   } catch (err) {
     console.error('[Push] Error unsubscribing:', err);

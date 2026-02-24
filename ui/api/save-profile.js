@@ -18,7 +18,9 @@ module.exports = async function handler(req, res) {
   const sb = createServiceClient();
 
   try {
-    const displayName = user.name || `User ${user.userId.substring(0, 8)}`;
+    // If displayName is passed in body, use it (for name-change flow);
+    // otherwise fall back to Google profile name (sign-in flow)
+    const displayName = req.body.displayName || user.name || `User ${user.userId.substring(0, 8)}`;
 
     // Upsert user profile
     const { error: userErr } = await sb
@@ -50,6 +52,12 @@ module.exports = async function handler(req, res) {
     // Always update display name for existing entries
     await sb
       .from('leaderboard')
+      .update({ display_name: displayName })
+      .eq('user_id', user.userId);
+
+    // Update group_members display name too
+    await sb
+      .from('group_members')
       .update({ display_name: displayName })
       .eq('user_id', user.userId);
 
