@@ -72,7 +72,7 @@ export default function Navbar() {
     }`;
 
   return (
-    <nav className="sticky top-0 z-40 bg-gray-950/80 backdrop-blur-lg border-b border-gray-800">
+    <nav className="sticky top-0 z-40 bg-gray-950/95 sm:bg-gray-950/80 sm:backdrop-blur-lg border-b border-gray-800">
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
         <NavLink to="/" className="flex items-center gap-2 group shrink-0">
           <span className="text-2xl">{"\u26A1"}</span>

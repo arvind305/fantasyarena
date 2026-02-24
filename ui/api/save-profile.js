@@ -53,6 +53,7 @@ module.exports = async function handler(req, res) {
     await sb
       .from('leaderboard')
       .update({ display_name: displayName })
+      .eq('event_id', CURRENT_TOURNAMENT.id)
       .eq('user_id', user.userId);
 
     // Update group_members display name too

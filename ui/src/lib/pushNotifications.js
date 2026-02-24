@@ -96,7 +96,7 @@ export async function subscribeToPush(userId) {
   const auth = subJson.keys.auth;
 
   // Save via API gateway
-  await authenticatedPost('/api/push-subscribe', { endpoint, p256dh, auth });
+  await authenticatedPost('/api/push', { action: 'subscribe', endpoint, p256dh, auth });
 
   return subscription;
 }
@@ -116,7 +116,7 @@ export async function unsubscribeFromPush(userId) {
       await subscription.unsubscribe();
 
       // Remove via API gateway
-      await authenticatedPost('/api/push-unsubscribe', { endpoint });
+      await authenticatedPost('/api/push', { action: 'unsubscribe', endpoint });
     }
   } catch (err) {
     console.error('[Push] Error unsubscribing:', err);

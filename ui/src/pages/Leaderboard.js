@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiGetLeaderboard, apiGetMatches } from "../api";
 import { CURRENT_TOURNAMENT } from "../config/tournament";
@@ -98,7 +98,8 @@ export default function Leaderboard() {
     loadLeaderboard();
   }, [activeTab, loadLeaderboard]);
 
-  // Subscribe to realtime leaderboard updates (if Supabase is configured)
+  // Subscribe to realtime leaderboard updates (debounced to avoid hammering during scoring)
+  const realtimeTimerRef = useRef(null);
   useEffect(() => {
     if (!isSupabaseConfigured() || !supabase || activeTab !== "overall") return;
 
@@ -111,14 +112,17 @@ export default function Leaderboard() {
           schema: 'public',
           table: 'leaderboard'
         },
-        (payload) => {
-          // Refresh leaderboard on any change
-          loadLeaderboard();
+        () => {
+          // Debounce: wait 2s after last change before refreshing
+          // (scoring updates every user row in sequence)
+          clearTimeout(realtimeTimerRef.current);
+          realtimeTimerRef.current = setTimeout(() => loadLeaderboard(), 2000);
         }
       )
       .subscribe();
 
     return () => {
+      clearTimeout(realtimeTimerRef.current);
       supabase.removeChannel(channel);
     };
   }, [activeTab, loadLeaderboard]);
@@ -478,6 +482,7 @@ function MatchLeaderboard({ matchId }) {
         const { data: profiles } = await supabase
           .from('leaderboard')
           .select('user_id, display_name')
+          .eq('event_id', CURRENT_TOURNAMENT.id)
           .in('user_id', userIds);
 
         const nameMap = {};
@@ -581,7 +586,7 @@ function MatchLeaderboard({ matchId }) {
 
 function LeaderboardTable({ data, currentUserId }) {
   return (
-    <div className="card p-0 overflow-hidden">
+    <div className="card p-0 overflow-hidden animate-fade-in">
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead className="sticky top-0 z-10 bg-gray-900">
@@ -604,14 +609,13 @@ function LeaderboardTable({ data, currentUserId }) {
               return (
                 <tr
                   key={e.userId}
-                  className={`border-b border-gray-800/50 last:border-0 animate-slide-up ${
+                  className={`border-b border-gray-800/50 last:border-0 ${
                     isCurrentUser
                       ? "bg-blue-900/20 hover:bg-blue-900/30"
                       : rank <= 3
                       ? "bg-gray-800/30"
                       : "hover:bg-gray-800/20"
                   }`}
-                  style={{ animationDelay: `${Math.min(i * 60, 600)}ms` }}
                 >
                   <td className="px-3 sm:px-5 py-3.5">
                     <div className="flex items-center gap-1 sm:gap-2">

@@ -321,6 +321,7 @@ export async function apiSearchUsers(query) {
     const { data, error } = await supabase
       .from('leaderboard')
       .select('user_id, display_name')
+      .eq('event_id', CURRENT_TOURNAMENT.id)
       .ilike('display_name', `%${query}%`)
       .limit(20);
 
@@ -540,13 +541,47 @@ export async function apiGetLeaderboard(scope, scopeId, { page = 1, pageSize = 5
       const from = (page - 1) * pageSize;
       const to = from + pageSize - 1;
 
-      const { data, error, count } = await supabase
+      // Try with all columns first, fall back if optional columns are missing
+      let data, error, count;
+      const baseQuery = () => supabase
         .from('leaderboard')
         .select('user_id, display_name, total_score, matches_played, rank, previous_rank, last_match_score', { count: 'exact' })
-        .order('rank', { ascending: true })
+        .eq('event_id', CURRENT_TOURNAMENT.id)
+        .order('total_score', { ascending: false })
         .range(from, to);
 
-      if (error || !data || data.length === 0) return { data: [], total: count || 0 };
+      const result = await baseQuery();
+      data = result.data;
+      error = result.error;
+      count = result.count;
+
+      // If optional columns don't exist, retry without them
+      if (error && (error.code === '42703' || error.message?.includes('column'))) {
+        console.warn('[api] Retrying leaderboard query without optional columns');
+        const retry = await supabase
+          .from('leaderboard')
+          .select('user_id, display_name, total_score, matches_played, rank', { count: 'exact' })
+          .eq('event_id', CURRENT_TOURNAMENT.id)
+          .order('total_score', { ascending: false })
+          .range(from, to);
+        if (retry.error || !retry.data) return { data: [], total: 0 };
+        return {
+          data: retry.data.map((u, i) => ({
+            userId: u.user_id, displayName: u.display_name,
+            score: u.total_score || 0, totalScore: u.total_score || 0, total_score: u.total_score || 0,
+            rank: u.rank || from + i + 1, previous_rank: null, last_match_score: null,
+            matchesPlayed: u.matches_played || 0, matches_played: u.matches_played || 0
+          })),
+          total: retry.count || 0,
+        };
+      }
+
+      if (error) {
+        console.error('[api] Leaderboard query error:', error.message, error.code);
+        return { data: [], total: 0 };
+      }
+
+      if (!data || data.length === 0) return { data: [], total: count || 0 };
 
       return {
         data: data.map((u, i) => ({
@@ -600,7 +635,7 @@ export async function apiGetGroups(userId) {
     // Pull actual scores from the main leaderboard
     const allUserIds = [...new Set((allMembers || []).map(m => m.user_id))];
     const { data: lbRows } = allUserIds.length > 0
-      ? await supabase.from('leaderboard').select('user_id, total_score').in('user_id', allUserIds)
+      ? await supabase.from('leaderboard').select('user_id, total_score').eq('event_id', CURRENT_TOURNAMENT.id).in('user_id', allUserIds)
       : { data: [] };
     const scoreMap = {};
     (lbRows || []).forEach(r => { scoreMap[r.user_id] = r.total_score || 0; });
@@ -675,6 +710,7 @@ export async function apiGetGroupDetail(groupId) {
   const { data: lbRows } = await supabase
     .from('leaderboard')
     .select('user_id, total_score, matches_played')
+    .eq('event_id', CURRENT_TOURNAMENT.id)
     .in('user_id', memberIds);
   const scoreMap = {};
   (lbRows || []).forEach(r => { scoreMap[r.user_id] = r.total_score || 0; });
@@ -780,7 +816,7 @@ export async function apiGetMatchReport(matchId) {
       .order('total_fantasy_points', { ascending: false }),
     supabase.from('side_bets').select('*').eq('match_id', matchId).order('display_order', { ascending: true }),
     supabase.from('player_slots').select('*').eq('match_id', matchId).order('slot_number', { ascending: true }),
-    supabase.from('leaderboard').select('user_id, display_name'),
+    supabase.from('leaderboard').select('user_id, display_name').eq('event_id', CURRENT_TOURNAMENT.id),
   ]);
 
   if (configRes.error) throw new Error(configRes.error.message);

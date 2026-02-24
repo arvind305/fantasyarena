@@ -61,6 +61,7 @@ export default function Profile() {
       const { data, error } = await supabase
         .from("leaderboard")
         .select("total_score, matches_played, rank, display_name")
+        .eq("event_id", CURRENT_TOURNAMENT.id)
         .eq("user_id", user.userId)
         .maybeSingle();
 
