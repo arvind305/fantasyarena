@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { apiGetSquadPlayers } from "../../api";
 import PlayerDropdown from "./PlayerDropdown";
 
 /**
  * Single player pick slot: team dropdown (Team A/B) -> player dropdown.
  * Shows multiplier from player_slots table.
+ * Uses fetchSquad prop (shared cache) to avoid N+1 queries.
  */
 export default function PlayerSlot({
   slot,
@@ -14,6 +14,7 @@ export default function PlayerSlot({
   onPickPlayer,
   disabled,
   selectedPlayerIds,
+  fetchSquad,
 }) {
   const [selectedTeam, setSelectedTeam] = useState(currentPick?.team || "");
   const [players, setPlayers] = useState([]);
@@ -22,18 +23,18 @@ export default function PlayerSlot({
   const teamA = config?.teamA || match?.teamA?.shortName || "Team A";
   const teamB = config?.teamB || match?.teamB?.shortName || "Team B";
 
-  // Fetch players when team changes
+  // Fetch players when team changes (uses shared cache from parent)
   useEffect(() => {
     if (!selectedTeam) {
       setPlayers([]);
       return;
     }
     setLoadingPlayers(true);
-    apiGetSquadPlayers(selectedTeam)
+    fetchSquad(selectedTeam)
       .then((p) => setPlayers(p))
       .catch(() => setPlayers([]))
       .finally(() => setLoadingPlayers(false));
-  }, [selectedTeam]);
+  }, [selectedTeam, fetchSquad]);
 
   // Restore team from existing pick
   useEffect(() => {

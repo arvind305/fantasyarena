@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { apiGetMatches, apiGetEvents } from "../api";
+import { CURRENT_TOURNAMENT } from "../config/tournament";
 import Spinner from "../components/Spinner";
 
 const STATUS_BADGE = {
@@ -51,7 +52,8 @@ function getDateKey(iso) {
 }
 
 function extractMatchNumber(matchId) {
-  const match = matchId.match(/wc_m(\d+)/);
+  const prefix = CURRENT_TOURNAMENT.matchIdPrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = matchId.match(new RegExp(prefix + '(\\d+)'));
   return match ? parseInt(match[1], 10) : 0;
 }
 

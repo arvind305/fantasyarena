@@ -1,6 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 import webpush from "web-push";
 
+// ESM-compatible tournament config (mirrors _lib/tournament.js)
+const TOURNAMENT_DATA_FILE = "/data/t20wc_2026.json";
+const MATCH_ID_PREFIX = "wc_m";
+
 /**
  * POST /api/send-reminders
  *
@@ -45,7 +49,7 @@ export default async function handler(req, res) {
 
   try {
     // Fetch the match schedule for actual start times
-    const scheduleUrl = `https://${req.headers.host}/data/t20wc_2026.json`;
+    const scheduleUrl = `https://${req.headers.host}${TOURNAMENT_DATA_FILE}`;
     const scheduleRes = await fetch(scheduleUrl);
     if (!scheduleRes.ok) {
       return res.status(500).json({ error: "Failed to fetch schedule JSON" });
@@ -55,7 +59,7 @@ export default async function handler(req, res) {
     // Build a map of match_id -> start time (UTC)
     const startTimeMap = {};
     for (const m of schedule.matches) {
-      const matchId = `wc_m${m.match_id}`;
+      const matchId = `${MATCH_ID_PREFIX}${m.match_id}`;
       // date: "2026-02-18", time_gmt: "05:30" → UTC datetime
       const startUtc = new Date(`${m.date}T${m.time_gmt}:00Z`);
       startTimeMap[matchId] = startUtc;
@@ -128,23 +132,37 @@ export default async function handler(req, res) {
           url: `/match/${match.match_id}`,
         });
 
-        for (const sub of subs) {
-          try {
-            await webpush.sendNotification(
-              { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-              payload
-            );
-          } catch (pushErr) {
-            if (pushErr.statusCode === 410 || pushErr.statusCode === 404) {
-              await sb.from("push_subscriptions").delete().eq("id", sub.id);
-            } else {
-              result.errors.push({
-                match: match.match_id,
-                endpoint: sub.endpoint.slice(-20),
-                error: pushErr.message,
-              });
-            }
-          }
+        // Send in batches of 10 for concurrency control
+        const BATCH_SIZE = 10;
+        const staleIds = [];
+        for (let i = 0; i < subs.length; i += BATCH_SIZE) {
+          const batch = subs.slice(i, i + BATCH_SIZE);
+          const results = await Promise.allSettled(
+            batch.map((sub) =>
+              webpush
+                .sendNotification(
+                  { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+                  payload
+                )
+                .then(() => ({ ok: true, sub }))
+                .catch((pushErr) => {
+                  if (pushErr.statusCode === 410 || pushErr.statusCode === 404) {
+                    staleIds.push(sub.id);
+                  } else {
+                    result.errors.push({
+                      match: match.match_id,
+                      endpoint: sub.endpoint.slice(-20),
+                      error: pushErr.message,
+                    });
+                  }
+                  return { ok: false, sub };
+                })
+            )
+          );
+        }
+        // Clean up stale subscriptions in one batch
+        if (staleIds.length > 0) {
+          await sb.from("push_subscriptions").delete().in("id", staleIds);
         }
 
         await sb

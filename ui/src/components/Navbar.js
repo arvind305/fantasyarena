@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
-import { getAdminEmail } from "../config";
+import { useIsAdmin } from "../hooks/useIsAdmin";
 import NotificationBell from "./NotificationBell";
 
 // Primary navigation (shown on desktop bar + mobile menu top-level)
@@ -42,8 +42,7 @@ export default function Navbar() {
   const adminDropdownRef = useRef(null);
   const location = useLocation();
   const { user, signIn, signOut } = useAuth();
-  const adminEmail = getAdminEmail();
-  const isAdmin = user && adminEmail && user.email?.trim().toLowerCase() === adminEmail;
+  const isAdmin = useIsAdmin();
 
   // Close admin dropdown when clicking outside
   useEffect(() => {

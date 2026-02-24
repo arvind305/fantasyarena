@@ -1,20 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Navigate, Link } from "react-router-dom";
 import { useAuth } from "../../auth/AuthProvider";
-import { getAdminEmail } from "../../config";
+import { useIsAdmin } from "../../hooks/useIsAdmin";
 import { useToast } from "../../components/Toast";
 import Spinner from "../../components/Spinner";
 import AdminNav from "../../components/admin/AdminNav";
 import UserBetCard from "../../components/UserBetCard";
 import { apiGetMatchReport } from "../../api";
 import { TEAM_NAMES, TEAM_CODE_TO_ID } from "../../data/teams";
+import { CURRENT_TOURNAMENT } from "../../config/tournament";
 
 export default function MatchReport() {
   const { matchId } = useParams();
   const { user } = useAuth();
   const toast = useToast();
-  const adminEmail = getAdminEmail();
-  const isAdmin = user && adminEmail && user.email?.trim().toLowerCase() === adminEmail;
+  const isAdmin = useIsAdmin();
 
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState(null);
@@ -23,7 +23,7 @@ export default function MatchReport() {
   useEffect(() => {
     Promise.all([
       apiGetMatchReport(matchId),
-      fetch("/data/t20wc_2026.json").then(r => r.json()),
+      fetch(CURRENT_TOURNAMENT.dataFile).then(r => r.json()),
     ])
       .then(([data, tournament]) => {
         setReport(data);

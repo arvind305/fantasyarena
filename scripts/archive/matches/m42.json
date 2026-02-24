@@ -1,0 +1,73 @@
+{
+  "matchId": "wc_m42",
+  "winner": "teamA",
+  "totalRuns": 241,
+  "manOfMatch": "Will Jacks",
+  "sideBetAnswer": "",
+  "innings": [
+    {
+      "batting": [
+        { "name": "Philip Salt", "runs": 62, "balls": 40, "fours": 6, "sixes": 2 },
+        { "name": "Jos Buttler", "runs": 7, "balls": 14, "fours": 0, "sixes": 0 },
+        { "name": "Jacob Bethell", "runs": 3, "balls": 4, "fours": 0, "sixes": 0 },
+        { "name": "Tom Banton", "runs": 6, "balls": 7, "fours": 0, "sixes": 0 },
+        { "name": "Harry Brook", "runs": 14, "balls": 7, "fours": 1, "sixes": 0 },
+        { "name": "Sam Curran", "runs": 11, "balls": 11, "fours": 0, "sixes": 1 },
+        { "name": "Will Jacks", "runs": 21, "balls": 14, "fours": 4, "sixes": 0 },
+        { "name": "Liam Dawson", "runs": 6, "balls": 11, "fours": 0, "sixes": 0 },
+        { "name": "Jamie Overton", "runs": 10, "balls": 10, "fours": 0, "sixes": 1 },
+        { "name": "Jofra Archer", "runs": 0, "balls": 1, "fours": 0, "sixes": 0 },
+        { "name": "Adil Rashid", "runs": 1, "balls": 1, "fours": 0, "sixes": 0 }
+      ],
+      "bowling": [
+        { "name": "Dilshan Madushanka", "overs": 4, "runs": 25, "wickets": 2 },
+        { "name": "Dunith Wellalage", "overs": 4, "runs": 26, "wickets": 3 },
+        { "name": "Maheesh Theekshana", "overs": 4, "runs": 21, "wickets": 2 },
+        { "name": "Dushan Hemantha", "overs": 4, "runs": 38, "wickets": 0 },
+        { "name": "Dushmantha Chameera", "overs": 4, "runs": 34, "wickets": 1 }
+      ],
+      "fielding": {
+        "catches": {
+          "Jamie Overton": 2,
+          "Tom Banton": 1,
+          "Harry Brook": 1
+        },
+        "stumpings": {},
+        "runOuts": { "Dasun Shanaka": 1 }
+      }
+    },
+    {
+      "batting": [
+        { "name": "Pathum Nissanka", "runs": 9, "balls": 8, "fours": 2, "sixes": 0 },
+        { "name": "Kamil Mishara", "runs": 6, "balls": 11, "fours": 1, "sixes": 0 },
+        { "name": "Kusal Mendis", "runs": 4, "balls": 4, "fours": 1, "sixes": 0 },
+        { "name": "Pavan Rathnayake", "runs": 0, "balls": 1, "fours": 0, "sixes": 0 },
+        { "name": "Dunith Wellalage", "runs": 10, "balls": 10, "fours": 2, "sixes": 0 },
+        { "name": "Kamindu Mendis", "runs": 13, "balls": 11, "fours": 1, "sixes": 1 },
+        { "name": "Dasun Shanaka", "runs": 30, "balls": 24, "fours": 1, "sixes": 2 },
+        { "name": "Dushan Hemantha", "runs": 5, "balls": 8, "fours": 0, "sixes": 0 },
+        { "name": "Dushmantha Chameera", "runs": 6, "balls": 13, "fours": 0, "sixes": 0 },
+        { "name": "Maheesh Theekshana", "runs": 10, "balls": 8, "fours": 1, "sixes": 0 },
+        { "name": "Dilshan Madushanka", "runs": 0, "balls": 2, "fours": 0, "sixes": 0 }
+      ],
+      "bowling": [
+        { "name": "Jofra Archer", "overs": 3, "runs": 20, "wickets": 2 },
+        { "name": "Will Jacks", "overs": 4, "runs": 22, "wickets": 3 },
+        { "name": "Liam Dawson", "overs": 4, "runs": 27, "wickets": 2 },
+        { "name": "Adil Rashid", "overs": 3.4, "runs": 13, "wickets": 2 },
+        { "name": "Jamie Overton", "overs": 2, "runs": 13, "wickets": 1 }
+      ],
+      "fielding": {
+        "catches": {
+          "Dushan Hemantha": 2,
+          "Kamil Mishara": 1,
+          "Dasun Shanaka": 1,
+          "Dunith Wellalage": 1,
+          "Dilshan Madushanka": 1
+        },
+        "stumpings": {},
+        "runOuts": {}
+      }
+    }
+  ]
+}

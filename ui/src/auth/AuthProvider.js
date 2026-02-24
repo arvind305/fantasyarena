@@ -5,20 +5,20 @@
  * No extra npm dependencies required — the GIS script is loaded in index.html.
  *
  * Auth state shape:
- *   { userId, name, email, avatar }
+ *   { userId, name, email, avatar, token }
+ *
+ * The raw Google token (id_token or access_token) is stored alongside
+ * the decoded user info and sent with every write API call.
  *
  * Persisted to localStorage so auth survives refreshes.
  */
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { trackEvent } from "../analytics";
-import { migrateUserBets } from "../lib/betMigration";
-import { saveUserProfile } from "../lib/userProfile";
 
 const AuthContext = createContext(null);
 
-// Changed from "fantasy_arena_auth" to force re-login and trigger bet migration
-const STORAGE_KEY = "fantasy_arena_auth_v2";
+const STORAGE_KEY = "fantasy_arena_auth_v3";
 const CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || "";
 const DEV_MODE = process.env.NODE_ENV === "development" && !CLIENT_ID;
 
@@ -51,21 +51,67 @@ function persistUser(user) {
   }
 }
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(loadPersistedUser);
+/**
+ * Save user profile via server-side API (authenticated).
+ */
+async function saveProfileViaApi(token, avatar) {
+  try {
+    await fetch('/api/save-profile', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ avatar }),
+    });
+  } catch {
+    // Non-critical, don't block auth flow
+  }
+}
 
-  // On initial load, sync user profile and migrate any localStorage bets
-  useEffect(() => {
-    const persistedUser = loadPersistedUser();
-    if (persistedUser?.userId) {
-      // Save/update user profile in Supabase
-      saveUserProfile(persistedUser).catch(() => {});
-      // Migrate any localStorage bets
-      migrateUserBets(persistedUser.userId).catch(() => {});
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(() => {
+    const persisted = loadPersistedUser();
+    // Migrate from v2 storage (without token) — force re-login
+    if (persisted && !persisted.token) {
+      localStorage.removeItem("fantasy_arena_auth_v2");
+      return null;
     }
+    return persisted;
+  });
+  const tokenRef = useRef(user?.token || null);
+
+  // On initial load, verify stored token with server
+  useEffect(() => {
+    const persisted = loadPersistedUser();
+    if (!persisted?.token) return;
+
+    // Verify the token is still valid
+    fetch('/api/verify-session', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${persisted.token}`,
+      },
+    })
+      .then(r => {
+        if (!r.ok) {
+          // Token expired or invalid — clear auth state
+          console.warn('[Auth] Stored token is invalid, clearing auth state');
+          setUser(null);
+          persistUser(null);
+          tokenRef.current = null;
+        } else {
+          // Token valid — save profile
+          saveProfileViaApi(persisted.token, persisted.avatar);
+        }
+      })
+      .catch(() => {
+        // Network error — don't force logout, keep local state
+      });
   }, []);
 
-  // Handle the credential response from Google
+  // Handle the credential response from Google (GIS auto-select / One Tap)
   const handleCredentialResponse = useCallback((response) => {
     const payload = decodeJwtPayload(response.credential);
     if (!payload) return;
@@ -75,15 +121,14 @@ export function AuthProvider({ children }) {
       name: payload.name || "",
       email: payload.email || "",
       avatar: payload.picture || "",
+      token: response.credential, // Store the raw JWT id_token
     };
 
     setUser(authUser);
     persistUser(authUser);
+    tokenRef.current = response.credential;
     trackEvent("sign_in", { userId: authUser.userId });
-    // Save user profile to Supabase (for leaderboard display names)
-    saveUserProfile(authUser).catch(() => {});
-    // Silently migrate any localStorage bets to Supabase
-    migrateUserBets(authUser.userId).catch(() => {});
+    saveProfileViaApi(response.credential, authUser.avatar);
   }, []);
 
   // Initialize GIS once the script is loaded
@@ -100,11 +145,9 @@ export function AuthProvider({ children }) {
       });
     }
 
-    // The GIS script may already be loaded or still loading
     if (window.google?.accounts?.id) {
       init();
     } else {
-      // Wait for script to load
       const interval = setInterval(() => {
         if (window.google?.accounts?.id) {
           clearInterval(interval);
@@ -124,15 +167,13 @@ export function AuthProvider({ children }) {
         name: "Dev Admin",
         email: devEmail,
         avatar: "",
+        token: "dev_token", // Placeholder token for dev mode
       };
       console.log("[Auth] DEV MODE: Logging in as", devEmail);
       setUser(devUser);
       persistUser(devUser);
+      tokenRef.current = "dev_token";
       trackEvent("sign_in", { userId: devUser.userId, dev: true });
-      // Save user profile to Supabase (for leaderboard display names)
-      saveUserProfile(devUser).catch(() => {});
-      // Silently migrate any localStorage bets to Supabase
-      migrateUserBets(devUser.userId).catch(() => {});
       return;
     }
 
@@ -140,16 +181,18 @@ export function AuthProvider({ children }) {
       console.warn("Google Client ID not configured. Set REACT_APP_GOOGLE_CLIENT_ID in .env");
       return;
     }
-    // Use the OAuth2 token client — opens a real popup that always works,
-    // unlike google.accounts.id.prompt() which has a cooldown after dismissal.
+
+    // Use the OAuth2 token client — opens a real popup
     if (window.google?.accounts?.oauth2) {
       const client = window.google.accounts.oauth2.initTokenClient({
         client_id: CLIENT_ID,
         scope: "openid profile email",
         callback: (tokenResponse) => {
           if (tokenResponse.access_token) {
+            const accessToken = tokenResponse.access_token;
+
             fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-              headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+              headers: { Authorization: `Bearer ${accessToken}` },
             })
               .then((r) => r.json())
               .then((info) => {
@@ -158,14 +201,13 @@ export function AuthProvider({ children }) {
                   name: info.name || "",
                   email: info.email || "",
                   avatar: info.picture || "",
+                  token: accessToken, // Store the access_token
                 };
                 setUser(authUser);
                 persistUser(authUser);
+                tokenRef.current = accessToken;
                 trackEvent("sign_in", { userId: authUser.userId });
-                // Save user profile to Supabase (for leaderboard display names)
-                saveUserProfile(authUser).catch(() => {});
-                // Silently migrate any localStorage bets to Supabase
-                migrateUserBets(authUser.userId).catch(() => {});
+                saveProfileViaApi(accessToken, authUser.avatar);
               });
           }
         },
@@ -177,14 +219,23 @@ export function AuthProvider({ children }) {
   const signOut = useCallback(() => {
     setUser(null);
     persistUser(null);
+    tokenRef.current = null;
     trackEvent("sign_out");
     if (window.google?.accounts?.id) {
       window.google.accounts.id.disableAutoSelect();
     }
   }, []);
 
+  /**
+   * Get the current auth token for API calls.
+   * Returns the raw Google token (id_token or access_token).
+   */
+  const getToken = useCallback(() => {
+    return tokenRef.current || user?.token || null;
+  }, [user]);
+
   return (
-    <AuthContext.Provider value={{ user, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, signIn, signOut, getToken }}>
       {children}
     </AuthContext.Provider>
   );
@@ -192,8 +243,9 @@ export function AuthProvider({ children }) {
 
 /**
  * Hook to access auth state.
- * Returns { user, signIn, signOut }.
+ * Returns { user, signIn, signOut, getToken }.
  * user is null when not signed in.
+ * getToken() returns the raw Google OAuth token for API calls.
  */
 export function useAuth() {
   const ctx = useContext(AuthContext);

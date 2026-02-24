@@ -1,3 +1,10 @@
+-- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+-- SUPERSEDED — DO NOT APPLY (scoring function portion only)
+-- The calculate_match_scores function in this file has been replaced
+-- by 018_scoring_reliability_fixes.sql
+-- The ALTER TABLE statement below is still valid but already applied.
+-- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+--
 -- 016_winner_wrong_points.sql
 -- Add winner_wrong_points column to match_config for penalty on wrong winner picks.
 -- Default is 0 (no penalty) for backward compatibility with group stage matches.

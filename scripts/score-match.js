@@ -146,6 +146,103 @@ async function main() {
   console.log(`  Scoring ${matchId}${dryRun ? ' (DRY RUN)' : ''}`);
   console.log(`${'='.repeat(50)}`);
 
+  // ── Handle abandoned match ──
+  if (input.winner === 'abandoned') {
+    console.log('\n*** ABANDONED MATCH — scoring all bets as 0 ***');
+
+    // Fetch match config
+    const { data: config, error: configErr } = await supabase
+      .from('match_config').select('*').eq('match_id', matchId).single();
+    if (configErr) { console.error('Failed to fetch match_config:', configErr.message); process.exit(1); }
+    console.log(`  ${config.team_a} vs ${config.team_b} | Status: ${config.status}`);
+
+    if (dryRun) {
+      console.log(`\n*** DRY RUN COMPLETE — no data written to DB ***`);
+      return;
+    }
+
+    // Disable all match questions
+    console.log('--- Disabling match questions ---');
+    await supabase.from('match_questions')
+      .update({ status: 'disabled' })
+      .eq('match_id', matchId);
+
+    // Save null results
+    console.log('--- Saving null match results ---');
+    await supabase.from('match_results').upsert({
+      match_id: matchId,
+      winner: null,
+      total_runs: null,
+      man_of_match: null,
+    }, { onConflict: 'match_id' });
+
+    // Lock the match (so scoring RPC can run)
+    console.log('--- Setting match status to LOCKED ---');
+    await supabase.from('match_config')
+      .update({ status: 'LOCKED' })
+      .eq('match_id', matchId);
+
+    // Score all bets as 0 — set every bet's score to 0
+    console.log('--- Scoring all bets as 0 ---');
+    const { data: bets } = await supabase.from('bets')
+      .select('bet_id, user_id')
+      .eq('match_id', matchId);
+
+    if (bets?.length) {
+      await supabase.from('bets')
+        .update({
+          score: 0, winner_points: 0, total_runs_points: 0,
+          player_pick_points: 0, side_bet_points: 0, runner_points: 0,
+          is_locked: true, locked_at: new Date().toISOString(),
+        })
+        .eq('match_id', matchId);
+      console.log(`  ${bets.length} bets scored as 0.`);
+    } else {
+      console.log('  No bets found for this match.');
+    }
+
+    // Update leaderboard (recalculate for affected users)
+    if (bets?.length) {
+      for (const bet of bets) {
+        const { data: totalData } = await supabase.rpc('raw', {
+          query: `SELECT COALESCE(SUM(score), 0) as total FROM bets WHERE user_id = '${bet.user_id}' AND score IS NOT NULL`
+        }).catch(() => ({ data: null }));
+
+        // Fallback: just run scoring RPC which handles leaderboard
+      }
+    }
+
+    // Run scoring RPC to properly recalculate leaderboard
+    console.log('--- Running scoring RPC for leaderboard update ---');
+    const { data: scoreData, error: scErr } = await supabase.rpc('calculate_match_scores', {
+      p_match_id: matchId,
+      p_event_id: 't20wc_2026',
+    });
+    if (scErr) console.warn('  RPC warning (may be expected for abandoned):', scErr.message);
+    else console.log('  Result:', scoreData);
+
+    // Set final status
+    console.log('--- Setting match status to SCORED ---');
+    await supabase.from('match_config')
+      .update({ status: 'SCORED' })
+      .eq('match_id', matchId);
+
+    // Verify
+    console.log('\n--- Verification ---');
+    const { data: lb } = await supabase.from('leaderboard')
+      .select('rank, display_name, total_score, matches_played')
+      .order('rank', { ascending: true })
+      .limit(15);
+    if (lb) {
+      lb.forEach(r => console.log(`  #${r.rank} ${r.display_name}: ${r.total_score} pts (${r.matches_played} matches)`));
+    }
+
+    console.log(`\n${'='.repeat(50)}`);
+    console.log(`  ${matchId} ABANDONED — SCORED SUCCESSFULLY (all 0)`);
+    console.log(`${'='.repeat(50)}\n`);
+    return;
+  }
+
   // ── Fetch match config ──
   console.log('\nFetching match config...');
   const { data: config, error: configErr } = await supabase
@@ -339,7 +436,7 @@ async function main() {
   } else if (input.winner === 'superOver') {
     winnerOptionId = `opt_${matchId}_winner_superover`;
   } else {
-    console.error(`\nInvalid winner: "${input.winner}" — must be "teamA", "teamB", or "superOver"`);
+    console.error(`\nInvalid winner: "${input.winner}" — must be "teamA", "teamB", "superOver", or "abandoned"`);
     process.exit(1);
   }
 

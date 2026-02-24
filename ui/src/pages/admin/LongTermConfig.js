@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthProvider";
-import { getAdminEmail } from "../../config";
+import { useIsAdmin } from "../../hooks/useIsAdmin";
 import { useToast } from "../../components/Toast";
 import Spinner from "../../components/Spinner";
 import AdminNav from "../../components/admin/AdminNav";
@@ -10,14 +10,14 @@ import { useAdmin } from "../../hooks/useAdmin";
 import { apiGetLongTermConfig, apiGetAllPlayers } from "../../api";
 import { utcToIST, istToUTC } from "../../utils/date";
 import { TEAM_CODE_TO_ID, TEAM_NAMES } from "../../data/teams";
+import { CURRENT_TOURNAMENT } from "../../config/tournament";
 
 const ALL_TEAM_CODES = Object.keys(TEAM_CODE_TO_ID);
 
 export default function LongTermConfig() {
   const { user } = useAuth();
   const toast = useToast();
-  const adminEmail = getAdminEmail();
-  const isAdmin = user && adminEmail && user.email?.trim().toLowerCase() === adminEmail;
+  const isAdmin = useIsAdmin();
   const admin = useAdmin();
 
   const [loading, setLoading] = useState(true);
@@ -27,7 +27,7 @@ export default function LongTermConfig() {
   const [scoring, setScoring] = useState(false);
 
   const [form, setForm] = useState({
-    eventId: "t20wc_2026",
+    eventId: CURRENT_TOURNAMENT.id,
     winnerPoints: 5000,
     finalistPoints: 2000,
     finalFourPoints: 1000,
@@ -49,8 +49,8 @@ export default function LongTermConfig() {
 
   useEffect(() => {
     Promise.all([
-      apiGetLongTermConfig("t20wc_2026"),
-      apiGetAllPlayers("t20wc_2026"),
+      apiGetLongTermConfig(CURRENT_TOURNAMENT.id),
+      apiGetAllPlayers(CURRENT_TOURNAMENT.id),
     ])
       .then(([cfg, allPlayers]) => {
         if (cfg) {

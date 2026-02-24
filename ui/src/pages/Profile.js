@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { resolveIdentity } from "../auth/identity";
+import { CURRENT_TOURNAMENT } from "../config/tournament";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
 import {
   isPushSupported,
@@ -288,7 +289,7 @@ export default function Profile() {
   // Format match ID for display (wc_m1 -> Match 1)
   const formatMatchId = (matchId) => {
     if (!matchId) return matchId;
-    const num = matchId.replace(/^wc_m/, "");
+    const num = matchId.replace(CURRENT_TOURNAMENT.matchIdPrefix, "");
     return `Match ${num}`;
   };
 

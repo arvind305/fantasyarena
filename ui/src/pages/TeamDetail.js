@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { apiGetSquads, apiGetSquadPlayers } from "../api";
 import { TEAM_COLORS } from "./Teams";
 import Spinner from "../components/Spinner";
+import { CURRENT_TOURNAMENT } from "../config/tournament";
 
 const ROLE_LABEL = { BAT: "Batter", BOWL: "Bowler", WK: "Keeper", AR: "All-Rounder" };
 const ROLE_ORDER = { WK: 0, BAT: 1, AR: 2, BOWL: 3 };
@@ -21,8 +22,8 @@ export default function TeamDetail() {
     setError(null);
 
     Promise.all([
-      apiGetSquads("t20wc_2026"),
-      apiGetSquadPlayers(teamCode, "t20wc_2026"),
+      apiGetSquads(CURRENT_TOURNAMENT.id),
+      apiGetSquadPlayers(teamCode, CURRENT_TOURNAMENT.id),
     ])
       .then(([squads, roster]) => {
         const found = squads.find((s) => s.teamCode === teamCode);

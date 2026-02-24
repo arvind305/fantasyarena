@@ -6,6 +6,7 @@ import Spinner, { SkeletonCard } from "../components/Spinner";
 import LongTermBetsBanner from "../components/LongTermBetsBanner";
 import { formatDateRange, formatMatchDate, formatMatchTime, isToday, getRelativeDayLabel } from "../utils/date";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
+import { CURRENT_TOURNAMENT } from "../config/tournament";
 
 const MATCH_DURATION_MS = 4.5 * 60 * 60 * 1000; // 4.5 hours from match start
 
@@ -93,7 +94,7 @@ export default function Home() {
 
   const tournamentDateRange = event
     ? formatDateRange(event.startDate, event.endDate)
-    : "7 Feb – 8 Mar 2026";
+    : CURRENT_TOURNAMENT.fallbackDateRange;
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-10">

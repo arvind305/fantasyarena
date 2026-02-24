@@ -17,12 +17,11 @@ import FinalFour from "../components/long-term/FinalFour";
 import OrangeCap from "../components/long-term/OrangeCap";
 import PurpleCap from "../components/long-term/PurpleCap";
 import LongTermSummary from "../components/long-term/LongTermSummary";
+import { CURRENT_TOURNAMENT } from "../config/tournament";
 
-// Same deadline as LongTermBetsBanner: Feb 21, 2026 00:00 IST = Feb 20, 2026 18:30 UTC
-const PREDICTIONS_DEADLINE = new Date("2026-02-20T18:30:00Z");
-
-function getTimeLeft() {
-  const diff = PREDICTIONS_DEADLINE - Date.now();
+function getTimeLeft(deadline) {
+  if (!deadline) return null;
+  const diff = new Date(deadline) - Date.now();
   if (diff <= 0) return null;
   const d = Math.floor(diff / 86400000);
   const h = Math.floor((diff % 86400000) / 3600000);
@@ -30,12 +29,12 @@ function getTimeLeft() {
   return { d, h, m, total: diff };
 }
 
-function LockStatusBanner({ isLocked, isReopened, editCost }) {
-  const [timeLeft, setTimeLeft] = useState(getTimeLeft);
+function LockStatusBanner({ isLocked, isReopened, editCost, lockTime }) {
+  const [timeLeft, setTimeLeft] = useState(() => getTimeLeft(lockTime));
   useEffect(() => {
-    const id = setInterval(() => setTimeLeft(getTimeLeft()), 60000);
+    const id = setInterval(() => setTimeLeft(getTimeLeft(lockTime)), 60000);
     return () => clearInterval(id);
-  }, []);
+  }, [lockTime]);
 
   if (isReopened) {
     return (
@@ -136,7 +135,7 @@ export default function LongTermBets() {
         setAllPlayers(pl || []);
 
         if (user) {
-          const userBet = await apiGetUserLongTermBet('t20wc_2026', identity.userId);
+          const userBet = await apiGetUserLongTermBet(CURRENT_TOURNAMENT.id, identity.userId);
           if (userBet) {
             setExisting(userBet);
             bets.initializeFromExisting({
@@ -171,7 +170,7 @@ export default function LongTermBets() {
     setSubmitting(true);
     try {
       const result = await apiSubmitLongTermBet(
-        't20wc_2026',
+        CURRENT_TOURNAMENT.id,
         identity.userId,
         bets.predictions
       );
@@ -224,7 +223,7 @@ export default function LongTermBets() {
       </div>
 
       {/* Lock Status Banner */}
-      <LockStatusBanner isLocked={isLocked} isReopened={isReopened} editCost={editCost} />
+      <LockStatusBanner isLocked={isLocked} isReopened={isReopened} editCost={editCost} lockTime={config.lockTime} />
 
       {/* Guest CTA */}
       {!user && (

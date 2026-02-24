@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { apiGetAllPlayers, apiGetSquads } from "../api";
 import { TEAM_COLORS } from "./Teams";
 import Spinner from "../components/Spinner";
+import { CURRENT_TOURNAMENT } from "../config/tournament";
 
 const ROLE_LABEL = { BAT: "Batter", BOWL: "Bowler", WK: "Keeper", AR: "All-Rounder" };
 const ROLES = ["BAT", "BOWL", "AR", "WK"];
@@ -17,8 +18,8 @@ export default function Players() {
 
   useEffect(() => {
     Promise.all([
-      apiGetAllPlayers("t20wc_2026"),
-      apiGetSquads("t20wc_2026"),
+      apiGetAllPlayers(CURRENT_TOURNAMENT.id),
+      apiGetSquads(CURRENT_TOURNAMENT.id),
     ])
       .then(([players, teams]) => {
         setAllPlayers(players);

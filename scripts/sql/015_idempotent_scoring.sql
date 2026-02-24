@@ -1,3 +1,9 @@
+-- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+-- SUPERSEDED — DO NOT APPLY
+-- This file has been replaced by 018_scoring_reliability_fixes.sql
+-- Applying this file will REINTRODUCE BUGS that have been fixed
+-- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+--
 -- 015_idempotent_scoring.sql
 -- FIX: Make calculate_match_scores IDEMPOTENT
 --

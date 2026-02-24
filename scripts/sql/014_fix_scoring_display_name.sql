@@ -1,3 +1,9 @@
+-- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+-- SUPERSEDED — DO NOT APPLY
+-- This file has been replaced by 018_scoring_reliability_fixes.sql
+-- Applying this file will REINTRODUCE BUGS that have been fixed
+-- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+--
 -- 014_fix_scoring_display_name.sql
 -- Fix: Change display name fallback from non-existent user_profiles table to users table
 -- Run this in the Supabase SQL Editor (Dashboard > SQL Editor)

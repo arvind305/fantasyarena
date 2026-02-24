@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { apiGetSquads } from "../api";
 import Spinner from "../components/Spinner";
+import { CURRENT_TOURNAMENT } from "../config/tournament";
 
 // Group definitions for T20 World Cup 2026
 const GROUPS = {
@@ -87,7 +88,7 @@ export default function Teams() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    apiGetSquads("t20wc_2026")
+    apiGetSquads(CURRENT_TOURNAMENT.id)
       .then((data) => setSquads(data))
       .catch((err) => {
         console.error("[Teams] Failed to load squads:", err);

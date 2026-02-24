@@ -1,91 +1,12 @@
 /**
- * config.js — Operational mode configuration.
- *
- * Three modes, one toggle:
- *
- *   SIMULATION  — Seeded mock data (ExternalDataAdapter.js). Fully offline.
- *                 Bets accepted and scored in-memory via localStorage.
- *                 Used for development and dry-run validation.
- *
- *   SHADOW      — RealDataAdapter feeds (or real API for reads). Read-only.
- *                 External data ingested on interval via poll.js.
- *                 Bet submissions are BLOCKED (server rejects, UI warns).
- *                 Match status flows from real scheduledTime through adapter.
- *                 Scores are never persisted. Leaderboards are frozen/empty.
- *                 Purpose: validate ingestion + UI rendering against live data
- *                 without affecting users or producing real scores.
- *
- *   LIVE        — Production. Real API backend for all reads and writes.
- *                 Bets accepted and scored server-side.
- *                 Switch here when ready to launch.
- *
- * To switch modes:
- *   1. Set REACT_APP_ENGINE_MODE in .env (or environment)
- *   2. Or change the fallback below
- *
- * SHADOW → LIVE migration:
- *   1. Set REACT_APP_ENGINE_MODE=live
- *   2. Set REACT_APP_API_URL to production backend
- *   3. Redeploy. No code changes required.
+ * config.js — Application configuration.
  */
 
-const VALID_MODES = ["simulation", "shadow", "live"];
-
-export const ENGINE_MODE = (() => {
-  const env = (process.env.REACT_APP_ENGINE_MODE || "simulation").toLowerCase().trim();
-  if (!VALID_MODES.includes(env)) {
-    console.warn(`[config] Unknown ENGINE_MODE "${env}", falling back to "simulation".`);
-    return "simulation";
-  }
-  return env;
-})();
-
 /**
- * Global safeguard flag.
- *
- * When true:
- *   - Bet submissions return a clear error (not silently swallowed)
- *   - Long-term bet submissions blocked
- *   - Group creation/joining still allowed (no scoring impact)
- *   - All read operations work normally
- *   - Scores are never persisted
- *
- * NOTE: Shadow mode disabled to allow betting for all users.
- * To re-enable shadow mode, change this back to: ENGINE_MODE === "shadow"
- */
-export const IS_SHADOW_MODE = false;
-
-/**
- * Whether the UI should use the in-browser mock engine for data.
- * True for both simulation and shadow (shadow uses mock engine for reads
- * but blocks writes via the shadow guard).
- */
-export const USE_LOCAL_ENGINE = ENGINE_MODE !== "live";
-
-/**
- * Polling interval for external data refresh (milliseconds).
- * Only active in shadow mode. Set to 0 to disable.
- */
-export const POLL_INTERVAL_MS = IS_SHADOW_MODE
-  ? parseInt(process.env.REACT_APP_POLL_INTERVAL_MS || "60000", 10)
-  : 0;
-
-/**
- * API base URL for live mode.
- */
-export const API_BASE_URL = process.env.REACT_APP_API_URL || "";
-
-/**
- * Admin email for access control.
- * Runtime-configurable via /data/admin.json (loaded in index.js before render).
- * Falls back to REACT_APP_ADMIN_EMAIL env var if not set.
+ * Admin email for client-side UI gating (show/hide admin links).
+ * NOT a security boundary — all admin operations are verified server-side.
+ * Set via REACT_APP_ADMIN_EMAIL env var (baked in at build time).
  */
 export function getAdminEmail() {
-  return (window.__FA_ADMIN_EMAIL__ || process.env.REACT_APP_ADMIN_EMAIL || "").trim().toLowerCase();
+  return (process.env.REACT_APP_ADMIN_EMAIL || "").trim().toLowerCase();
 }
-
-/**
- * Helper to check if running in live mode.
- * Returns true when ENGINE_MODE === 'live'.
- */
-export const isLiveMode = () => ENGINE_MODE === 'live';

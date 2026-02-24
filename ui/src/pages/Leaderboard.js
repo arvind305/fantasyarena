@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiGetLeaderboard, apiGetMatches } from "../api";
+import { CURRENT_TOURNAMENT } from "../config/tournament";
 import { useAuth } from "../auth/AuthProvider";
 import { resolveIdentity } from "../auth/identity";
 import { useToast } from "../components/Toast";
@@ -60,16 +61,36 @@ export default function Leaderboard() {
       .catch(() => {});
   }, []);
 
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const PAGE_SIZE = 50;
+
   // Load leaderboard data for Overall tab
-  const loadLeaderboard = useCallback(() => {
-    setLoading(true);
-    apiGetLeaderboard("global")
-      .then(setData)
+  const loadLeaderboard = useCallback((pageNum = 1, append = false) => {
+    if (append) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
+    apiGetLeaderboard("global", null, { page: pageNum, pageSize: PAGE_SIZE })
+      .then((result) => {
+        if (append) {
+          setData(prev => [...prev, ...result.data]);
+        } else {
+          setData(result.data);
+        }
+        setTotalCount(result.total);
+        setPage(pageNum);
+      })
       .catch((err) => {
         toast.error(err.message);
-        setData([]);
+        if (!append) setData([]);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        setLoadingMore(false);
+      });
   }, [toast]);
 
   useEffect(() => {
@@ -139,7 +160,7 @@ export default function Leaderboard() {
         </h1>
         <p className="text-gray-500">
           {lastScoredMatch
-            ? <>Scores updated through <span className="text-gray-400 font-medium">{lastScoredMatch.teamA} vs {lastScoredMatch.teamB}</span> (Match {lastScoredMatch.matchId?.replace("wc_m", "")})</>
+            ? <>Scores updated through <span className="text-gray-400 font-medium">{lastScoredMatch.teamA} vs {lastScoredMatch.teamB}</span> (Match {lastScoredMatch.matchId?.replace(CURRENT_TOURNAMENT.matchIdPrefix, "")})</>
             : "Overall tournament standings"}
         </p>
       </div>
@@ -251,6 +272,19 @@ export default function Leaderboard() {
           {/* Full Table */}
           {!loading && filteredData.length > 0 && (
             <LeaderboardTable data={filteredData} currentUserId={identity.userId} />
+          )}
+
+          {/* Load More */}
+          {!loading && !searchQuery && data.length < totalCount && (
+            <div className="text-center mt-6">
+              <button
+                onClick={() => loadLeaderboard(page + 1, true)}
+                disabled={loadingMore}
+                className="btn-secondary text-sm px-6"
+              >
+                {loadingMore ? "Loading..." : `Load More (${data.length} of ${totalCount})`}
+              </button>
+            </div>
           )}
         </div>
       )}

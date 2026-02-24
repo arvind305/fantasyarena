@@ -6,7 +6,8 @@ import Spinner, { SkeletonCard } from "../components/Spinner";
 import LongTermBetsBanner from "../components/LongTermBetsBanner";
 import NotificationPrompt from "../components/NotificationPrompt";
 import { formatDateRange, formatMatchDate, formatMatchTime, isToday, getRelativeDayLabel } from "../utils/date";
-import { supabase, isSupabaseConfigured } from "../lib/supabase";
+import { supabase, isSupabaseConfigured } from "../lib/supabase"; // still needed for user bets query
+import { CURRENT_TOURNAMENT } from "../config/tournament";
 
 const STATUS_BADGE = {
   UPCOMING: "bg-blue-900/50 text-blue-400 border-blue-800",
@@ -28,8 +29,6 @@ export default function Play() {
   const [matches, setMatches] = useState([]);
   const [event, setEvent] = useState(null);
   const [tournamentQuestionCount, setTournamentQuestionCount] = useState(null); // null = not loaded yet
-  const [lockTimes, setLockTimes] = useState({}); // { matchId: lock_time ISO string }
-  const [dbStatuses, setDbStatuses] = useState({}); // { matchId: DB status string }
   const [userBetMatchIds, setUserBetMatchIds] = useState(new Set()); // match IDs where user has placed bets
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
@@ -45,11 +44,9 @@ export default function Play() {
     setSearchParams({ tab }, { replace: true });
   };
 
-  // Fire-and-forget: auto-lock any OPEN matches past their lock_time
-  // This supplements the daily cron so matches lock promptly on page load
-  useEffect(() => {
-    fetch("/api/auto-lock").catch(() => {});
-  }, []);
+  // Auto-lock is handled by the daily cron (/api/cron/update-matches).
+  // Client-side override in the rendering below covers the gap:
+  // OPEN matches past their lock_time are displayed as LIVE.
 
   useEffect(() => {
     Promise.all([apiGetMatches(), apiGetEvents(), apiGetLongTermConfig()])
@@ -66,25 +63,6 @@ export default function Play() {
         // If config fails, leave count as null (will show generic text)
       })
       .finally(() => setLoading(false));
-
-    // Fetch lock times and DB statuses from match_config
-    if (supabase && isSupabaseConfigured()) {
-      supabase
-        .from("match_config")
-        .select("match_id, lock_time, status")
-        .then(({ data }) => {
-          if (data) {
-            const lockMap = {};
-            const statusMap = {};
-            data.forEach((r) => {
-              lockMap[r.match_id] = r.lock_time;
-              statusMap[r.match_id] = r.status;
-            });
-            setLockTimes(lockMap);
-            setDbStatuses(statusMap);
-          }
-        });
-    }
   }, []);
 
   // Fetch user's placed bets (just match IDs)
@@ -104,20 +82,19 @@ export default function Play() {
       });
   }, [user?.userId]);
 
-  // Derive effective UI status from DB status + lock_time + estimated end:
+  // Derive effective UI status from lock_time + estimated end:
   //   - lock_time passed + within 4.5 hours → LIVE
   //   - lock_time passed + over 4.5 hours → COMPLETED (results pending if not scored)
   //   - Already SCORED → COMPLETED (with result)
+  // lockTime and dbStatus come from apiGetMatches (no separate query needed)
   const effectiveMatches = useMemo(() => {
     const now = new Date();
     return matches.map((m) => {
-      const lt = lockTimes[m.matchId];
-      const lockPassed = lt && new Date(lt) <= now;
-
       if (m.status === "COMPLETED") return m; // Already scored
 
+      const lockPassed = m.lockTime && new Date(m.lockTime) <= now;
       if (lockPassed) {
-        const lockMs = new Date(lt).getTime();
+        const lockMs = new Date(m.lockTime).getTime();
         const estimatedEnd = lockMs + MATCH_DURATION_MS;
         if (now.getTime() < estimatedEnd) {
           return { ...m, status: "LIVE" };
@@ -126,7 +103,7 @@ export default function Play() {
       }
       return m;
     });
-  }, [matches, lockTimes]);
+  }, [matches]);
 
   // Re-opened matches: DB status is OPEN, match date is in the past, AND lock_time is still in the future
   // (deliberately re-opened matches have far-future lock_times)
@@ -134,12 +111,10 @@ export default function Play() {
     const now = new Date();
     return effectiveMatches
       .filter((m) => {
-        const dbStatus = dbStatuses[m.matchId];
-        const lt = lockTimes[m.matchId];
-        return dbStatus === "OPEN" && new Date(m.scheduledTime) < now && lt && new Date(lt) > now;
+        return m.dbStatus === "OPEN" && new Date(m.scheduledTime) < now && m.lockTime && new Date(m.lockTime) > now;
       })
       .sort((a, b) => new Date(a.scheduledTime) - new Date(b.scheduledTime));
-  }, [effectiveMatches, dbStatuses, lockTimes]);
+  }, [effectiveMatches]);
 
   // Filter matches
   const liveMatches = effectiveMatches.filter((m) => m.status === "LIVE");
@@ -187,7 +162,7 @@ export default function Play() {
 
   const tournamentDateRange = event
     ? formatDateRange(event.startDate, event.endDate)
-    : "7 Feb – 8 Mar 2026";
+    : CURRENT_TOURNAMENT.fallbackDateRange;
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
@@ -199,7 +174,7 @@ export default function Play() {
           </span>
         </h1>
         <p className="text-gray-500">
-          {event?.name || "T20 World Cup 2026"} <span className="text-gray-600">•</span>{" "}
+          {event?.name || CURRENT_TOURNAMENT.name} <span className="text-gray-600">•</span>{" "}
           <span className="text-gray-500">{tournamentDateRange}</span>
         </p>
       </div>
@@ -254,7 +229,7 @@ export default function Play() {
           </div>
           <div className="grid sm:grid-cols-2 gap-4">
             {liveMatches.map((m) => (
-              <MatchCard key={m.matchId} match={m} lockTime={lockTimes[m.matchId]} userHasBet={userBetMatchIds.has(m.matchId)} />
+              <MatchCard key={m.matchId} match={m} lockTime={m.lockTime} userHasBet={userBetMatchIds.has(m.matchId)} />
             ))}
           </div>
         </div>
@@ -271,7 +246,7 @@ export default function Play() {
           <p className="text-gray-500 text-sm mb-3">These past matches have been re-opened — update your bets before they lock again</p>
           <div className="grid sm:grid-cols-2 gap-4">
             {reopenedMatches.map((m, i) => (
-              <MatchCard key={m.matchId} match={m} lockTime={lockTimes[m.matchId]} delay={i * 50} reopened userHasBet={userBetMatchIds.has(m.matchId)} />
+              <MatchCard key={m.matchId} match={m} lockTime={m.lockTime} delay={i * 50} reopened userHasBet={userBetMatchIds.has(m.matchId)} />
             ))}
           </div>
         </div>
@@ -314,7 +289,7 @@ export default function Play() {
                   <p className="text-gray-500 text-sm mb-4">Click a match to place your bets</p>
                   <div className="grid sm:grid-cols-2 gap-4">
                     {todayMatches.map((m, i) => (
-                      <MatchCard key={m.matchId} match={m} lockTime={lockTimes[m.matchId]} delay={i * 50} userHasBet={userBetMatchIds.has(m.matchId)} />
+                      <MatchCard key={m.matchId} match={m} lockTime={m.lockTime} delay={i * 50} userHasBet={userBetMatchIds.has(m.matchId)} />
                     ))}
                   </div>
                 </>
@@ -352,7 +327,7 @@ export default function Play() {
                         </h3>
                         <div className="grid sm:grid-cols-2 gap-4">
                           {group.matches.map((m, i) => (
-                            <MatchCard key={m.matchId} match={m} lockTime={lockTimes[m.matchId]} delay={(gi * 3 + i) * 50} userHasBet={userBetMatchIds.has(m.matchId)} />
+                            <MatchCard key={m.matchId} match={m} lockTime={m.lockTime} delay={(gi * 3 + i) * 50} userHasBet={userBetMatchIds.has(m.matchId)} />
                           ))}
                         </div>
                       </div>

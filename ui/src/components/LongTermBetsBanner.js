@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { apiGetLongTermConfig } from "../api";
 
-// Deadline: Feb 21, 2026 00:00 IST = Feb 20, 2026 18:30 UTC
-const DEADLINE_UTC = new Date("2026-02-20T18:30:00Z");
 const DISMISS_KEY = "lt_banner_dismissed";
 
-function getTimeLeft() {
-  const diff = DEADLINE_UTC - Date.now();
+function getTimeLeft(deadline) {
+  if (!deadline) return null;
+  const diff = new Date(deadline) - Date.now();
   if (diff <= 0) return null;
   const d = Math.floor(diff / 86400000);
   const h = Math.floor((diff % 86400000) / 3600000);
@@ -15,17 +15,28 @@ function getTimeLeft() {
 }
 
 export default function LongTermBetsBanner() {
-  const [timeLeft, setTimeLeft] = useState(getTimeLeft);
+  const [deadline, setDeadline] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(null);
   const [dismissed, setDismissed] = useState(() => {
     try { return localStorage.getItem(DISMISS_KEY) === "1"; } catch { return false; }
   });
 
   useEffect(() => {
-    const id = setInterval(() => setTimeLeft(getTimeLeft()), 60000);
-    return () => clearInterval(id);
+    apiGetLongTermConfig().then((cfg) => {
+      if (cfg?.lockTime) {
+        setDeadline(cfg.lockTime);
+        setTimeLeft(getTimeLeft(cfg.lockTime));
+      }
+    });
   }, []);
 
-  // Don't render if deadline passed or user dismissed
+  useEffect(() => {
+    if (!deadline) return;
+    const id = setInterval(() => setTimeLeft(getTimeLeft(deadline)), 60000);
+    return () => clearInterval(id);
+  }, [deadline]);
+
+  // Don't render if deadline not loaded, passed, or user dismissed
   if (!timeLeft || dismissed) return null;
 
   const isUrgent = timeLeft.total < 24 * 3600000; // under 24h

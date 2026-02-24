@@ -1,3 +1,9 @@
+-- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+-- SUPERSEDED — DO NOT APPLY
+-- This file has been replaced by 018_scoring_reliability_fixes.sql
+-- Applying this file will REINTRODUCE BUGS that have been fixed
+-- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+--
 -- 012_fix_duplicate_scoring_function.sql
 -- Fix: Drop duplicate calculate_match_scores overloads (varchar vs text)
 -- and recreate a single canonical version with TEXT parameters.

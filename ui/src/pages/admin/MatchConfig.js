@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Navigate, Link } from "react-router-dom";
 import { useAuth } from "../../auth/AuthProvider";
-import { getAdminEmail } from "../../config";
+import { useIsAdmin } from "../../hooks/useIsAdmin";
 import { useToast } from "../../components/Toast";
 import Spinner from "../../components/Spinner";
 import AdminNav from "../../components/admin/AdminNav";
@@ -12,13 +12,13 @@ import { useAdmin } from "../../hooks/useAdmin";
 import { apiGetSquadPlayers } from "../../api";
 import { supabase, isSupabaseConfigured } from "../../lib/supabase";
 import { utcToIST, istToUTC } from "../../utils/date";
+import { CURRENT_TOURNAMENT } from "../../config/tournament";
 
 export default function MatchConfig() {
   const { matchId } = useParams();
   const { user } = useAuth();
   const toast = useToast();
-  const adminEmail = getAdminEmail();
-  const isAdmin = user && adminEmail && user.email?.trim().toLowerCase() === adminEmail;
+  const isAdmin = useIsAdmin();
 
   const { config, slots, sideBets, loading: configLoading, refetch } = useMatchConfig(matchId);
   const admin = useAdmin();
@@ -56,7 +56,7 @@ export default function MatchConfig() {
 
   // Load match data
   useEffect(() => {
-    fetch("/data/t20wc_2026.json")
+    fetch(CURRENT_TOURNAMENT.dataFile)
       .then((r) => r.json())
       .then((tournament) => {
         const m = (tournament.matches || []).find(
@@ -168,7 +168,7 @@ export default function MatchConfig() {
     try {
       await admin.saveMatchConfig(matchId, {
         ...form,
-        eventId: "t20wc_2026",
+        eventId: CURRENT_TOURNAMENT.id,
         lockTime: istToUTC(form.lockTime),
       });
       toast.success("Match config saved!");
@@ -212,7 +212,7 @@ export default function MatchConfig() {
     try {
       await admin.saveMatchConfig(matchId, {
         ...form,
-        eventId: "t20wc_2026",
+        eventId: CURRENT_TOURNAMENT.id,
         lockTime: istToUTC(form.lockTime),
       });
       toast.success("Runner settings saved!");

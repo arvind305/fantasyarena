@@ -1,9 +1,11 @@
-import React from "react";
+import React, { useState, useCallback } from "react";
+import { apiGetSquadPlayers } from "../../api";
 import PlayerSlot from "./PlayerSlot";
 
 /**
  * Container showing N player pick slots based on match_config.player_slot_count.
  * Each slot has its own multiplier from player_slots table.
+ * Caches squad data at section level to prevent N+1 queries.
  */
 export default function PlayerPicksSection({
   config,
@@ -14,6 +16,15 @@ export default function PlayerPicksSection({
   disabled,
   selectedPlayerIds,
 }) {
+  const [squadCache, setSquadCache] = useState({});
+
+  const fetchSquad = useCallback(async (teamCode) => {
+    if (squadCache[teamCode]) return squadCache[teamCode];
+    const players = await apiGetSquadPlayers(teamCode);
+    setSquadCache(prev => ({ ...prev, [teamCode]: players }));
+    return players;
+  }, [squadCache]);
+
   if (!config?.playerSlotsEnabled || !slots || slots.length === 0) {
     return null;
   }
@@ -72,6 +83,7 @@ export default function PlayerPicksSection({
               onPickPlayer={setPlayerPick}
               disabled={disabled}
               selectedPlayerIds={selectedPlayerIds}
+              fetchSquad={fetchSquad}
             />
           );
         })}

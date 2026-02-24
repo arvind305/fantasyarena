@@ -1,3 +1,9 @@
+-- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+-- SUPERSEDED — DO NOT APPLY
+-- This file has been replaced by 018_scoring_reliability_fixes.sql
+-- Applying this file will REINTRODUCE BUGS that have been fixed
+-- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+--
 -- 017_fix_player_picks_scoring.sql
 -- FIX: Player picks scoring loop bug
 --

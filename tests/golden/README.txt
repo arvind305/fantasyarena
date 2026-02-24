@@ -1,1 +1,0 @@
-These tests are constitutionally binding. Any failure indicates a rules violation.

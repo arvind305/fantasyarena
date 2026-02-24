@@ -1,0 +1,78 @@
+{
+  "matchId": "wc_m43",
+  "winner": "teamB",
+  "totalRuns": 298,
+  "manOfMatch": "David Miller",
+  "sideBetAnswer": "",
+  "innings": [
+    {
+      "batting": [
+        { "name": "Aiden Markram", "runs": 4, "balls": 7, "fours": 0, "sixes": 0 },
+        { "name": "Quinton de Kock", "runs": 6, "balls": 7, "fours": 1, "sixes": 0 },
+        { "name": "Ryan Rickelton", "runs": 7, "balls": 7, "fours": 0, "sixes": 1 },
+        { "name": "Dewald Brevis", "runs": 45, "balls": 29, "fours": 3, "sixes": 3 },
+        { "name": "David Miller", "runs": 63, "balls": 35, "fours": 7, "sixes": 3 },
+        { "name": "Tristan Stubbs", "runs": 44, "balls": 24, "fours": 1, "sixes": 3 },
+        { "name": "Marco Jansen", "runs": 2, "balls": 6, "fours": 0, "sixes": 0 },
+        { "name": "Corbin Bosch", "runs": 5, "balls": 6, "fours": 1, "sixes": 0 },
+        { "name": "Kagiso Rabada", "runs": 0, "balls": 1, "fours": 0, "sixes": 0 },
+        { "name": "Keshav Maharaj", "runs": 0, "balls": 0, "fours": 0, "sixes": 0 },
+        { "name": "Lungi Ngidi", "runs": 0, "balls": 0, "fours": 0, "sixes": 0 }
+      ],
+      "bowling": [
+        { "name": "Arshdeep Singh", "overs": 4, "runs": 28, "wickets": 2 },
+        { "name": "Jasprit Bumrah", "overs": 4, "runs": 15, "wickets": 3 },
+        { "name": "Varun Chakaravarthy", "overs": 4, "runs": 47, "wickets": 1 },
+        { "name": "Washington Sundar", "overs": 2, "runs": 17, "wickets": 0 },
+        { "name": "Hardik Pandya", "overs": 4, "runs": 45, "wickets": 0 },
+        { "name": "Shivam Dube", "overs": 2, "runs": 32, "wickets": 1 }
+      ],
+      "fielding": {
+        "catches": {
+          "Hardik Pandya": 1,
+          "Abhishek Sharma": 1,
+          "Tilak Varma": 1,
+          "Rinku Singh": 1
+        },
+        "stumpings": {},
+        "runOuts": {}
+      }
+    },
+    {
+      "batting": [
+        { "name": "Ishan Kishan", "runs": 0, "balls": 4, "fours": 0, "sixes": 0 },
+        { "name": "Abhishek Sharma", "runs": 15, "balls": 12, "fours": 2, "sixes": 1 },
+        { "name": "Tilak Varma", "runs": 1, "balls": 2, "fours": 0, "sixes": 0 },
+        { "name": "Suryakumar Yadav", "runs": 18, "balls": 22, "fours": 2, "sixes": 0 },
+        { "name": "Washington Sundar", "runs": 11, "balls": 11, "fours": 0, "sixes": 1 },
+        { "name": "Shivam Dube", "runs": 42, "balls": 37, "fours": 1, "sixes": 3 },
+        { "name": "Hardik Pandya", "runs": 18, "balls": 17, "fours": 0, "sixes": 1 },
+        { "name": "Rinku Singh", "runs": 0, "balls": 2, "fours": 0, "sixes": 0 },
+        { "name": "Arshdeep Singh", "runs": 1, "balls": 2, "fours": 0, "sixes": 0 },
+        { "name": "Varun Chakaravarthy", "runs": 0, "balls": 3, "fours": 0, "sixes": 0 },
+        { "name": "Jasprit Bumrah", "runs": 0, "balls": 1, "fours": 0, "sixes": 0 }
+      ],
+      "bowling": [
+        { "name": "Aiden Markram", "overs": 1, "runs": 5, "wickets": 1 },
+        { "name": "Marco Jansen", "overs": 3.5, "runs": 22, "wickets": 4 },
+        { "name": "Kagiso Rabada", "overs": 4, "runs": 32, "wickets": 0 },
+        { "name": "Lungi Ngidi", "overs": 4, "runs": 15, "wickets": 0 },
+        { "name": "Keshav Maharaj", "overs": 3, "runs": 24, "wickets": 3 },
+        { "name": "Corbin Bosch", "overs": 3, "runs": 12, "wickets": 2 }
+      ],
+      "fielding": {
+        "catches": {
+          "Ryan Rickelton": 1,
+          "Corbin Bosch": 1,
+          "Quinton de Kock": 2,
+          "Dewald Brevis": 1,
+          "Tristan Stubbs": 3,
+          "Lungi Ngidi": 1,
+          "Aiden Markram": 1
+        },
+        "stumpings": {},
+        "runOuts": {}
+      }
+    }
+  ]
+}

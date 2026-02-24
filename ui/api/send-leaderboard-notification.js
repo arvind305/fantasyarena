@@ -55,21 +55,33 @@ export default async function handler(req, res) {
 
     let sent = 0;
     const errors = [];
+    const staleIds = [];
 
-    for (const sub of subs) {
-      try {
-        await webpush.sendNotification(
-          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-          payload
-        );
-        sent++;
-      } catch (pushErr) {
-        if (pushErr.statusCode === 410 || pushErr.statusCode === 404) {
-          await sb.from("push_subscriptions").delete().eq("id", sub.id);
-        } else {
-          errors.push({ endpoint: sub.endpoint.slice(-20), error: pushErr.message });
-        }
-      }
+    // Send in batches of 10 for concurrency control
+    const BATCH_SIZE = 10;
+    for (let i = 0; i < subs.length; i += BATCH_SIZE) {
+      const batch = subs.slice(i, i + BATCH_SIZE);
+      await Promise.allSettled(
+        batch.map((sub) =>
+          webpush
+            .sendNotification(
+              { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+              payload
+            )
+            .then(() => { sent++; })
+            .catch((pushErr) => {
+              if (pushErr.statusCode === 410 || pushErr.statusCode === 404) {
+                staleIds.push(sub.id);
+              } else {
+                errors.push({ endpoint: sub.endpoint.slice(-20), error: pushErr.message });
+              }
+            })
+        )
+      );
+    }
+    // Clean up stale subscriptions in one batch
+    if (staleIds.length > 0) {
+      await sb.from("push_subscriptions").delete().in("id", staleIds);
     }
 
     return res.status(200).json({ sent, errors });

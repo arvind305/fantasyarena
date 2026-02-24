@@ -1,19 +1,22 @@
 import { createClient } from "@supabase/supabase-js";
 
 /**
- * GET /api/auto-lock
+ * POST /api/auto-lock
  *
- * Lightweight endpoint called on page load to lock any OPEN matches
- * past their lock_time. This supplements the daily cron to ensure
- * matches get locked promptly without manual intervention.
+ * Locks OPEN matches past their lock_time and opens DRAFT matches
+ * within the 3-day betting window.
  *
- * No auth required — it only LOCKS matches (moves OPEN → LOCKED),
- * which is a safe, idempotent operation.
+ * Requires CRON_SECRET bearer token for authentication.
+ * Called by external cron (every 5 min) and optionally from client (fire-and-forget).
  */
 export default async function handler(req, res) {
-  // Allow CORS for client-side calls
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET");
+  // Verify CRON_SECRET — required for all calls
+  const secret = req.headers["authorization"];
+  const cronSecret = process.env.CRON_SECRET;
+
+  if (!cronSecret || secret !== `Bearer ${cronSecret}`) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
 
   if (req.method === "OPTIONS") {
     return res.status(200).end();
@@ -31,7 +34,7 @@ export default async function handler(req, res) {
   try {
     const now = new Date().toISOString();
 
-    // Find OPEN matches past their lock_time
+    // Find OPEN matches past their lock_time — batch update
     const { data: openPast, error } = await sb
       .from("match_config")
       .select("match_id")
@@ -42,31 +45,30 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: error.message });
     }
 
-    if (!openPast || openPast.length === 0) {
-      return res.status(200).json({ locked: 0 });
+    let lockedCount = 0;
+    if (openPast && openPast.length > 0) {
+      const matchIds = openPast.map((m) => m.match_id);
+
+      // Batch lock: 1 query per table instead of N+1
+      await sb
+        .from("match_config")
+        .update({ status: "LOCKED", updated_at: now })
+        .in("match_id", matchIds);
+
+      await sb
+        .from("match_questions")
+        .update({ status: "CLOSED" })
+        .in("match_id", matchIds);
+
+      await sb
+        .from("bets")
+        .update({ is_locked: true })
+        .in("match_id", matchIds);
+
+      lockedCount = matchIds.length;
     }
 
-    const matchIds = openPast.map((m) => m.match_id);
-
-    // Lock match_config
-    await sb
-      .from("match_config")
-      .update({ status: "LOCKED", updated_at: now })
-      .in("match_id", matchIds);
-
-    // Close match_questions
-    await sb
-      .from("match_questions")
-      .update({ status: "CLOSED" })
-      .in("match_id", matchIds);
-
-    // Lock all bets for these matches
-    await sb
-      .from("bets")
-      .update({ is_locked: true })
-      .in("match_id", matchIds);
-
-    // Also open DRAFT matches within the 3-day window
+    // Open DRAFT matches within the 3-day window — batch update
     const endWindow = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
     const { data: draftInWindow } = await sb
       .from("match_config")
@@ -89,7 +91,7 @@ export default async function handler(req, res) {
       opened = draftIds.length;
     }
 
-    return res.status(200).json({ locked: matchIds.length, opened, matchIds });
+    return res.status(200).json({ locked: lockedCount, opened });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

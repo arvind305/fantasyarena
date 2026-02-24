@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthProvider";
-import { getAdminEmail } from "../../config";
+import { useIsAdmin } from "../../hooks/useIsAdmin";
 import { useToast } from "../../components/Toast";
 import Spinner from "../../components/Spinner";
 import AdminNav from "../../components/admin/AdminNav";
 import { supabase, isSupabaseConfigured } from "../../lib/supabase";
+import { CURRENT_TOURNAMENT } from "../../config/tournament";
 
 export default function MatchList() {
   const { user } = useAuth();
   const toast = useToast();
-  const adminEmail = getAdminEmail();
-  const isAdmin = user && adminEmail && user.email?.trim().toLowerCase() === adminEmail;
+  const isAdmin = useIsAdmin();
 
   const [loading, setLoading] = useState(true);
   const [matches, setMatches] = useState([]);
@@ -22,7 +22,7 @@ export default function MatchList() {
     async function load() {
       try {
         // Load tournament data
-        const res = await fetch("/data/t20wc_2026.json");
+        const res = await fetch(CURRENT_TOURNAMENT.dataFile);
         const tournament = await res.json();
         setMatches(tournament?.matches || []);
 
