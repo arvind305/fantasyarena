@@ -48,9 +48,16 @@ CREATE POLICY "anon_read_long_term_bets" ON long_term_bets FOR SELECT TO anon US
 
 -- Step 3: Revoke EXECUTE on scoring functions from anon
 -- These should only be callable by service_role (via admin API)
-REVOKE EXECUTE ON FUNCTION calculate_match_scores(TEXT, TEXT) FROM anon;
-REVOKE EXECUTE ON FUNCTION calculate_all_player_points(TEXT) FROM anon;
-REVOKE EXECUTE ON FUNCTION calculate_long_term_scores(TEXT) FROM anon;
+DO $$
+BEGIN
+    EXECUTE 'REVOKE EXECUTE ON FUNCTION calculate_match_scores(TEXT, TEXT) FROM anon';
+EXCEPTION WHEN undefined_function THEN NULL;
+END $$;
+DO $$
+BEGIN
+    EXECUTE 'REVOKE EXECUTE ON FUNCTION calculate_long_term_scores(TEXT) FROM anon';
+EXCEPTION WHEN undefined_function THEN NULL;
+END $$;
 
 -- Step 4: Add bet lock enforcement trigger
 -- Prevents writes to bets table when match is not OPEN or past lock_time
