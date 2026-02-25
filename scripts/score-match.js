@@ -13,6 +13,29 @@
  * Overs: Cricket notation (3.3 = 3 overs 3 balls → 3.5 decimal)
  */
 
+// Workaround for Jio DNS issue blocking Supabase in India:
+// Override dns.lookup to resolve via Google DNS (8.8.8.8)
+const dns = require('dns');
+const _origLookup = dns.lookup.bind(dns);
+const _resolver = new dns.Resolver();
+_resolver.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
+const _dnsCache = {};
+dns.lookup = function(hostname, options, callback) {
+  if (typeof options === 'function') { callback = options; options = {}; }
+  if (typeof options === 'number') options = { family: options };
+  options = options || {};
+  const respond = (addrs) => {
+    if (options.all) callback(null, addrs.map(a => ({ address: a, family: 4 })));
+    else callback(null, addrs[0], 4);
+  };
+  if (_dnsCache[hostname]) return respond(_dnsCache[hostname]);
+  _resolver.resolve4(hostname, (err, addresses) => {
+    if (err || !addresses || !addresses.length) return _origLookup(hostname, options, callback);
+    _dnsCache[hostname] = addresses;
+    respond(addresses);
+  });
+};
+
 require('dotenv').config({ path: require('path').join(__dirname, '..', 'ui', '.env') });
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
