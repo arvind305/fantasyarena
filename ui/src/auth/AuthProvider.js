@@ -81,10 +81,14 @@ export function AuthProvider({ children }) {
   });
   const tokenRef = useRef(user?.token || null);
 
-  // On initial load, verify stored token with server
+  // On initial load, verify stored token with server (once per session)
+  const verifiedRef = useRef(false);
   useEffect(() => {
+    if (verifiedRef.current) return;
     const persisted = loadPersistedUser();
     if (!persisted?.token) return;
+
+    verifiedRef.current = true;
 
     // Verify the token is still valid
     fetch('/api/verify-session', {
@@ -98,16 +102,18 @@ export function AuthProvider({ children }) {
         if (!r.ok) {
           // Token expired or invalid — clear auth state
           console.warn('[Auth] Stored token is invalid, clearing auth state');
+          verifiedRef.current = false;
           setUser(null);
           persistUser(null);
           tokenRef.current = null;
         } else {
-          // Token valid — save profile
+          // Token valid — save profile (only on first load)
           saveProfileViaApi(persisted.token, persisted.avatar);
         }
       })
       .catch(() => {
         // Network error — don't force logout, keep local state
+        verifiedRef.current = false;
       });
   }, []);
 

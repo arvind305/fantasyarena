@@ -32,22 +32,12 @@ export default function Home() {
       .then(([m, events]) => {
         setMatches(m);
         if (events?.length) setEvent(events[0]);
+        // Build lock times from match data (already fetched)
+        const lockMap = {};
+        m.forEach((match) => { if (match.lockTime) lockMap[match.matchId] = match.lockTime; });
+        setLockTimes(lockMap);
       })
       .finally(() => setLoading(false));
-
-    // Fetch lock times for client-side status override
-    if (supabase && isSupabaseConfigured()) {
-      supabase
-        .from("match_config")
-        .select("match_id, lock_time")
-        .then(({ data }) => {
-          if (data) {
-            const lockMap = {};
-            data.forEach((r) => { lockMap[r.match_id] = r.lock_time; });
-            setLockTimes(lockMap);
-          }
-        });
-    }
   }, []);
 
   // Fetch user's placed bets (just match IDs)

@@ -6,7 +6,10 @@ import { useToast } from "../../components/Toast";
 import Spinner from "../../components/Spinner";
 import AdminNav from "../../components/admin/AdminNav";
 import { supabase, isSupabaseConfigured } from "../../lib/supabase";
-import { CURRENT_TOURNAMENT } from "../../config/tournament";
+import { getMatchSchedule } from "../../api";
+import { TEAM_NAMES, TEAM_CODE_TO_ID } from "../../data/teams";
+
+const teamName = (code) => TEAM_NAMES[TEAM_CODE_TO_ID[code]] || code;
 
 export default function MatchList() {
   const { user } = useAuth();
@@ -21,12 +24,9 @@ export default function MatchList() {
   useEffect(() => {
     async function load() {
       try {
-        // Load tournament data
-        const res = await fetch(CURRENT_TOURNAMENT.dataFile);
-        const tournament = await res.json();
-        setMatches(tournament?.matches || []);
+        const schedule = await getMatchSchedule();
+        setMatches(Object.values(schedule.map));
 
-        // Load match configs from Supabase
         if (supabase && isSupabaseConfigured()) {
           const { data } = await supabase.from("match_config").select("match_id, status, team_a, team_b, lock_time");
           if (data) {
@@ -47,9 +47,9 @@ export default function MatchList() {
   const filteredMatches = useMemo(() => {
     const now = new Date();
     let filtered = [...matches];
-    if (filter === "upcoming") filtered = filtered.filter((m) => new Date(`${m.date}T${m.time_gmt}:00Z`) > now);
-    else if (filter === "past") filtered = filtered.filter((m) => new Date(`${m.date}T${m.time_gmt}:00Z`) <= now);
-    filtered.sort((a, b) => new Date(`${a.date}T${a.time_gmt}:00Z`) - new Date(`${b.date}T${b.time_gmt}:00Z`));
+    if (filter === "upcoming") filtered = filtered.filter((m) => new Date(m.scheduledTime) > now);
+    else if (filter === "past") filtered = filtered.filter((m) => new Date(m.scheduledTime) <= now);
+    filtered.sort((a, b) => new Date(a.scheduledTime) - new Date(b.scheduledTime));
     return filtered;
   }, [matches, filter]);
 
@@ -83,10 +83,10 @@ export default function MatchList() {
 
       <div className="space-y-2">
         {filteredMatches.map((match) => {
-          const matchId = String(match.match_id);
+          const matchId = match.matchId;
           const cfg = configs[matchId];
           const status = cfg?.status || "DRAFT";
-          const scheduledTime = new Date(`${match.date}T${match.time_gmt}:00Z`);
+          const scheduledTime = new Date(match.scheduledTime);
           const isPast = scheduledTime <= new Date();
 
           return (
@@ -101,7 +101,7 @@ export default function MatchList() {
                 <span className={`w-3 h-3 rounded-full shrink-0 ${statusColors[status] || "bg-gray-500"}`} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-gray-200">{match.teams[0]} vs {match.teams[1]}</span>
+                    <span className="font-semibold text-gray-200">{teamName(match.teamA)} vs {teamName(match.teamB)}</span>
                     <span className="text-xs text-gray-600">#{matchId}</span>
                   </div>
                   <div className="text-xs text-gray-500">

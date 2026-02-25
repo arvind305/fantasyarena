@@ -9,10 +9,13 @@ import PointsInput from "../../components/admin/PointsInput";
 import PlayerStatsForm from "../../components/admin/PlayerStatsForm";
 import { useMatchConfig } from "../../hooks/useMatchConfig";
 import { useAdmin } from "../../hooks/useAdmin";
-import { apiGetSquadPlayers } from "../../api";
+import { apiGetSquadPlayers, getMatchSchedule } from "../../api";
 import { supabase, isSupabaseConfigured } from "../../lib/supabase";
 import { utcToIST, istToUTC } from "../../utils/date";
 import { CURRENT_TOURNAMENT } from "../../config/tournament";
+import { TEAM_NAMES, TEAM_CODE_TO_ID } from "../../data/teams";
+
+const teamName = (code) => TEAM_NAMES[TEAM_CODE_TO_ID[code]] || code;
 
 export default function MatchConfig() {
   const { matchId } = useParams();
@@ -56,19 +59,16 @@ export default function MatchConfig() {
 
   // Load match data
   useEffect(() => {
-    fetch(CURRENT_TOURNAMENT.dataFile)
-      .then((r) => r.json())
-      .then((tournament) => {
-        const m = (tournament.matches || []).find(
-          (m) => String(m.match_id) === matchId
-        );
+    getMatchSchedule()
+      .then((schedule) => {
+        const m = schedule.map[matchId] || null;
         setMatch(m);
         if (m) {
           setForm((prev) => ({
             ...prev,
-            teamA: m.teams[0],
-            teamB: m.teams[1],
-            lockTime: utcToIST(`${m.date}T${m.time_gmt}:00Z`),
+            teamA: m.teamA,
+            teamB: m.teamB,
+            lockTime: utcToIST(m.scheduledTime),
           }));
         }
       })
@@ -288,11 +288,11 @@ export default function MatchConfig() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-200">
-            {match ? `${match.teams[0]} vs ${match.teams[1]}` : `Match ${matchId}`}
+            {match ? `${teamName(match.teamA)} vs ${teamName(match.teamB)}` : `Match ${matchId}`}
           </h1>
           <p className="text-sm text-gray-500">
             Match #{matchId}
-            {match && ` - ${new Date(`${match.date}T${match.time_gmt}:00Z`).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST`}
+            {match && ` - ${new Date(match.scheduledTime).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST`}
           </p>
         </div>
         <Link to="/admin/matches" className="text-sm text-gray-400 hover:text-gray-200">Back to Matches</Link>
@@ -580,7 +580,7 @@ export default function MatchConfig() {
 
             {form.teamA && teamPlayers.teamA.length > 0 && (
               <div>
-                <h3 className="text-md font-medium text-gray-300 mb-3">{form.teamA}</h3>
+                <h3 className="text-md font-medium text-gray-300 mb-3">{teamName(form.teamA)}</h3>
                 <PlayerStatsForm
                   players={teamPlayers.teamA}
                   stats={playerStats}
@@ -591,7 +591,7 @@ export default function MatchConfig() {
 
             {form.teamB && teamPlayers.teamB.length > 0 && (
               <div className="mt-6">
-                <h3 className="text-md font-medium text-gray-300 mb-3">{form.teamB}</h3>
+                <h3 className="text-md font-medium text-gray-300 mb-3">{teamName(form.teamB)}</h3>
                 <PlayerStatsForm
                   players={teamPlayers.teamB}
                   stats={playerStats}

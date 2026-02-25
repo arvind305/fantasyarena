@@ -6,7 +6,10 @@ import { useToast } from "../../components/Toast";
 import Spinner from "../../components/Spinner";
 import AdminNav from "../../components/admin/AdminNav";
 import { supabase, isSupabaseConfigured } from "../../lib/supabase";
-import { CURRENT_TOURNAMENT } from "../../config/tournament";
+import { getMatchSchedule } from "../../api";
+import { TEAM_NAMES, TEAM_CODE_TO_ID } from "../../data/teams";
+
+const teamName = (code) => TEAM_NAMES[TEAM_CODE_TO_ID[code]] || code;
 
 export default function AdminDashboardV2() {
   const { user } = useAuth();
@@ -22,9 +25,8 @@ export default function AdminDashboardV2() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(CURRENT_TOURNAMENT.dataFile);
-        const tournament = await res.json();
-        setMatches(tournament?.matches || []);
+        const schedule = await getMatchSchedule();
+        setMatches(Object.values(schedule.map));
 
         if (supabase && isSupabaseConfigured()) {
           const [cfgRes, resRes, betsRes] = await Promise.all([
@@ -63,7 +65,7 @@ export default function AdminDashboardV2() {
     const resultsCount = Object.keys(results).length;
     const scoredCount = Object.values(configs).filter(c => c.status === "SCORED").length;
     const now = new Date();
-    const upcoming = matches.filter(m => new Date(`${m.date}T${m.time_gmt}:00Z`) > now);
+    const upcoming = matches.filter(m => new Date(m.scheduledTime) > now);
 
     return {
       total: matches.length,
@@ -71,28 +73,26 @@ export default function AdminDashboardV2() {
       results: resultsCount,
       scored: scoredCount,
       upcoming: upcoming.length,
-      needAttention: upcoming.filter(m => !configs[String(m.match_id)] || configs[String(m.match_id)]?.status === "DRAFT").length,
+      needAttention: upcoming.filter(m => !configs[m.matchId] || configs[m.matchId]?.status === "DRAFT").length,
     };
   }, [matches, configs, results]);
 
-  // Next 5 upcoming matches that need attention
   const upcomingMatches = useMemo(() => {
     const now = new Date();
     return matches
-      .filter(m => new Date(`${m.date}T${m.time_gmt}:00Z`) > now)
-      .sort((a, b) => new Date(`${a.date}T${a.time_gmt}:00Z`) - new Date(`${b.date}T${b.time_gmt}:00Z`))
+      .filter(m => new Date(m.scheduledTime) > now)
+      .sort((a, b) => new Date(a.scheduledTime) - new Date(b.scheduledTime))
       .slice(0, 5);
   }, [matches]);
 
-  // Recent past matches that may need scoring
   const recentPast = useMemo(() => {
     const now = new Date();
     return matches
       .filter(m => {
-        const t = new Date(`${m.date}T${m.time_gmt}:00Z`);
+        const t = new Date(m.scheduledTime);
         return t <= now && t > new Date(now - 7 * 86400000);
       })
-      .sort((a, b) => new Date(`${b.date}T${b.time_gmt}:00Z`) - new Date(`${a.date}T${a.time_gmt}:00Z`))
+      .sort((a, b) => new Date(b.scheduledTime) - new Date(a.scheduledTime))
       .slice(0, 5);
   }, [matches]);
 
@@ -147,7 +147,7 @@ export default function AdminDashboardV2() {
           </div>
           <div className="space-y-2">
             {upcomingMatches.map((m) => {
-              const mid = String(m.match_id);
+              const mid = m.matchId;
               const cfg = configs[mid];
               const status = cfg?.status || "DRAFT";
               return (
@@ -156,9 +156,9 @@ export default function AdminDashboardV2() {
                     status === "OPEN" ? "bg-green-500" : status === "DRAFT" ? "bg-yellow-500" : "bg-gray-500"
                   }`} />
                   <div className="flex-1 min-w-0">
-                    <span className="text-sm font-medium text-gray-200">{m.teams[0]} vs {m.teams[1]}</span>
+                    <span className="text-sm font-medium text-gray-200">{teamName(m.teamA)} vs {teamName(m.teamB)}</span>
                     <div className="text-xs text-gray-500">
-                      {new Date(`${m.date}T${m.time_gmt}:00Z`).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
+                      {new Date(m.scheduledTime).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
                     </div>
                   </div>
                   <span className={`text-xs px-2 py-0.5 rounded ${
@@ -178,7 +178,7 @@ export default function AdminDashboardV2() {
           </div>
           <div className="space-y-2">
             {recentPast.map((m) => {
-              const mid = String(m.match_id);
+              const mid = m.matchId;
               const hasResults = !!results[mid];
               const status = configs[mid]?.status || "DRAFT";
               const scoredBetsCount = betsCount[mid] || 0;
@@ -188,7 +188,7 @@ export default function AdminDashboardV2() {
                     status === "SCORED" ? "bg-purple-500" : hasResults ? "bg-blue-500" : "bg-red-500"
                   }`} />
                   <div className="flex-1 min-w-0">
-                    <span className="text-sm font-medium text-gray-200">{m.teams[0]} vs {m.teams[1]}</span>
+                    <span className="text-sm font-medium text-gray-200">{teamName(m.teamA)} vs {teamName(m.teamB)}</span>
                     <div className="text-xs text-gray-500">
                       {hasResults ? `Results entered` : "No results yet"}
                       {scoredBetsCount > 0 && ` - ${scoredBetsCount} bets scored`}

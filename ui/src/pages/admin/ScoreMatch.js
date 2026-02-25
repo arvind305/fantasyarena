@@ -7,10 +7,13 @@ import Spinner from "../../components/Spinner";
 import AdminNav from "../../components/admin/AdminNav";
 import { useMatchConfig } from "../../hooks/useMatchConfig";
 import { useAdmin } from "../../hooks/useAdmin";
-import { apiGetMatchResults } from "../../api";
+import { apiGetMatchResults, getMatchSchedule } from "../../api";
 import PlayerStatsEntry from "../../components/admin/PlayerStatsEntry";
 import { supabase, isSupabaseConfigured } from "../../lib/supabase";
 import { CURRENT_TOURNAMENT } from "../../config/tournament";
+import { TEAM_NAMES, TEAM_CODE_TO_ID } from "../../data/teams";
+
+const teamName = (code) => TEAM_NAMES[TEAM_CODE_TO_ID[code]] || code;
 
 export default function ScoreMatch() {
   const { matchId } = useParams();
@@ -40,11 +43,11 @@ export default function ScoreMatch() {
 
   useEffect(() => {
     Promise.all([
-      fetch(CURRENT_TOURNAMENT.dataFile).then((r) => r.json()),
+      getMatchSchedule(),
       apiGetMatchResults(matchId),
     ])
-      .then(([tournament, results]) => {
-        const m = (tournament.matches || []).find((m) => String(m.match_id) === matchId);
+      .then(([schedule, results]) => {
+        const m = schedule.map[matchId] || null;
         setMatch(m);
 
         if (results) {
@@ -151,12 +154,12 @@ export default function ScoreMatch() {
 
   if (loading || configLoading) return <div className="max-w-4xl mx-auto px-4 py-10 text-center"><Spinner size="lg" /></div>;
 
-  const teamA = config?.teamA || match?.teams?.[0] || "Team A";
-  const teamB = config?.teamB || match?.teams?.[1] || "Team B";
+  const teamA = config?.teamA || match?.teamA || "Team A";
+  const teamB = config?.teamB || match?.teamB || "Team B";
 
   const resolvedWinnerOptions = [
-    { value: `opt_${matchId}_winner_teamA`, label: teamA },
-    { value: `opt_${matchId}_winner_teamB`, label: teamB },
+    { value: `opt_${matchId}_winner_teamA`, label: teamName(teamA) },
+    { value: `opt_${matchId}_winner_teamB`, label: teamName(teamB) },
     { value: `opt_${matchId}_winner_tie`, label: "TIE" },
     { value: `opt_${matchId}_winner_no_result`, label: "NO RESULT" },
     { value: `opt_${matchId}_winner_super_over`, label: "Super Over" },
@@ -193,7 +196,7 @@ export default function ScoreMatch() {
         <div>
           <h1 className="text-2xl font-bold text-gray-200">Score Match</h1>
           <p className="text-sm text-gray-500">
-            {match ? `${match.teams[0]} vs ${match.teams[1]}` : `Match ${matchId}`}
+            {match ? `${teamName(match.teamA)} vs ${teamName(match.teamB)}` : `Match ${matchId}`}
           </p>
         </div>
         <Link to={`/admin/match/${matchId}`} className="text-sm text-gray-400 hover:text-gray-200">Match Config</Link>
@@ -250,7 +253,7 @@ export default function ScoreMatch() {
                       }`}
                     >
                       <input type="radio" name="superOverTeam" value={team} checked={superOverTeam === team} onChange={() => setSuperOverTeam(team)} className="sr-only" />
-                      {team}
+                      {teamName(team)}
                     </label>
                   ))}
                 </div>

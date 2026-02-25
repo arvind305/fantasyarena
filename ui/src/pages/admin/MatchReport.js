@@ -6,9 +6,8 @@ import { useToast } from "../../components/Toast";
 import Spinner from "../../components/Spinner";
 import AdminNav from "../../components/admin/AdminNav";
 import UserBetCard from "../../components/UserBetCard";
-import { apiGetMatchReport } from "../../api";
+import { apiGetMatchReport, getMatchSchedule } from "../../api";
 import { TEAM_NAMES, TEAM_CODE_TO_ID } from "../../data/teams";
-import { CURRENT_TOURNAMENT } from "../../config/tournament";
 
 export default function MatchReport() {
   const { matchId } = useParams();
@@ -23,12 +22,11 @@ export default function MatchReport() {
   useEffect(() => {
     Promise.all([
       apiGetMatchReport(matchId),
-      fetch(CURRENT_TOURNAMENT.dataFile).then(r => r.json()),
+      getMatchSchedule(),
     ])
-      .then(([data, tournament]) => {
+      .then(([data, schedule]) => {
         setReport(data);
-        const m = (tournament.matches || []).find(m => String(m.match_id) === matchId);
-        setScheduleMatch(m);
+        setScheduleMatch(schedule.map[matchId] || null);
       })
       .catch(err => toast.error(err.message))
       .finally(() => setLoading(false));
@@ -95,8 +93,8 @@ export default function MatchReport() {
             <div className="text-sm text-gray-500 space-y-0.5">
               {scheduleMatch && (
                 <>
-                  <p>{scheduleMatch.venue}, {scheduleMatch.city}</p>
-                  <p>{new Date(`${scheduleMatch.date}T${scheduleMatch.time_gmt}:00Z`).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "full", timeStyle: "short" })} IST</p>
+                  <p>{scheduleMatch.venue}</p>
+                  <p>{new Date(scheduleMatch.scheduledTime).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "full", timeStyle: "short" })} IST</p>
                 </>
               )}
               <p className="text-gray-600">Match #{matchId}</p>

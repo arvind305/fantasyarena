@@ -18,7 +18,7 @@ import { CURRENT_TOURNAMENT } from "./config/tournament";
 let _scheduleCache = null;
 let _schedulePromise = null;
 
-async function getMatchSchedule() {
+export async function getMatchSchedule() {
   if (_scheduleCache) return _scheduleCache;
   if (_schedulePromise) return _schedulePromise;
 
