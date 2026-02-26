@@ -1,0 +1,66 @@
+{
+  "matchId": "wc_m47",
+  "winner": "teamB",
+  "totalRuns": 353,
+  "manOfMatch": "Aiden Markram",
+  "sideBetAnswers": ["30-40%", "51-65"],
+  "innings": [
+    {
+      "team": "WI",
+      "batting": [
+        { "name": "Brandon King", "runs": 21, "balls": 11, "fours": 5, "sixes": 0 },
+        { "name": "Shai Hope", "runs": 16, "balls": 6, "fours": 1, "sixes": 2 },
+        { "name": "Shimron Hetmyer", "runs": 2, "balls": 3, "fours": 0, "sixes": 0 },
+        { "name": "Rovman Powell", "runs": 9, "balls": 11, "fours": 1, "sixes": 0 },
+        { "name": "Roston Chase", "runs": 2, "balls": 2, "fours": 0, "sixes": 0 },
+        { "name": "Sherfane Rutherford", "runs": 12, "balls": 10, "fours": 0, "sixes": 1 },
+        { "name": "Jason Holder", "runs": 49, "balls": 31, "fours": 4, "sixes": 3 },
+        { "name": "Matthew Forde", "runs": 11, "balls": 9, "fours": 1, "sixes": 1 },
+        { "name": "Romario Shepherd", "runs": 52, "balls": 37, "fours": 3, "sixes": 4 },
+        { "name": "Gudakesh Motie", "runs": 0, "balls": 0, "fours": 0, "sixes": 0 }
+      ],
+      "bowling": [
+        { "name": "Keshav Maharaj", "overs": 4, "runs": 43, "wickets": 0 },
+        { "name": "Marco Jansen", "overs": 4, "runs": 50, "wickets": 0 },
+        { "name": "Kagiso Rabada", "overs": 4, "runs": 22, "wickets": 2 },
+        { "name": "Lungi Ngidi", "overs": 4, "runs": 30, "wickets": 3 },
+        { "name": "Corbin Bosch", "overs": 4, "runs": 31, "wickets": 2 }
+      ],
+      "fielding": {
+        "catches": {
+          "Quinton de Kock": 3,
+          "Keshav Maharaj": 1,
+          "Dewald Brevis": 1,
+          "Ryan Rickelton": 1
+        },
+        "stumpings": {},
+        "runOuts": {
+          "Quinton de Kock": 1
+        }
+      }
+    },
+    {
+      "team": "RSA",
+      "batting": [
+        { "name": "Aiden Markram", "runs": 82, "balls": 46, "fours": 7, "sixes": 4 },
+        { "name": "Quinton de Kock", "runs": 47, "balls": 24, "fours": 4, "sixes": 4 },
+        { "name": "Ryan Rickelton", "runs": 45, "balls": 28, "fours": 4, "sixes": 2 }
+      ],
+      "bowling": [
+        { "name": "Matthew Forde", "overs": 3, "runs": 30, "wickets": 0 },
+        { "name": "Romario Shepherd", "overs": 2, "runs": 22, "wickets": 0 },
+        { "name": "Jason Holder", "overs": 3.1, "runs": 31, "wickets": 0 },
+        { "name": "Shamar Joseph", "overs": 2, "runs": 24, "wickets": 0 },
+        { "name": "Gudakesh Motie", "overs": 2, "runs": 24, "wickets": 0 },
+        { "name": "Roston Chase", "overs": 4, "runs": 46, "wickets": 1 }
+      ],
+      "fielding": {
+        "catches": {
+          "Jason Holder": 1
+        },
+        "stumpings": {},
+        "runOuts": {}
+      }
+    }
+  ]
+}
