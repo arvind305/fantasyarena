@@ -95,9 +95,26 @@ export default function Home() {
             Super Selector
           </span>
         </h1>
-        <p className="text-gray-400 text-lg max-w-md mx-auto">
-          Predict match outcomes, compete with friends, and climb the leaderboard.
+        <p className="text-brand-400 font-semibold text-lg tracking-wide mb-4">
+          Embrace the Chaos.
         </p>
+        <div className="text-gray-400 text-sm max-w-lg mx-auto space-y-3 text-left">
+          <p>
+            Pick winners. Guess totals. Choose players. Slot them for multipliers that can <span className="text-white font-medium">explode your score</span>.
+          </p>
+          <p>
+            Down by 200 points? One perfect round can erase that. Multipliers get wilder as the tournament heats up. A single bold pick on a big night can launch you from last to first. A super over call pays <span className="text-brand-300 font-bold">5x</span>. A gutsy side bet that everyone else dodged? That's <span className="text-white font-medium">your moment</span>.
+          </p>
+          <p className="text-white font-semibold">
+            The bigger the chaos, the bigger your opportunity.
+          </p>
+          <p>
+            Leaders fall. Underdogs rise. The leaderboard is a living thing — and the final match matters more than the first ten combined.
+          </p>
+          <p className="text-brand-300 font-bold tracking-wide">
+            Be bold. Pick. Win.
+          </p>
+        </div>
 
         {/* Primary CTA */}
         <div className="mt-8">
