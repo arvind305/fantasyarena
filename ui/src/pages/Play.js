@@ -66,7 +66,7 @@ export default function Play() {
   }, []);
 
   // Fetch user's placed bets (just match IDs)
-  useEffect(() => {
+  const fetchUserBets = React.useCallback(() => {
     if (!user?.userId || !supabase || !isSupabaseConfigured()) {
       setUserBetMatchIds(new Set());
       return;
@@ -81,6 +81,15 @@ export default function Play() {
         }
       });
   }, [user?.userId]);
+
+  useEffect(() => { fetchUserBets(); }, [fetchUserBets]);
+
+  // Refetch when user navigates back (e.g. after placing a bet)
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === "visible") fetchUserBets(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [fetchUserBets]);
 
   // Derive effective UI status from lock_time + estimated end:
   //   - lock_time passed + within 4.5 hours → LIVE
