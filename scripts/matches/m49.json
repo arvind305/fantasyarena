@@ -1,0 +1,74 @@
+{
+  "matchId": "wc_m49",
+  "winner": "teamA",
+  "totalRuns": 320,
+  "manOfMatch": "Will Jacks",
+  "sideBetAnswers": ["Dot ball", "51-65"],
+  "innings": [
+    {
+      "team": "NZ",
+      "batting": [
+        { "name": "Tim Seifert", "runs": 35, "balls": 25, "fours": 3, "sixes": 2 },
+        { "name": "Finn Allen", "runs": 29, "balls": 19, "fours": 0, "sixes": 3 },
+        { "name": "Rachin Ravindra", "runs": 11, "balls": 13, "fours": 1, "sixes": 0 },
+        { "name": "Glenn Phillips", "runs": 39, "balls": 28, "fours": 4, "sixes": 1 },
+        { "name": "Mark Chapman", "runs": 15, "balls": 9, "fours": 2, "sixes": 0 },
+        { "name": "Daryl Mitchell", "runs": 3, "balls": 8, "fours": 0, "sixes": 0 },
+        { "name": "Mitchell Santner", "runs": 9, "balls": 5, "fours": 0, "sixes": 1 },
+        { "name": "Cole McConchie", "runs": 14, "balls": 12, "fours": 2, "sixes": 0 },
+        { "name": "Matt Henry", "runs": 1, "balls": 1, "fours": 0, "sixes": 0 }
+      ],
+      "bowling": [
+        { "name": "Jofra Archer", "overs": 3, "runs": 24, "wickets": 0 },
+        { "name": "Liam Dawson", "overs": 4, "runs": 32, "wickets": 1 },
+        { "name": "Sam Curran", "overs": 1, "runs": 10, "wickets": 0 },
+        { "name": "Adil Rashid", "overs": 4, "runs": 28, "wickets": 2 },
+        { "name": "Will Jacks", "overs": 4, "runs": 23, "wickets": 2 },
+        { "name": "Jacob Bethell", "overs": 1, "runs": 13, "wickets": 0 },
+        { "name": "Rehan Ahmed", "overs": 3, "runs": 28, "wickets": 2 }
+      ],
+      "fielding": {
+        "catches": {
+          "Jacob Bethell": 2,
+          "Will Jacks": 1
+        },
+        "stumpings": {
+          "Jos Buttler": 2
+        },
+        "runOuts": {}
+      }
+    },
+    {
+      "team": "ENG",
+      "batting": [
+        { "name": "Philip Salt", "runs": 2, "balls": 4, "fours": 0, "sixes": 0 },
+        { "name": "Jos Buttler", "runs": 0, "balls": 2, "fours": 0, "sixes": 0 },
+        { "name": "Harry Brook", "runs": 26, "balls": 24, "fours": 3, "sixes": 1 },
+        { "name": "Jacob Bethell", "runs": 21, "balls": 16, "fours": 4, "sixes": 0 },
+        { "name": "Tom Banton", "runs": 33, "balls": 24, "fours": 3, "sixes": 1 },
+        { "name": "Sam Curran", "runs": 24, "balls": 22, "fours": 2, "sixes": 1 },
+        { "name": "Will Jacks", "runs": 32, "balls": 18, "fours": 4, "sixes": 1 },
+        { "name": "Rehan Ahmed", "runs": 19, "balls": 7, "fours": 1, "sixes": 2 }
+      ],
+      "bowling": [
+        { "name": "Matt Henry", "overs": 2.3, "runs": 19, "wickets": 1 },
+        { "name": "Lockie Ferguson", "overs": 2, "runs": 14, "wickets": 1 },
+        { "name": "Mitchell Santner", "overs": 4, "runs": 29, "wickets": 0 },
+        { "name": "Cole McConchie", "overs": 1, "runs": 13, "wickets": 0 },
+        { "name": "Glenn Phillips", "overs": 4, "runs": 43, "wickets": 1 },
+        { "name": "Rachin Ravindra", "overs": 4, "runs": 19, "wickets": 3 },
+        { "name": "Ish Sodhi", "overs": 2, "runs": 21, "wickets": 0 }
+      ],
+      "fielding": {
+        "catches": {
+          "Tim Seifert": 2,
+          "Daryl Mitchell": 1,
+          "Glenn Phillips": 2,
+          "Mark Chapman": 1
+        },
+        "stumpings": {},
+        "runOuts": {}
+      }
+    }
+  ]
+}
