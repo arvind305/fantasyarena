@@ -1,0 +1,70 @@
+{
+  "matchId": "wc_m48",
+  "winner": "teamA",
+  "totalRuns": 440,
+  "manOfMatch": "Hardik Pandya",
+  "sideBetAnswers": ["191+", "5-8"],
+  "innings": [
+    {
+      "team": "IND",
+      "batting": [
+        { "name": "Sanju Samson", "runs": 24, "balls": 15, "fours": 1, "sixes": 2 },
+        { "name": "Abhishek Sharma", "runs": 55, "balls": 30, "fours": 4, "sixes": 4 },
+        { "name": "Ishan Kishan", "runs": 38, "balls": 24, "fours": 4, "sixes": 1 },
+        { "name": "Suryakumar Yadav", "runs": 33, "balls": 13, "fours": 3, "sixes": 2 },
+        { "name": "Hardik Pandya", "runs": 50, "balls": 23, "fours": 2, "sixes": 4 },
+        { "name": "Tilak Varma", "runs": 44, "balls": 16, "fours": 3, "sixes": 4 }
+      ],
+      "bowling": [
+        { "name": "Richard Ngarava", "overs": 4, "runs": 62, "wickets": 1 },
+        { "name": "Blessing Muzarabani", "overs": 4, "runs": 43, "wickets": 1 },
+        { "name": "Tinotenda Maposa", "overs": 2, "runs": 40, "wickets": 1 },
+        { "name": "Brad Evans", "overs": 4, "runs": 52, "wickets": 0 },
+        { "name": "Sikandar Raza", "overs": 3, "runs": 29, "wickets": 1 },
+        { "name": "Brian Bennett", "overs": 2, "runs": 16, "wickets": 0 },
+        { "name": "Ryan Burl", "overs": 1, "runs": 10, "wickets": 0 }
+      ],
+      "fielding": {
+        "catches": {
+          "Ryan Burl": 1,
+          "Sikandar Raza": 1,
+          "Richard Ngarava": 1,
+          "Tashinga Musekiwa": 1
+        },
+        "stumpings": {},
+        "runOuts": {}
+      }
+    },
+    {
+      "team": "ZIM",
+      "batting": [
+        { "name": "Brian Bennett", "runs": 97, "balls": 59, "fours": 8, "sixes": 6 },
+        { "name": "Tadiwanashe Marumani", "runs": 20, "balls": 20, "fours": 0, "sixes": 2 },
+        { "name": "Dion Myers", "runs": 6, "balls": 9, "fours": 0, "sixes": 0 },
+        { "name": "Sikandar Raza", "runs": 31, "balls": 21, "fours": 2, "sixes": 2 },
+        { "name": "Ryan Burl", "runs": 0, "balls": 2, "fours": 0, "sixes": 0 },
+        { "name": "Tony Munyonga", "runs": 11, "balls": 6, "fours": 2, "sixes": 0 },
+        { "name": "Tashinga Musekiwa", "runs": 7, "balls": 4, "fours": 0, "sixes": 1 },
+        { "name": "Brad Evans", "runs": 1, "balls": 1, "fours": 0, "sixes": 0 }
+      ],
+      "bowling": [
+        { "name": "Arshdeep Singh", "overs": 4, "runs": 24, "wickets": 3 },
+        { "name": "Hardik Pandya", "overs": 3, "runs": 21, "wickets": 0 },
+        { "name": "Jasprit Bumrah", "overs": 3, "runs": 21, "wickets": 0 },
+        { "name": "Varun Chakaravarthy", "overs": 4, "runs": 35, "wickets": 1 },
+        { "name": "Axar Patel", "overs": 4, "runs": 35, "wickets": 1 },
+        { "name": "Shivam Dube", "overs": 2, "runs": 46, "wickets": 1 }
+      ],
+      "fielding": {
+        "catches": {
+          "Ishan Kishan": 1,
+          "Tilak Varma": 1,
+          "Abhishek Sharma": 1,
+          "Sanju Samson": 1
+        },
+        "stumpings": {},
+        "runOuts": {}
+      }
+    }
+  ]
+}
