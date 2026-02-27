@@ -273,14 +273,17 @@ async function main() {
   if (configErr) { console.error('Failed to fetch match_config:', configErr.message); process.exit(1); }
   console.log(`  ${config.team_a} vs ${config.team_b} | Status: ${config.status}`);
 
-  // ── Fetch side bet ──
-  console.log('Fetching side bet...');
+  // ── Fetch side bets ──
+  console.log('Fetching side bets...');
   const { data: sideBets } = await supabase
-    .from('side_bets').select('*').eq('match_id', matchId);
-  const sideBet = sideBets?.[0];
-  if (!sideBet) { console.error('No side bet found for', matchId); process.exit(1); }
-  console.log(`  Q: "${sideBet.question_text}"`);
-  console.log(`  Answer: "${input.sideBetAnswer}"`);
+    .from('side_bets').select('*').eq('match_id', matchId).order('display_order');
+  if (!sideBets?.length) { console.error('No side bets found for', matchId); process.exit(1); }
+  console.log(`  ${sideBets.length} side bet(s) found`);
+  // Support both old format (single sideBetAnswer) and new format (sideBetAnswers array)
+  const sideBetAnswers = input.sideBetAnswers || [input.sideBetAnswer];
+  for (let i = 0; i < sideBets.length; i++) {
+    console.log(`  Q${i + 1}: "${sideBets[i].question_text}" → "${sideBetAnswers[i] || '(no answer)'}"`);
+  }
 
   // ── Fetch players for both teams ──
   console.log('Fetching players...');
@@ -493,13 +496,17 @@ async function main() {
   if (resErr) { console.error('  ERROR:', resErr.message); process.exit(1); }
   console.log('  Done.');
 
-  // Step 2: Set side bet correct answer
-  console.log('--- Step 2: Setting side bet answer ---');
-  const { error: sbErr } = await supabase.from('side_bets')
-    .update({ correct_answer: input.sideBetAnswer })
-    .eq('side_bet_id', sideBet.side_bet_id);
-  if (sbErr) { console.error('  ERROR:', sbErr.message); process.exit(1); }
-  console.log(`  "${sideBet.question_text}" → "${input.sideBetAnswer}"`);
+  // Step 2: Set side bet correct answers
+  console.log('--- Step 2: Setting side bet answers ---');
+  for (let i = 0; i < sideBets.length; i++) {
+    const answer = sideBetAnswers[i];
+    if (!answer) { console.warn(`  Skipping side bet ${i + 1} — no answer provided`); continue; }
+    const { error: sbErr } = await supabase.from('side_bets')
+      .update({ correct_answer: answer })
+      .eq('side_bet_id', sideBets[i].side_bet_id);
+    if (sbErr) { console.error('  ERROR:', sbErr.message); process.exit(1); }
+    console.log(`  Q${i + 1}: "${sideBets[i].question_text}" → "${answer}"`);
+  }
 
   // Step 3: Insert player_match_stats
   console.log('--- Step 3: Inserting player_match_stats ---');
@@ -524,6 +531,25 @@ async function main() {
   });
   if (scErr) { console.error('  ERROR:', scErr.message); process.exit(1); }
   console.log('  Result:', scoreData);
+
+  // Step 5b: Zero out last_match_score for users who didn't bet on this match
+  console.log('--- Step 5b: Zeroing last_match_score for non-bettors ---');
+  const { data: bettorRows } = await supabase.from('bets')
+    .select('user_id').eq('match_id', matchId);
+  const bettorIds = new Set((bettorRows || []).map(b => b.user_id));
+  const { data: allLb } = await supabase.from('leaderboard')
+    .select('user_id').eq('event_id', 't20wc_2026');
+  const nonBettors = (allLb || []).filter(r => !bettorIds.has(r.user_id)).map(r => r.user_id);
+  if (nonBettors.length > 0) {
+    const { error: zeroErr } = await supabase.from('leaderboard')
+      .update({ last_match_score: 0, updated_at: new Date().toISOString() })
+      .eq('event_id', 't20wc_2026')
+      .in('user_id', nonBettors);
+    if (zeroErr) console.error('  ERROR zeroing non-bettors:', zeroErr.message);
+    else console.log(`  Zeroed ${nonBettors.length} users who didn't bet on ${matchId}.`);
+  } else {
+    console.log('  All leaderboard users bet on this match.');
+  }
 
   // Step 6: Update match status to SCORED
   console.log('--- Step 6: Updating match status to SCORED ---');
