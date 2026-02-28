@@ -1,0 +1,71 @@
+{
+  "matchId": "wc_m50",
+  "winner": "teamA",
+  "totalRuns": 419,
+  "manOfMatch": "Sahibzada Farhan",
+  "sideBetAnswers": ["Team batting first", "9-15"],
+  "innings": [
+    {
+      "team": "PAK",
+      "batting": [
+        { "name": "Sahibzada Farhan", "runs": 100, "balls": 60, "fours": 9, "sixes": 5 },
+        { "name": "Fakhar Zaman", "runs": 84, "balls": 42, "fours": 9, "sixes": 4 },
+        { "name": "Khawaja Nafay", "runs": 2, "balls": 3, "fours": 0, "sixes": 0 },
+        { "name": "Shadab Khan", "runs": 7, "balls": 5, "fours": 1, "sixes": 0 },
+        { "name": "Mohammad Nawaz", "runs": 0, "balls": 1, "fours": 0, "sixes": 0 },
+        { "name": "Salman Agha", "runs": 0, "balls": 2, "fours": 0, "sixes": 0 },
+        { "name": "Usman Khan", "runs": 8, "balls": 4, "fours": 1, "sixes": 0 },
+        { "name": "Shaheen Afridi", "runs": 4, "balls": 2, "fours": 1, "sixes": 0 },
+        { "name": "Naseem Shah", "runs": 1, "balls": 1, "fours": 0, "sixes": 0 }
+      ],
+      "bowling": [
+        { "name": "Dilshan Madushanka", "overs": 4, "runs": 33, "wickets": 3 },
+        { "name": "Dushmantha Chameera", "overs": 4, "runs": 48, "wickets": 1 },
+        { "name": "Maheesh Theekshana", "overs": 4, "runs": 35, "wickets": 0 },
+        { "name": "Dasun Shanaka", "overs": 4, "runs": 42, "wickets": 2 },
+        { "name": "Dunith Wellalage", "overs": 3, "runs": 37, "wickets": 0 },
+        { "name": "Janith Liyanage", "overs": 1, "runs": 14, "wickets": 0 }
+      ],
+      "fielding": {
+        "catches": {
+          "Janith Liyanage": 1,
+          "Charith Asalanka": 1,
+          "Maheesh Theekshana": 2
+        },
+        "stumpings": {},
+        "runOuts": {
+          "Dilshan Madushanka": 1,
+          "Kamindu Mendis": 1
+        }
+      }
+    },
+    {
+      "team": "SL",
+      "batting": [
+        { "name": "Pathum Nissanka", "runs": 3, "balls": 7, "fours": 0, "sixes": 0 },
+        { "name": "Kamil Mishara", "runs": 26, "balls": 15, "fours": 4, "sixes": 1 },
+        { "name": "Charith Asalanka", "runs": 25, "balls": 18, "fours": 1, "sixes": 2 },
+        { "name": "Pavan Rathnayake", "runs": 58, "balls": 37, "fours": 4, "sixes": 3 },
+        { "name": "Kamindu Mendis", "runs": 3, "balls": 6, "fours": 0, "sixes": 0 },
+        { "name": "Janith Liyanage", "runs": 5, "balls": 3, "fours": 1, "sixes": 0 },
+        { "name": "Dasun Shanaka", "runs": 76, "balls": 31, "fours": 2, "sixes": 8 },
+        { "name": "Dunith Wellalage", "runs": 2, "balls": 3, "fours": 0, "sixes": 0 }
+      ],
+      "bowling": [
+        { "name": "Shaheen Afridi", "overs": 4, "runs": 48, "wickets": 1 },
+        { "name": "Naseem Shah", "overs": 4, "runs": 36, "wickets": 1 },
+        { "name": "Abrar Ahmed", "overs": 4, "runs": 23, "wickets": 3 },
+        { "name": "Usman Tariq", "overs": 4, "runs": 43, "wickets": 0 },
+        { "name": "Mohammad Nawaz", "overs": 2, "runs": 21, "wickets": 1 },
+        { "name": "Shadab Khan", "overs": 2, "runs": 33, "wickets": 0 }
+      ],
+      "fielding": {
+        "catches": {
+          "Mohammad Nawaz": 1
+        },
+        "stumpings": {},
+        "runOuts": {}
+      }
+    }
+  ]
+}
